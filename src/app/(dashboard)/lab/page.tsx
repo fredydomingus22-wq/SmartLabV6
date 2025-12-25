@@ -57,7 +57,7 @@ export default async function LabPage(props: {
     ]);
 
     return (
-        <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
+        <div className="h-full flex-1 flex-col p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8 md:flex">
             <Suspense fallback={<DashboardSkeleton />}>
                 <DashboardClient
                     samples={samples || []}

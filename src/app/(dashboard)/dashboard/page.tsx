@@ -177,14 +177,14 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-8 pb-20">
             {/* KPI Overview */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card className="glass group hover:bg-slate-900/50 transition-all border-blue-500/20">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Lotes Ativos</CardTitle>
-                        <Factory className="h-4 w-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6">
+                        <CardTitle className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Lotes Ativos</CardTitle>
+                        <Factory className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <Link href="/production" className="cursor-pointer">
-                        <CardContent>
+                        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-bold text-slate-100">{stats.activeBatches}</span>
                                 <span className="text-[10px] text-emerald-400 flex items-center font-bold">
@@ -197,12 +197,12 @@ export default async function DashboardPage() {
                 </Card>
 
                 <Card className="glass group hover:bg-slate-900/50 transition-all border-orange-500/20">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Amostras Pendentes</CardTitle>
-                        <FlaskConical className="h-4 w-4 text-orange-500 group-hover:scale-110 transition-transform" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6">
+                        <CardTitle className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Amostras Pendentes</CardTitle>
+                        <FlaskConical className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <Link href="/lab" className="cursor-pointer">
-                        <CardContent>
+                        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-bold text-orange-500">{stats.pendingSamples}</span>
                                 <span className="text-[10px] text-slate-400 font-medium">{stats.inAnalysis} em análise</span>
@@ -213,12 +213,12 @@ export default async function DashboardPage() {
                 </Card>
 
                 <Card className="glass group hover:bg-slate-900/50 transition-all border-emerald-500/20">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Taxa de Conformidade</CardTitle>
-                        <ClipboardCheck className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6">
+                        <CardTitle className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Taxa Conformidade</CardTitle>
+                        <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <Link href="/quality/results" className="cursor-pointer">
-                        <CardContent>
+                        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-bold text-emerald-500">{stats.complianceRate.toFixed(1)}%</span>
                                 <Badge variant="outline" className="text-[10px] border-emerald-500/20 bg-emerald-500/5 text-emerald-400">L7D</Badge>
@@ -229,12 +229,12 @@ export default async function DashboardPage() {
                 </Card>
 
                 <Card className="glass group hover:bg-slate-900/50 transition-all border-red-500/20">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Desvios Críticos</CardTitle>
-                        <AlertTriangle className={`h-4 w-4 ${stats.recentDeviations > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`} />
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6">
+                        <CardTitle className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Desvios Críticos</CardTitle>
+                        <AlertTriangle className={`h-3 w-3 sm:h-4 sm:w-4 ${stats.recentDeviations > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`} />
                     </CardHeader>
                     <Link href="/haccp/pcc" className="cursor-pointer">
-                        <CardContent>
+                        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-4xl font-extrabold ${stats.recentDeviations > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                                     {stats.recentDeviations}
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
                 {/* Trends & Activity */}
                 <div className="md:col-span-2 space-y-6">
                     <DashboardTrendsClient
@@ -258,7 +258,7 @@ export default async function DashboardPage() {
                         initialSpecs={initialSpecs}
                     />
 
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2">
                         <Card className="glass overflow-hidden">
                             <CardHeader className="border-b border-slate-800/50 bg-slate-900/20">
                                 <div className="flex items-center justify-between">
@@ -272,7 +272,7 @@ export default async function DashboardPage() {
                             <CardContent className="p-0">
                                 <div className="divide-y divide-slate-800/50">
                                     {activity.recentSamples.map((sample: any) => (
-                                        <div key={sample.id} className="flex items-center justify-between p-4 hover:bg-slate-900/30 transition-colors group">
+                                        <div key={sample.id} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-900/30 transition-colors group">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-mono text-sm text-slate-100 font-extrabold tracking-tight">{sample.code}</span>
                                                 <span className="text-[10px] text-slate-400 font-medium">{new Date(sample.created_at).toLocaleString()}</span>
@@ -304,7 +304,7 @@ export default async function DashboardPage() {
                             <CardContent className="p-0">
                                 <div className="divide-y divide-slate-800/50">
                                     {activity.recentBatches.map((batch: any) => (
-                                        <div key={batch.id} className="flex items-center justify-between p-4 hover:bg-slate-900/30 transition-colors group">
+                                        <div key={batch.id} className="flex items-center justify-between p-3 sm:p-4 hover:bg-slate-900/30 transition-colors group">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-mono text-sm text-slate-200 font-bold tracking-tight">{batch.code}</span>
                                                 <span className="text-[10px] text-slate-500">{new Date(batch.start_date).toLocaleString()}</span>

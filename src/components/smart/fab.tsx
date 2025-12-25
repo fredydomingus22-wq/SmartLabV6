@@ -73,13 +73,13 @@ export function FAB({ user }: FABProps) {
     );
 
     return (
-        <div className="fixed bottom-8 right-8 z-50">
+        <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
             <DropdownMenu onOpenChange={setIsOpen}>
                 <DropdownMenuTrigger asChild>
                     <Button
                         size="icon"
                         className={cn(
-                            "h-14 w-14 rounded-full shadow-2xl transition-all duration-300 glass-primary hover:scale-110 active:scale-95 border-emerald-500/50",
+                            "h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-2xl transition-all duration-300 glass-primary hover:scale-110 active:scale-95 border-emerald-500/50",
                             isOpen ? "rotate-45" : "rotate-0"
                         )}
                     >
@@ -90,7 +90,7 @@ export function FAB({ user }: FABProps) {
                     align="end"
                     side="top"
                     sideOffset={16}
-                    className="w-72 bg-slate-950/90 border-slate-800 backdrop-blur-xl glass animate-in slide-in-from-bottom-4 duration-300"
+                    className="w-64 sm:w-72 bg-slate-950/90 border-slate-800 backdrop-blur-xl glass animate-in slide-in-from-bottom-4 duration-300"
                 >
                     <DropdownMenuLabel className="flex items-center gap-2 text-slate-100">
                         <LayoutGrid className="h-4 w-4 text-emerald-400" />

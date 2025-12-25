@@ -32,7 +32,7 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
     const isOverdue = (date?: string | null) => !!(date && new Date(date) < new Date());
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8">
             {/* Header section with KPIs */}
             <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
                 <div className="flex gap-4 items-start">
@@ -43,8 +43,8 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                         <Settings className="h-8 w-8" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold text-slate-100">{equipment.name}</h1>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <h1 className="text-xl sm:text-3xl font-bold text-slate-100">{equipment.name}</h1>
                             <Badge variant="outline" className="border-slate-800 text-slate-400 uppercase tracking-wider">
                                 {equipment.code}
                             </Badge>

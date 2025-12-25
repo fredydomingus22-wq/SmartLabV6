@@ -50,14 +50,14 @@ export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card hover:bg-accent/10 border-border/60">
             <div className={cn("absolute top-0 left-0 w-1 h-full transition-colors duration-300", status.bg.replace("bg-", "bg-").replace(" border-", " "))} />
 
-            <CardHeader className="p-4 pb-2 space-y-2 pl-5">
+            <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2 space-y-2 pl-4 sm:pl-5">
                 <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-center">
                         <div className={cn("p-2.5 rounded-xl shadow-sm transition-colors", status.bg)}>
                             <TestTube2 className={cn("h-5 w-5", status.color)} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg leading-none tracking-tight text-card-foreground font-mono">
+                            <h3 className="font-bold text-base sm:text-lg leading-none tracking-tight text-card-foreground font-mono">
                                 {sample.code}
                             </h3>
                             <p className="text-xs text-muted-foreground mt-1.5 font-medium flex items-center gap-1.5">
@@ -72,7 +72,7 @@ export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
                 </div>
             </CardHeader>
 
-            <CardContent className="p-4 pt-3 space-y-4 pl-5">
+            <CardContent className="p-3 pt-2 sm:p-4 sm:pt-3 space-y-3 sm:space-y-4 pl-4 sm:pl-5">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="space-y-1.5">
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1.5">
@@ -105,7 +105,7 @@ export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
                 )}
             </CardContent>
 
-            <CardFooter className="p-4 pt-1 flex justify-between gap-3 bg-muted/20">
+            <CardFooter className="p-3 pt-1 sm:p-4 sm:pt-1 flex justify-between gap-3 bg-muted/20">
                 <Button variant="outline" size="sm" asChild className="h-8 text-xs font-medium bg-background hover:bg-muted text-foreground border-border">
                     <a href={`/lab/samples/${sample.id}`}>Detalhes</a>
                 </Button>

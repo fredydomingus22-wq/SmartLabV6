@@ -29,7 +29,7 @@ export default async function PRPExecutePage({ params }: PageProps) {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold tracking-tight">Execute Checklist</h1>
+                <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Execute Checklist</h1>
                 <p className="text-muted-foreground">
                     Record process verification for {template.name}.
                 </p>

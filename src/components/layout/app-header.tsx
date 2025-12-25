@@ -54,7 +54,7 @@ export function AppHeader({ user }: AppHeaderProps) {
     }, []);
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800/50 bg-slate-950/80 px-6 backdrop-blur-md glass">
+        <header className="sticky top-0 z-30 flex h-14 md:h-16 w-full items-center justify-between border-b border-slate-800/50 bg-slate-950/80 px-3 md:px-6 backdrop-blur-md glass">
             {/* Left: Greeting & Title */}
             <div className="flex items-center gap-4">
                 <div className="hidden md:block">
@@ -71,12 +71,12 @@ export function AppHeader({ user }: AppHeaderProps) {
                 </Badge>
             </div>
 
-            {/* Middle: Search Bar */}
-            <div className="flex flex-1 items-center justify-center px-6 max-w-md">
+            {/* Middle: Search Bar (Hidden on mobile) */}
+            <div className="hidden md:flex flex-1 items-center justify-center px-6 max-w-md">
                 <div className="relative w-full group">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-400 transition-colors" />
                     <Input
-                        placeholder="Pesquisar amostras, lotes ou relatórios..."
+                        placeholder="Pesquisar amostras..."
                         className="h-10 w-full bg-slate-900 border-slate-700 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-emerald-500/50 glass hover:bg-slate-900 transition-all shadow-inner"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">

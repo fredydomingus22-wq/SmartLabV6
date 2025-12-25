@@ -31,7 +31,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
     if (!employee) return <div className="p-10">Funcionário não encontrado.</div>;
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8">
             <Link href="/quality/training" className="flex items-center gap-2 text-slate-500 hover:text-slate-200 transition-colors w-fit group mb-4">
                 <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                 Voltar para o Painel de Formação
@@ -42,8 +42,8 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                         <User className="h-8 w-8" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-3xl font-bold text-slate-100">{employee.full_name}</h1>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <h1 className="text-xl sm:text-3xl font-bold text-slate-100">{employee.full_name}</h1>
                             <Badge className="bg-emerald-500/10 text-emerald-400 border-none uppercase text-[10px] tracking-widest">
                                 {employee.status}
                             </Badge>

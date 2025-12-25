@@ -55,17 +55,17 @@ export function KPICards({ stats }: KPIProps) {
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 md:mb-8">
             {kpis.map((kpi, idx) => (
                 <Card key={idx} className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200 bg-card">
-                    <CardContent className="p-4 flex flex-col justify-between h-full">
+                    <CardContent className="p-3 sm:p-4 flex flex-col justify-between h-full">
                         <div className="flex justify-between items-start mb-2">
                             <div className={cn("p-2 rounded-lg", kpi.bg)}>
                                 <kpi.icon className={cn("h-4 w-4", kpi.color)} />
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-card-foreground tracking-tight">
+                            <h3 className="text-lg sm:text-2xl font-bold text-card-foreground tracking-tight">
                                 {kpi.value}
                             </h3>
                             <p className="text-xs text-muted-foreground font-medium mt-1">

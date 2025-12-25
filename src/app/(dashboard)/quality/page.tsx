@@ -24,30 +24,30 @@ export default async function QualityDashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <BarChart3 className="h-8 w-8 text-blue-500" />
+                    <h1 className="text-xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+                        <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                         Painel de Qualidade
                     </h1>
                     <p className="text-muted-foreground">
                         Métricas e tendências de qualidade em tempo real
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
                     <Link href="/quality/spc">
-                        <Button>
-                            <TrendingUp className="h-4 w-4 mr-2" />
+                        <Button size="sm" className="h-8 sm:h-10 text-[10px] sm:text-sm">
+                            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                             Gráficos SPC
                         </Button>
                     </Link>
                     <Link href="/quality/qms">
-                        <Button variant="outline">
-                            <ClipboardList className="h-4 w-4 mr-2" />
-                            Ver Desvios (NC)
+                        <Button variant="outline" size="sm" className="h-8 sm:h-10 text-[10px] sm:text-sm">
+                            <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                            Desvios
                         </Button>
                     </Link>
                     <Link href="/quality/qms/capa">
-                        <Button variant="outline">
-                            <Target className="h-4 w-4 mr-2" />
+                        <Button variant="outline" size="sm" className="h-8 sm:h-10 text-[10px] sm:text-sm">
+                            <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                             CAPAs
                         </Button>
                     </Link>
@@ -55,7 +55,7 @@ export default async function QualityDashboardPage() {
             </div>
 
             {/* KPI Cards Row */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
                 {/* First Pass Yield */}
                 <Card className="glass">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -188,23 +188,23 @@ export default async function QualityDashboardPage() {
                 <CardHeader>
                     <CardTitle>Resumo Informativo</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                         <div>
-                            <div className="text-3xl font-bold">{kpis.totalNCs}</div>
-                            <div className="text-xs text-muted-foreground">Total de NCs</div>
+                            <div className="text-xl sm:text-3xl font-bold">{kpis.totalNCs}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">Total NCs</div>
                         </div>
                         <div>
-                            <div className="text-3xl font-bold text-green-500">{kpis.closedNCs}</div>
-                            <div className="text-xs text-muted-foreground">NCs Encerradas</div>
+                            <div className="text-xl sm:text-3xl font-bold text-green-500">{kpis.closedNCs}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">Encerradas</div>
                         </div>
                         <div>
-                            <div className="text-3xl font-bold">{kpis.totalCAPAs}</div>
-                            <div className="text-xs text-muted-foreground">Total de CAPAs</div>
+                            <div className="text-xl sm:text-3xl font-bold">{kpis.totalCAPAs}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">CAPAs</div>
                         </div>
                         <div>
-                            <div className="text-3xl font-bold">{kpis.totalAnalysis}</div>
-                            <div className="text-xs text-muted-foreground">Análises (30d)</div>
+                            <div className="text-xl sm:text-3xl font-bold">{kpis.totalAnalysis}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-widest font-bold">Análises</div>
                         </div>
                     </div>
                 </CardContent>

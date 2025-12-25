@@ -29,7 +29,7 @@ export default async function DashboardLayout({
 
                 {/* Scrollable Content */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                    <div className="p-6 md:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {children}
                     </div>
                 </main>

@@ -78,7 +78,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
 
     return (
         <Card className="glass border-slate-800/50 overflow-hidden">
-            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/50 bg-slate-900/20 px-8 py-6">
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/50 bg-slate-900/20 px-4 py-4 md:px-8 md:py-6">
                 <div>
                     <CardTitle className="text-xl font-extrabold text-slate-100 flex items-center gap-2 tracking-tight">
                         <TrendingUp className="h-5 w-5 text-emerald-400" />
@@ -88,7 +88,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                         Performance real vs. Limites de Especificação.
                     </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
                     <Select
                         value={selectedProduct}
                         onValueChange={(val) => {
@@ -96,7 +96,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                             handleFilterChange(val, selectedParameter);
                         }}
                     >
-                        <SelectTrigger className="w-[160px] h-9 text-xs bg-slate-950/50 border-slate-800 text-slate-300">
+                        <SelectTrigger className="w-[140px] h-8 md:h-9 text-[10px] md:text-xs bg-slate-950/50 border-slate-800 text-slate-300">
                             <SelectValue placeholder="Produto" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-950 border-slate-800">
@@ -112,7 +112,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                             handleFilterChange(selectedProduct, val);
                         }}
                     >
-                        <SelectTrigger className="w-[140px] h-9 text-xs bg-slate-950/50 border-slate-800 text-slate-300">
+                        <SelectTrigger className="w-[130px] h-8 md:h-9 text-[10px] md:text-xs bg-slate-950/50 border-slate-800 text-slate-300">
                             <SelectValue placeholder="Parâmetro" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-950 border-slate-800">
@@ -123,8 +123,8 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="p-8">
-                <div className={`h-[350px] w-full transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+            <CardContent className="p-4 md:p-8">
+                <div className={`h-[250px] md:h-[350px] w-full transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>
@@ -221,7 +221,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                     </ResponsiveContainer>
                 </div>
 
-                <div className="mt-8 flex items-center justify-center gap-8 border-t border-slate-800/50 pt-6">
+                <div className="mt-4 md:mt-8 flex flex-wrap items-center justify-center gap-3 md:gap-8 border-t border-slate-800/50 pt-4 md:pt-6">
                     <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resultado Atual</span>
@@ -230,7 +230,7 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
                         <div className="h-0.5 w-6 border-t-2 border-dashed border-red-500/50" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Limites Críticos</span>
                     </div>
-                    <Badge variant="outline" className="bg-slate-900 border-slate-800 text-[10px] text-slate-500 font-mono">
+                    <Badge variant="outline" className="hidden sm:inline-flex bg-slate-900 border-slate-800 text-[10px] text-slate-500 font-mono">
                         Amostragem: Últimos 10 Pontos
                     </Badge>
                 </div>

@@ -47,7 +47,7 @@ export function DashboardClient({ samples, stats, sampleTypes, tanks, samplingPo
     return (
         <div className="space-y-6">
             {/* Mobile Sticky Header */}
-            <div className="md:hidden sticky -top-8 -mx-8 px-8 py-4 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center justify-between mb-6 shadow-sm">
+            <div className="md:hidden sticky -top-3 -mx-3 px-3 py-3 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center justify-between mb-4 shadow-sm">
                 <span className="font-bold text-lg">Gestão de Amostras</span>
                 <CreateSampleDialog
                     sampleTypes={sampleTypes}
