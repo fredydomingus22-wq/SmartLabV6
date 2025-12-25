@@ -4,26 +4,27 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 interface PageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function PRPExecutePage({ params }: PageProps) {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Fetch Template Name
     const { data: template, error: templateError } = await supabase
         .from("haccp_prp_templates")
         .select("id, name")
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
     if (templateError || !template) {
         notFound();
     }
 
-    const items = await getPRPTemplateItems(params.id);
+    const items = await getPRPTemplateItems(id);
 
     return (
         <div className="space-y-6">

@@ -19,10 +19,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 interface UserDetailPageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
+    const { id } = await params;
     await ensureSystemOwner();
     const supabase = createAdminClient();
 
@@ -33,7 +34,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
             organizations (name, slug),
             plants (name)
         `)
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
     if (error || !profile) {
@@ -41,7 +42,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
     }
 
     // Get auth data for email
-    const { data: authUser } = await supabase.auth.admin.getUserById(params.id);
+    const { data: authUser } = await supabase.auth.admin.getUserById(id);
 
     return (
         <div className="space-y-8 pb-10">

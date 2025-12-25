@@ -23,8 +23,9 @@ import { AddTrainingRecordDialog } from "../_components/add-training-record-dial
 import { EvaluateTrainingDialog } from "../_components/evaluate-training-dialog";
 
 
-export default async function EmployeeDetailsPage({ params }: { params: { id: string } }) {
-    const { employee, error } = await getEmployeeById(params.id);
+export default async function EmployeeDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const { employee, error } = await getEmployeeById(id);
     const { data: parameters } = await getQAParameters();
 
     if (!employee) return <div className="p-10">Funcionário não encontrado.</div>;

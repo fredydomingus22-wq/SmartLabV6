@@ -21,9 +21,10 @@ interface DocumentVersion {
     change_description: string | null;
 }
 
-export default async function DocumentDetailsPage({ params }: { params: { id: string } }) {
+export default async function DocumentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const user = await getSafeUser();
-    const { document, versions, error } = await getDocumentById(params.id) as { document: any, versions: DocumentVersion[], error: any };
+    const { document, versions, error } = await getDocumentById(id) as { document: any, versions: DocumentVersion[], error: any };
     const { data: approvers } = await getApprovers();
 
     if (!document) return <div className="p-10">Documento não encontrado.</div>;

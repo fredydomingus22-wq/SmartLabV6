@@ -22,9 +22,10 @@ import { LogActivityDialog } from "../_components/log-activity-dialog";
 import { RegisterCertificateDialog } from "../_components/register-certificate-dialog";
 import { MaintenancePlanDialog } from "../_components/maintenance-plan-dialog";
 
-export default async function EquipmentDetailsPage({ params }: { params: { id: string } }) {
+export default async function EquipmentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const user = await getSafeUser();
-    const { equipment, error } = await getEquipmentWithMetrology(params.id);
+    const { equipment, error } = await getEquipmentWithMetrology(id);
 
     if (!equipment) return <div className="p-10 text-slate-400">Equipamento não encontrado ou sem permissão.</div>;
 

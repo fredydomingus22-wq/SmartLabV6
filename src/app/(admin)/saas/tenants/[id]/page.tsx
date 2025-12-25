@@ -20,11 +20,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface OrgDetailPageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
-    const res = await getOrganizationDetails(params.id);
+    const { id } = await params;
+    const res = await getOrganizationDetails(id);
 
     if (!res.success || !res.data) {
         return notFound();
