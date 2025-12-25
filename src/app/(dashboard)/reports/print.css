@@ -1,0 +1,167 @@
+/* Print-specific styles for reports */
+
+@media print {
+
+    /* Page counter */
+    body {
+        counter-reset: page;
+    }
+
+    .report-page::after {
+        content: "Page " counter(page);
+        counter-increment: page;
+        position: fixed;
+        bottom: 10mm;
+        right: 15mm;
+        font-size: 9pt;
+        color: #666;
+    }
+
+    /* Hide non-essential elements */
+    nav,
+    aside,
+    footer,
+    button,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Reset backgrounds and shadows */
+    .glass,
+    .card,
+    [class*="shadow"] {
+        background: white !important;
+        box-shadow: none !important;
+        border: 1px solid #e5e7eb !important;
+    }
+
+    /* Page setup */
+    @page {
+        size: A4;
+        margin: 15mm;
+    }
+
+    /* Ensure proper page breaks */
+    .page-break-before {
+        page-break-before: always;
+    }
+
+    .page-break-after {
+        page-break-after: always;
+    }
+
+    .avoid-page-break {
+        page-break-inside: avoid;
+    }
+
+    /* Table improvements */
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tfoot {
+        display: table-footer-group;
+    }
+
+    /* Typography */
+    body {
+        font-size: 11pt !important;
+        line-height: 1.4 !important;
+        color: black !important;
+    }
+
+    h1 {
+        font-size: 18pt !important;
+    }
+
+    h2 {
+        font-size: 14pt !important;
+    }
+
+    h3 {
+        font-size: 12pt !important;
+    }
+
+    /* Ensure badges print well */
+    .badge,
+    [class*="Badge"] {
+        background-color: #e5e7eb !important;
+        color: black !important;
+        border: 1px solid #9ca3af !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Status colors for conformity */
+    .text-green-500,
+    .text-green-600 {
+        color: #16a34a !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .text-red-500,
+    .text-red-600 {
+        color: #dc2626 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .text-orange-600 {
+        color: #ea580c !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Critical parameter highlighting */
+    .bg-orange-50 {
+        background-color: #fff7ed !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Muted backgrounds */
+    .bg-muted {
+        background-color: #f9fafb !important;
+    }
+
+    /* Links - remove underline and color in print */
+    a {
+        color: black !important;
+        text-decoration: none !important;
+    }
+
+    /* Reduce spacing */
+    .space-y-8>*+* {
+        margin-top: 1rem !important;
+    }
+
+    .space-y-6>*+* {
+        margin-top: 0.75rem !important;
+    }
+
+    /* Cards spacing */
+    .p-6 {
+        padding: 1rem !important;
+    }
+
+    .p-4 {
+        padding: 0.75rem !important;
+    }
+
+    /* Footer positioning */
+    .report-footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+    }
+}

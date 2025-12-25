@@ -1,0 +1,100 @@
+
+# SMARTLAB V4 — ERROR LOG
+
+## Objetivo
+
+Este documento regista todos os erros detectados, analisados e corrigidos no SmartLab V4, garantindo rastreabilidade, qualidade e melhoria contínua.
+
+---
+
+## Estrutura do Registo
+
+Cada erro deve ser registado com o seguinte padrão:
+
+### Registro de Erro
+
+| Campo | Descrição |
+|--------|-----------|
+| ID do Erro | Código único (ex: ERR-2025-001) |
+| Data | Data da ocorrência |
+| Módulo | Ex: Microbiologia, Físico-Química, Reagentes |
+| Severidade | CRITICAL / HIGH / MEDIUM / LOW |
+| Arquivo(s) Afetado(s) | Caminhos dos ficheiros |
+| Descrição do Erro | O que aconteceu |
+| Impacto | O que foi afetado no sistema |
+| Causa Raiz | Por que o erro aconteceu |
+| Solução Implementada | Como foi corrigido |
+| Validação | Como foi validado o fix |
+| Responsável | Nome do responsável pela correção |
+
+---
+
+## Template para Registo de Novo Erro
+
+```text
+ID do Erro: 
+Data: 
+Módulo: 
+Severidade: 
+Arquivo(s): 
+Descrição: 
+Impacto: 
+Causa Raiz: 
+Solução Implementada: 
+Validação: 
+Responsável: 
+````
+
+---
+
+## Histórico de Erros
+
+### ERR-2025-001
+
+| Campo       | Valor |
+| ----------- | ----- |
+| Data        |       |
+| Módulo      |       |
+| Severidade  |       |
+| Arquivos    |       |
+| Descrição   |       |
+| Impacto     |       |
+| Causa Raiz  |       |
+| Solução     |       |
+| Validação   |       |
+| Responsável |       |
+
+---
+
+### ERR-2025-002
+
+| Campo       | Valor |
+| ----------- | ----- |
+| Data        | 22/12/2025 |
+| Módulo      | Lab (LIMS) |
+| Severidade  | CRITICAL |
+| Arquivos    | `lab_analysis` (DB), `src/app/actions/lab.ts`, `src/app/(dashboard)/lab/samples/[id]/page.tsx` |
+| Descrição   | Technical Resume vazio/UNDEFINED após operação de Save & Sign. |
+| Impacto     | Perda de dados analíticos e falha na conformidade SOP (falta de assinatura). |
+| Causa Raiz  | Política RLS impedia UPDATE se `analyzed_by` fosse NULL. Interface usava mapeamento inconsistente para dados relacionais. |
+| Solução     | Atualização da RLS; Hardening do Server Action com verificação de erros; Normalização centralizada no `page.tsx`. |
+| Validação   | Build verificado (`npm run build`) e confirmação do utilizador via UI. |
+| Responsável | Antigravity |
+
+---
+
+## Regras Obrigatórias
+
+* Nenhum erro pode ser fechado sem:
+
+  * Causa raiz identificada
+  * Teste de regressão realizado
+  * Documentação completa
+
+* Erros de severidade **CRITICAL** exigem revisão dupla
+
+---
+
+## Frase de controle
+
+> Cada erro documentado fortalece o sistema.

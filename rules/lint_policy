@@ -1,0 +1,89 @@
+# SMARTLAB V4 — LINT POLICY
+
+## 1. Objetivo
+
+Definir regras obrigatórias de qualidade de código para garantir:
+
+- Robustez industrial
+- Legibilidade
+- Manutenibilidade
+- Segurança
+
+---
+
+## 2. Regras Gerais (Obrigatórias)
+
+### ✅ Tipagem
+
+- É PROIBIDO usar:
+  - `any`
+  - `unknown` sem tratamento
+  - `@ts-ignore`
+- Todo dado deve ter `type` ou `interface`.
+
+---
+
+### ✅ Imports
+
+- Proibido imports relativos longos:
+
+❌ ../../../../components  
+✅ @/components
+
+---
+
+### ✅ Código morto
+
+- Nenhuma função não usada é permitida.
+- Nenhuma variável sem uso é permitida.
+
+---
+
+### ✅ Regras de Naming
+
+| Tipo | Padrão |
+|------|--------|
+| Variável | camelCase |
+| Função | camelCase |
+| Classe | PascalCase |
+| Tabela DB | snake_case |
+| Campo DB | snake_case |
+
+---
+
+### ✅ Regras de React
+
+- Proibido:
+  - lógica de negócio dentro de componentes
+  - `useEffect` sem dependências corretas
+
+- Obrigatório:
+  - separar UI de regras
+
+---
+
+## 3. ESLint Regras Mínimas Obrigatórias
+
+Adicionar no `.eslintrc.json`:
+
+```json
+{
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "no-unused-vars": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
+  }
+}
+## 4. Regra de Banco de Dados
+
+Toda tabela deve ter:
+
+- `id`
+- `organization_id`
+- `created_at`
+- `updated_at`
+
+5. Frase de controle
+
+Código sem padrão é defeito em produção.

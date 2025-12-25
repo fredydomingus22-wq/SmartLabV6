@@ -1,0 +1,70 @@
+
+# SMARTLAB V6 — REGRAS DO AGENTE
+
+## 1. Regra Suprema
+
+Antes de codar, o agente DEVE ler:
+
+- `/docs` e `/rules`
+
+
+## 2. Proibição de improvisação
+
+O agente NÃO pode:
+
+- Criar lógica fora das regras
+- "Adivinhar" comportamento
+- Simplificar fluxo industrial
+
+---
+
+## 3. Dependências
+
+O agente:
+
+✅ Deve usar apenas as dependências já definidas  
+❌ Não deve instalar bibliotecas sem autorização
+
+---
+
+## 4. Erros de Código
+
+Quando erro aparecer:
+
+1. NÃO silenciar
+2. NÃO contornar
+3. Diagnosticar causa raiz
+4. Seguir `/rules/sop_error_handling.md`
+
+---
+
+## 5. Regras de Banco / Supabase
+
+- Nunca quebrar o multi-tenant
+- Nunca remover `organization_id`
+- Nunca misturar dados entre plantas
+
+---
+
+## 6. Regras de UI
+
+- Interface industrial, limpa, objetiva
+- Nada de animações pesadas
+- Foco em produtividade
+
+---
+
+## 7. Segurança
+
+- Nunca expor:
+  - keys
+  - tokens
+  - segredos
+
+---
+
+## 8. Frase obrigatória do agente
+
+Antes de qualquer commit:
+
+> "Este código respeita o SmartLab como sistema industrial."

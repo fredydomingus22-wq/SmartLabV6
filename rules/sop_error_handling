@@ -1,0 +1,122 @@
+# SMARTLAB V4 — SOP DE GESTÃO DE ERROS
+
+## 1. Objetivo
+
+Estabelecer um processo obrigatório para:
+
+- Detectar erros
+- Classificar erros
+- Corrigir erros
+- Evitar regressões
+- Manter estabilidade de nível industrial
+
+---
+
+## 2. Classificação Obrigatória de Erros
+
+Todo erro deve ser categorizado:
+
+### 2.1 Nível de Severidade
+
+- CRITICAL — sistema quebra, dados comprometidos
+- HIGH — função essencial bloqueada
+- MEDIUM — comportamento incorreto, mas sistema funcional
+- LOW — erro visual ou de usabilidade
+
+---
+
+## 3. Fluxo Obrigatório de Tratamento de Erros
+
+O agente **DEVE seguir sempre este fluxo exato:**
+
+1. **Identificar a causa raiz**
+2. **Mapear o contexto do erro**
+3. **Reproduzir o erro**
+4. **Criar hipótese técnica**
+5. **Validar contra:**
+   - URS (`/docs/URS/`)
+   - Business Rules (`/agents/rules/BUSINESS_RULES_SMARTLABV4.md`)
+   - SOP (`/agents/rules/sop.md`)
+6. **Corrigir na origem — não mascarar**
+7. **Testar regressão**
+8. **Documentar no CHANGELOG**
+
+---
+
+## 4. Regras Proibidas
+
+O agente **NÃO PODE**:
+
+❌ Usar `any` para “resolver rápido”  
+❌ Ignorar erros do TypeScript  
+❌ Silenciar erros com `@ts-ignore`  
+❌ Apagar regras de negócio por conveniência  
+
+---
+
+## 5. Procedimento para Erros de Dependência
+
+Sempre que houver erro de dependência:
+
+1. Identificar versão conflituosa
+2. Validar compatibilidade com:
+   - Next.js
+   - React
+   - Supabase
+3. Prioridade:
+   - Downgrade versão
+   - Ajustar peerDependencies
+   - Só usar `--legacy-peer-deps` como último recurso
+
+---
+
+## 6. Procedimento para Erros de Tipagem
+
+Para erros de TypeScript:
+
+1. Nunca usar `any`
+2. Criar `interface` ou `type` explícito
+3. Ajustar Zod schema para refletir o tipo real
+4. Garantir sincronização:
+   UI → DTO → Database
+
+---
+
+## 7. Procedimento para Erros de Banco de Dados
+
+Quando um erro vier do Supabase/Postgres:
+
+1. Verificar foreign keys
+2. Verificar integridade multi-tenant
+3. NUNCA remover `organization_id` ou `plant_id`
+4. Criar migrations corretivas
+
+---
+
+## 8. Procedimento para Erros de UI
+
+Quando erro for visual:
+
+1. Verificar componente base (ex: shadcn)
+2. Verificar tokens de Tailwind
+3. Não hardcodear CSS fora do design system
+
+---
+
+## 9. Registo Obrigatório de Erros
+
+Cada erro corrigido deve gerar log em `ERROR_LOG.md` com:
+
+- Data
+- Módulo
+- Severidade
+- Causa raiz
+- Solução aplicada
+
+---
+
+## 10. Frase de Segurança
+
+O agente deve sempre lembrar:
+
+> “Cada erro não corrigido corretamente vira um defeito crítico em produção.”
