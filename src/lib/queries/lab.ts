@@ -119,6 +119,7 @@ export async function getSampleWithResults(sampleId: string) {
             status,
             collected_at,
             collected_by,
+            notes,
             sample_type:sample_types(id, name),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
@@ -151,8 +152,8 @@ export async function getSampleWithResults(sampleId: string) {
 
     // Fetch Product Specifications for context
     let productId = null;
-    const batchData = Array.isArray(sample?.batch) ? sample?.batch[0] : sample?.batch;
-    productId = batchData?.product?.id; // Assuming the join returns product object structure
+    const batchData: any = Array.isArray(sample?.batch) ? sample?.batch[0] : sample?.batch;
+    productId = batchData?.product?.id;
 
     if (!productId && sample?.batch && !Array.isArray(sample.batch)) {
         productId = (sample.batch as any).product_id;
@@ -179,27 +180,24 @@ export async function getSampleWithResults(sampleId: string) {
     // I will fetch the product_id from the sample relation first if I can't trust the previous select.
     let realProductId = null;
     if (sample.batch) {
-        // If the previous query didn't select product_id, we might be stuck.
-        // But wait, `batch:production_batches(id, code, product:products(name))`
-        // I should have updated the select at the top (lines 114-128).
-        // Since I am replacing the END of the function, I can't easily change the top select.
-
-        // I will do a quick lookup for product_id if needed.
-        const { data: batchInfo } = await supabase.from("production_batches").select("product_id").eq("id", sample.batch.id || (sample.batch as any).id).single();
+        const batchId = (Array.isArray(sample.batch) ? sample.batch[0] : sample.batch).id;
+        const { data: batchInfo } = await supabase.from("production_batches").select("product_id").eq("id", batchId).single();
         realProductId = batchInfo?.product_id;
     } else if (sample.intermediate) {
-        const { data: ipInfo } = await supabase.from("intermediate_products").select("production_batches(product_id)").eq("id", sample.intermediate.id).single();
+        const intermediateId = (Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate).id;
+        const { data: ipInfo } = await supabase.from("intermediate_products").select("production_batches(product_id)").eq("id", intermediateId).single();
         const b = Array.isArray(ipInfo?.production_batches) ? ipInfo?.production_batches[0] : ipInfo?.production_batches;
         realProductId = b?.product_id;
     }
 
     let specsMap: Record<string, any> = {};
     if (realProductId) {
+        const sampleType: any = Array.isArray(sample.sample_type) ? sample.sample_type[0] : sample.sample_type;
         const { data: specData } = await supabase
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical")
             .eq("product_id", realProductId)
-            .or(`sample_type_id.eq.${sample.sample_type.id},sample_type_id.is.null`);
+            .or(`sample_type_id.eq.${sampleType.id},sample_type_id.is.null`);
 
         specData?.forEach(s => {
             // Prioritize specific over generic if multiple exist? 

@@ -58,10 +58,16 @@ export async function getPackagingLots(options?: {
         query = query.limit(options.limit);
     }
 
-    const { data, error } = await query;
+    const { data: rawData, error } = await query;
 
     if (error) throw error;
-    return data;
+
+    return rawData?.map(item => ({
+        ...item,
+        packaging_material: Array.isArray(item.packaging_material)
+            ? item.packaging_material[0]
+            : item.packaging_material
+    }));
 }
 
 /**

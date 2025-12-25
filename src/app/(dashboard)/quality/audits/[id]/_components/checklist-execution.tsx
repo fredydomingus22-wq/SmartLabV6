@@ -61,7 +61,7 @@ export function ChecklistExecution({ auditId, checklist, responses, readOnly }: 
                                     key={question.id}
                                     question={question}
                                     response={response}
-                                    onSave={(result, evidence, notes) => handleSaveResponse(question.id, result, evidence, notes)}
+                                    onSave={(result: string, evidence: string, notes: string) => handleSaveResponse(question.id, result, evidence, notes)}
                                     isSaving={savingId === question.id}
                                     readOnly={readOnly}
                                 />

@@ -33,119 +33,131 @@ const createPackagingUsageSchema = z.object({
 
 // --- Actions ---
 
-export const createPackagingMaterial = action(
-    createPackagingMaterialSchema,
-    async (input) => {
-        const supabase = await createClient();
+export async function createPackagingMaterial(formData: FormData) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
 
-        // Org ID handled by Default? No, usually RLS checks it, but manual Insert might need it?
-        // Supabase RLS policies usually enforcing "auth.uid() -> user_profile -> org_id" on SELECT
-        // But on INSERT/UPDATE, we might need to supply it if not defaulting.
-        // My migration scripts use `get_my_org_id()` in policies but table definitions require `organization_id`.
-        // We should fetch org_id from user profile or let database handle it if there's a default?
-        // Looking at my migration: `organization_id UUID NOT NULL`. No default.
-        // So I must fetch it.
+    const rawData = {
+        name: formData.get("name"),
+        code: formData.get("code") || undefined,
+        description: formData.get("description") || undefined,
+        min_stock_level: formData.get("min_stock_level"),
+    };
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Unauthorized");
-
-        // Fetch org and plant from profile
-        const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("organization_id, plant_id")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile) throw new Error("Profile not found");
-
-        const { error } = await supabase.from("packaging_materials").insert({
-            organization_id: profile.organization_id,
-            plant_id: profile.plant_id, // Nullable
-            ...input,
-        });
-
-        if (error) throw new Error(error.message);
-
-        revalidatePath("/materials/packaging");
-        return { success: true };
+    const validation = createPackagingMaterialSchema.safeParse(rawData);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
     }
-);
 
-export const createPackagingLot = action(
-    createPackagingLotSchema,
-    async (input) => {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Unauthorized");
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
 
-        const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("organization_id, plant_id")
-            .eq("id", user.id)
-            .single();
+    if (!profile) return { success: false, message: "Profile not found" };
 
-        if (!profile) throw new Error("Profile not found");
-        if (!profile.plant_id) throw new Error("Must be in a plant to create lots");
+    const { error } = await supabase.from("packaging_materials").insert({
+        organization_id: profile.organization_id,
+        plant_id: profile.plant_id,
+        ...validation.data,
+    });
 
-        const { error } = await supabase.from("packaging_lots").insert({
-            organization_id: profile.organization_id,
-            plant_id: profile.plant_id,
-            packaging_material_id: input.packaging_material_id,
-            lot_code: input.lot_code,
-            quantity: input.quantity,
-            remaining_quantity: input.quantity, // Initial remaining = total
-            received_at: input.received_at || new Date().toISOString(),
-            expiry_date: input.expiry_date,
-            status: 'active'
-        });
+    if (error) return { success: false, message: error.message };
 
-        if (error) throw new Error(error.message);
+    revalidatePath("/materials/packaging");
+    return { success: true, message: "Material registado com sucesso" };
+}
 
-        revalidatePath("/materials/packaging");
-        revalidatePath(`/materials/packaging/${input.packaging_material_id}`);
-        return { success: true };
+export async function createPackagingLot(formData: FormData) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const rawData = {
+        packaging_material_id: formData.get("packaging_material_id"),
+        lot_code: formData.get("lot_code"),
+        quantity: formData.get("quantity"),
+        received_at: formData.get("received_at") || undefined,
+        expiry_date: formData.get("expiry_date") || undefined,
+    };
+
+    const validation = createPackagingLotSchema.safeParse(rawData);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
     }
-);
 
-export const recordPackagingUsage = action(
-    createPackagingUsageSchema,
-    async (input) => {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Unauthorized");
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
 
-        const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("organization_id, plant_id")
-            .eq("id", user.id)
-            .single();
+    if (!profile) return { success: false, message: "Profile not found" };
+    if (!profile.plant_id) return { success: false, message: "Must be in a plant to create lots" };
 
-        if (!profile) throw new Error("Profile not found");
+    const { error } = await supabase.from("packaging_lots").insert({
+        organization_id: profile.organization_id,
+        plant_id: profile.plant_id,
+        packaging_material_id: validation.data.packaging_material_id,
+        lot_code: validation.data.lot_code,
+        quantity: validation.data.quantity,
+        remaining_quantity: validation.data.quantity,
+        received_at: validation.data.received_at || new Date().toISOString(),
+        expiry_date: validation.data.expiry_date,
+        status: 'active'
+    });
 
-        const { error } = await supabase.from("batch_packaging_usage").insert({
-            organization_id: profile.organization_id,
-            plant_id: profile.plant_id,
-            production_batch_id: input.production_batch_id,
-            packaging_lot_id: input.packaging_lot_id,
-            quantity_used: input.quantity_used,
-            unit: input.unit,
-            added_by: user.id
-        });
+    if (error) return { success: false, message: error.message };
 
-        if (error) throw new Error(error.message);
+    revalidatePath("/materials/packaging");
+    revalidatePath(`/materials/packaging/${validation.data.packaging_material_id}`);
+    return { success: true, message: "Lote registado com sucesso" };
+}
 
-        // Note: Traceability trigger will handle the rest
+export async function recordPackagingUsage(formData: FormData) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
 
-        // Also update remaining quantity?
-        // Logic for inventory deduction should ideally be here or trigger.
-        // I'll add a simple deduction here for now.
+    const rawData = {
+        production_batch_id: formData.get("production_batch_id"),
+        packaging_lot_id: formData.get("packaging_lot_id"),
+        quantity_used: formData.get("quantity_used"),
+        unit: formData.get("unit") || undefined,
+    };
 
-        await supabase.rpc('decrement_packaging_stock', {
-            p_lot_id: input.packaging_lot_id,
-            p_quantity: input.quantity_used
-        });
-
-        revalidatePath("/production"); // Revalidate production views
-        return { success: true };
+    const validation = createPackagingUsageSchema.safeParse(rawData);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
     }
-);
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    const { error } = await supabase.from("batch_packaging_usage").insert({
+        organization_id: profile.organization_id,
+        plant_id: profile.plant_id,
+        production_batch_id: validation.data.production_batch_id,
+        packaging_lot_id: validation.data.packaging_lot_id,
+        quantity_used: validation.data.quantity_used,
+        unit: validation.data.unit,
+        added_by: user.id
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    await supabase.rpc('decrement_packaging_stock', {
+        p_lot_id: validation.data.packaging_lot_id,
+        p_quantity: validation.data.quantity_used
+    });
+
+    revalidatePath("/production");
+    return { success: true, message: "Uso registado com sucesso" };
+}

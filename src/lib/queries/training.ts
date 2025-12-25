@@ -124,7 +124,7 @@ export async function checkAnalystQualification(userId: string, parameterId: str
     // TODO: Re-enable strict qualification checks after proper data seeding or Employee Management UI is ready.
     // Bypassing for now to allow testing of Result Registration.
     console.warn(`[DEV] Bypassing qualification check for user ${userId} on parameter ${parameterId}`);
-    return { qualified: true, status: 'qualified' };
+    return { qualified: true, status: 'qualified', reason: '' };
 
     /* Original Logic - Commented out for unblocking
     const supabase = await createClient();

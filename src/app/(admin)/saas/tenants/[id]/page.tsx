@@ -147,7 +147,7 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                                                     <p className="text-xs text-slate-500 capitalize">{user.role}</p>
                                                 </div>
                                             </div>
-                                            <Badge variant="ghost" className="text-[10px] text-slate-600">Context {user.plant_id ? 'Planta' : 'Global'}</Badge>
+                                            <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-800">Context {user.plant_id ? 'Planta' : 'Global'}</Badge>
                                         </div>
                                     ))
                                 )}
