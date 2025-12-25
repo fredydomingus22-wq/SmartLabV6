@@ -36,7 +36,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         } else {
             // Auto-expand current active group
             const activeGroup = menuItems.find(item =>
-                item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))
+                item.children?.some((c: { href: string; label: string }) => pathname === c.href || pathname.startsWith(c.href + "/"))
             );
             if (activeGroup) setExpandedGroups([activeGroup.label]);
         }
@@ -95,7 +95,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return null;
 
                         const isExpanded = expandedGroups.includes(item.label);
-                        const isActiveGroup = item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"));
+                        const isActiveGroup = item.children?.some((c: { href: string; label: string }) => pathname === c.href || pathname.startsWith(c.href + "/"));
 
                         if (item.children) {
                             return (
@@ -122,7 +122,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
                                     {!isCollapsed && isExpanded && (
                                         <div className="ml-4 border-l border-slate-800/50 pl-2 space-y-1 animate-in fade-in slide-in-from-left-1 duration-200">
-                                            {item.children.map(child => (
+                                            {item.children.map((child: { href: string; label: string }) => (
                                                 <Link
                                                     key={child.href}
                                                     href={child.href}
