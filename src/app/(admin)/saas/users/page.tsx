@@ -1,11 +1,10 @@
-import { PageHeader } from "@/components/smart/page-header";
-import { DataTable } from "@/components/smart/data-table";
-import { columns } from "./columns";
 import { getAllGlobalUsers } from "@/app/actions/admin/users";
 import { getAllTenantsAction } from "@/app/actions/admin/tenants";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Shield, Search, Filter } from "lucide-react";
 import { CreateGlobalUserDialog } from "./create-user-dialog";
+import { UserCard, GlobalUser } from "./user-card";
+import { Input } from "@/components/ui/input";
 
 export default async function AdminUsersPage() {
     const usersRes = await getAllGlobalUsers();
@@ -15,26 +14,54 @@ export default async function AdminUsersPage() {
     const tenants = tenantsRes.success ? (tenantsRes.data ?? []) : [];
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <PageHeader
-                    title="Utilizadores Globais"
-                    description="Gestão centralizada de todos os utilizadores e administradores de sistema."
-                />
-                <CreateGlobalUserDialog tenants={tenants}>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]">
-                        <UserPlus className="mr-2 h-4 w-4" /> Novo Utilizador
+        <div className="space-y-10 pb-10">
+            {/* Mission Control Header */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        <Shield className="h-8 w-8 text-blue-500" />
+                        Identidade & Acessos
+                    </h1>
+                    <p className="text-slate-400 text-sm italic opacity-80 leading-relaxed">
+                        Controlo centralizado de privilégios e contas de utilizador em todo o ecossistema.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                        <Input
+                            placeholder="Procurar utilizador..."
+                            className="pl-9 w-64 bg-white/5 border-white/10 focus:border-blue-500/30 transition-all rounded-xl backdrop-blur-md"
+                        />
+                    </div>
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl">
+                        <Filter className="mr-2 h-4 w-4 text-slate-400" /> Agrupar
                     </Button>
-                </CreateGlobalUserDialog>
+                    <CreateGlobalUserDialog tenants={tenants}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] rounded-xl border-none font-bold">
+                            <UserPlus className="mr-2 h-4 w-4" /> Registar Accesso
+                        </Button>
+                    </CreateGlobalUserDialog>
+                </div>
             </div>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4 overflow-hidden shadow-2xl">
-                <DataTable
-                    columns={columns}
-                    data={users}
-                    filterColumn="full_name"
-                    searchPlaceholder="Procurar utilizador..."
-                />
+            {/* Identity Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                {users.map((user: any) => (
+                    <UserCard key={user.id} user={user} />
+                ))}
+            </div>
+
+            {/* Inventory Stats Bar */}
+            <div className="flex items-center gap-6 pt-6 border-t border-white/5 opacity-40">
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">
+                    <span>Total de Contas: {users.length}</span>
+                </div>
+                <div className="h-4 w-[1px] bg-white/10" />
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">
+                    <span>Admin Level: {users.filter((u: any) => u.role === 'admin' || u.role === 'system_owner').length}</span>
+                </div>
             </div>
         </div>
     );

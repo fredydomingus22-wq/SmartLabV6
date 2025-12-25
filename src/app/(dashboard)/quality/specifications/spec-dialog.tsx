@@ -38,18 +38,20 @@ interface Specification {
     sampling_frequency?: string;
     test_method_override?: string;
     sample_type_id?: string;
+    sampling_point_id?: string;
     parameter?: Parameter;
 }
 
 interface SpecDialogProps {
     mode: "create" | "edit";
-    productId: string;
+    productId?: string;
     specification?: Specification;
     availableParameters: Parameter[];
     sampleTypes: { id: string; name: string; code: string }[];
+    samplingPoints?: { id: string; name: string; code: string }[];
 }
 
-export function SpecDialog({ mode, productId, specification, availableParameters, sampleTypes }: SpecDialogProps) {
+export function SpecDialog({ mode, productId, specification, availableParameters, sampleTypes, samplingPoints = [] }: SpecDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isCritical, setIsCritical] = useState(specification?.is_critical ?? false);
@@ -59,7 +61,7 @@ export function SpecDialog({ mode, productId, specification, availableParameters
         setLoading(true);
 
         const formData = new FormData(e.currentTarget);
-        formData.set("product_id", productId);
+        if (productId) formData.set("product_id", productId);
         formData.set("is_critical", isCritical.toString());
 
         if (specification?.id) {
@@ -120,7 +122,7 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                     </DialogTitle>
                     <DialogDescription>
                         {mode === "create"
-                            ? "Add a quality specification for this product"
+                            ? "Add a quality specification"
                             : `Editing: ${specification?.parameter?.name}`
                         }
                     </DialogDescription>
@@ -142,24 +144,42 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                         </div>
                     )}
 
-                    <div className="space-y-2">
-                        <Label htmlFor="sample_type_id">Phase / Sample Type</Label>
-                        <SearchableSelect
-                            name="sample_type_id"
-                            placeholder="Select phase (Default: Finished Product)"
-                            defaultValue={specification?.sample_type_id || "null"}
-                            options={[
-                                { value: "null", label: "Finished Product (Final Release)" },
-                                ...sampleTypes.map(type => ({
-                                    value: type.id,
-                                    label: `${type.name} (${type.code})`
-                                }))
-                            ]}
-                        />
-                        <p className="text-[10px] text-muted-foreground">
-                            "Finished Product" specs apply to final release. Select a type for intermediate stages (e.g. Syrup).
-                        </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="sample_type_id">Phase / Physical Stage</Label>
+                            <SearchableSelect
+                                name="sample_type_id"
+                                placeholder="Select stage..."
+                                defaultValue={specification?.sample_type_id || "null"}
+                                options={[
+                                    { value: "null", label: "Finished Product / Global" },
+                                    ...sampleTypes.map(type => ({
+                                        value: type.id,
+                                        label: `${type.name} (${type.code})`
+                                    }))
+                                ]}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="sampling_point_id">Sampling Point</Label>
+                            <SearchableSelect
+                                name="sampling_point_id"
+                                placeholder="Select point..."
+                                defaultValue={specification?.sampling_point_id || "null"}
+                                options={[
+                                    { value: "null", label: "None / Not Applicable" },
+                                    ...samplingPoints.map(point => ({
+                                        value: point.id,
+                                        label: `${point.name} (${point.code})`
+                                    }))
+                                ]}
+                            />
+                        </div>
                     </div>
+                    <p className="text-[10px] text-muted-foreground -mt-2">
+                        Specify a Phase for intermediate products (e.g. Syrup) or a Sampling Point for environmental monitoring.
+                    </p>
 
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">

@@ -6,7 +6,9 @@ import {
     ClipboardList,
     ArrowLeft,
     AlertTriangle,
-    Target
+    Target,
+    Beaker,
+    Microscope
 } from "lucide-react";
 import Link from "next/link";
 import { ProductSelector } from "./product-selector";
@@ -56,7 +58,8 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                 sample_type_id,
                 created_at,
                 updated_at,
-                parameter:qa_parameters(id, name, code, unit, category, method)
+                parameter:qa_parameters(id, name, code, unit, category, method),
+                sample_type:sample_types(id, name, code)
             `)
             .eq("product_id", selectedProductId)
             .order("created_at");
@@ -100,6 +103,13 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
         return labels[freq] || freq;
     };
 
+    // Fetch sampling points for polymorphic specs
+    const { data: samplingPoints } = await supabase
+        .from("sampling_points")
+        .select("id, name, code")
+        .eq("status", "active")
+        .order("name");
+
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -131,6 +141,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                             productId={selectedProductId}
                             availableParameters={availableParameters}
                             sampleTypes={sampleTypes || []}
+                            samplingPoints={samplingPoints || []}
                         />
                     </div>
                 )}
@@ -171,62 +182,87 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                             </Card>
                         ) : (
                             <Tabs defaultValue="finished" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-                                    <TabsTrigger value="finished">Final Product</TabsTrigger>
-                                    <TabsTrigger value="intermediates">Intermediates / Phases</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+                                    <TabsTrigger value="finished">Final Products</TabsTrigger>
+                                    <TabsTrigger value="intermediates">Intermediates (IP)</TabsTrigger>
+                                    <TabsTrigger value="others">Monitoring / Others</TabsTrigger>
                                 </TabsList>
 
                                 {/* Final Product Tab */}
-                                <TabsContent value="finished">
-                                    <SpecsTable
-                                        specs={specifications.filter(s => !s.sample_type_id)}
+                                <TabsContent value="finished" className="mt-4">
+                                    <LabTypeTabs
+                                        specs={specifications.filter(s =>
+                                            !s.sample_type_id ||
+                                            s.sample_type?.code?.startsWith("PA")
+                                        )}
                                         productId={selectedProductId}
                                         sampleTypes={sampleTypes || []}
+                                        samplingPoints={samplingPoints || []}
                                         getCategoryColor={getCategoryColor}
                                         getFrequencyLabel={getFrequencyLabel}
                                     />
                                 </TabsContent>
 
                                 {/* Intermediates Tab */}
-                                <TabsContent value="intermediates">
-                                    {/* Group by Sample Type */}
+                                <TabsContent value="intermediates" className="mt-4">
+                                    <LabTypeTabs
+                                        specs={specifications.filter(s =>
+                                            s.sample_type_id &&
+                                            s.sample_type?.code?.startsWith("IP")
+                                        )}
+                                        productId={selectedProductId}
+                                        sampleTypes={sampleTypes || []}
+                                        samplingPoints={samplingPoints || []}
+                                        getCategoryColor={getCategoryColor}
+                                        getFrequencyLabel={getFrequencyLabel}
+                                    />
+                                </TabsContent>
+
+                                {/* Others Tab */}
+                                <TabsContent value="others" className="mt-4">
+                                    {/* Group by Sample Type for Others */}
                                     {(() => {
-                                        const interSpecs = specifications.filter(s => s.sample_type_id);
-                                        if (interSpecs.length === 0) {
+                                        const otherSpecsGrouped = specifications.filter(s =>
+                                            s.sample_type_id &&
+                                            !s.sample_type?.code?.startsWith("PA") &&
+                                            !s.sample_type?.code?.startsWith("IP")
+                                        );
+                                        if (otherSpecsGrouped.length === 0) {
                                             return (
                                                 <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
-                                                    No intermediate specifications found.
+                                                    No environmental or auxiliary specifications found.
                                                 </div>
                                             );
                                         }
 
-                                        // Grouping
-                                        const groups: Record<string, typeof interSpecs> = {};
-                                        interSpecs.forEach(s => {
-                                            const typeName = sampleTypes?.find(t => t.id === s.sample_type_id)?.name || "Unknown Phase";
+                                        // Grouping by Phase
+                                        const groups: Record<string, typeof otherSpecsGrouped> = {};
+                                        otherSpecsGrouped.forEach(s => {
+                                            const typeName = sampleTypes?.find(t => t.id === s.sample_type_id)?.name || "Other Phase";
                                             if (!groups[typeName]) groups[typeName] = [];
                                             groups[typeName].push(s);
                                         });
 
                                         return (
-                                            <div className="space-y-6 mt-4">
+                                            <div className="space-y-10">
                                                 {Object.entries(groups).map(([phase, specs]) => (
-                                                    <Card key={phase} className="glass">
-                                                        <CardHeader className="py-3 bg-muted/20 border-b">
-                                                            <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                                                                Phase: <span className="text-foreground font-bold">{phase}</span>
-                                                            </CardTitle>
-                                                        </CardHeader>
-                                                        <CardContent className="p-0">
-                                                            <SpecsTable
-                                                                specs={specs}
-                                                                productId={selectedProductId}
-                                                                sampleTypes={sampleTypes || []}
-                                                                getCategoryColor={getCategoryColor}
-                                                                getFrequencyLabel={getFrequencyLabel}
-                                                            />
-                                                        </CardContent>
-                                                    </Card>
+                                                    <div key={phase} className="space-y-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-px flex-1 bg-border" />
+                                                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                                                                Type: {phase}
+                                                            </h3>
+                                                            <div className="h-px flex-1 bg-border" />
+                                                        </div>
+                                                        <LabTypeTabs
+                                                            specs={specs}
+                                                            productId={selectedProductId}
+                                                            sampleTypes={sampleTypes || []}
+                                                            samplingPoints={samplingPoints || []}
+                                                            getCategoryColor={getCategoryColor}
+                                                            getFrequencyLabel={getFrequencyLabel}
+                                                        />
+                                                    </div>
                                                 ))}
                                             </div>
                                         );
@@ -241,8 +277,79 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
     );
 }
 
+/**
+ * Helper to split specs by Lab Category using NESTED TABS for reduced stress
+ */
+function LabTypeTabs({ specs, productId, sampleTypes, samplingPoints, getCategoryColor, getFrequencyLabel }: any) {
+    const fqSpecs = specs.filter((s: any) => s.parameter?.category !== 'microbiological');
+    const microSpecs = specs.filter((s: any) => s.parameter?.category === 'microbiological');
+
+    if (specs.length === 0) {
+        return (
+            <div className="text-center py-8 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+                Nenhuma especificação definida nesta categoria.
+            </div>
+        );
+    }
+
+    return (
+        <Tabs defaultValue={fqSpecs.length > 0 ? "fq" : "micro"} className="w-full">
+            <TabsList className="bg-muted/30 p-1 h-auto gap-1 border border-border/40">
+                <TabsTrigger
+                    value="fq"
+                    className="flex items-center gap-2 py-1.5 px-4 data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400"
+                >
+                    <Beaker className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold">Físico-Química ({fqSpecs.length})</span>
+                </TabsTrigger>
+                <TabsTrigger
+                    value="micro"
+                    className="flex items-center gap-2 py-1.5 px-4 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                >
+                    <Microscope className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold">Microbiologia ({microSpecs.length})</span>
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="fq" className="mt-4 focus-visible:outline-none">
+                {fqSpecs.length > 0 ? (
+                    <SpecsTable
+                        specs={fqSpecs}
+                        productId={productId}
+                        sampleTypes={sampleTypes}
+                        samplingPoints={samplingPoints}
+                        getCategoryColor={getCategoryColor}
+                        getFrequencyLabel={getFrequencyLabel}
+                    />
+                ) : (
+                    <div className="p-8 text-center text-muted-foreground italic text-sm">
+                        Nenhuma especificação FQ definida.
+                    </div>
+                )}
+            </TabsContent>
+
+            <TabsContent value="micro" className="mt-4 focus-visible:outline-none">
+                {microSpecs.length > 0 ? (
+                    <SpecsTable
+                        specs={microSpecs}
+                        productId={productId}
+                        sampleTypes={sampleTypes}
+                        samplingPoints={samplingPoints}
+                        getCategoryColor={getCategoryColor}
+                        getFrequencyLabel={getFrequencyLabel}
+                    />
+                ) : (
+                    <div className="p-8 text-center text-muted-foreground italic text-sm">
+                        Nenhuma especificação Microbiológica definida.
+                    </div>
+                )}
+            </TabsContent>
+        </Tabs>
+    );
+}
+
 // Helper Component for Table to avoid duplication
-function SpecsTable({ specs, productId, sampleTypes, getCategoryColor, getFrequencyLabel }: any) {
+function SpecsTable({ specs, productId, sampleTypes, samplingPoints, getCategoryColor, getFrequencyLabel }: any) {
     if (specs.length === 0) {
         return <div className="p-8 text-center text-muted-foreground italic">No specifications in this category.</div>;
     }
@@ -309,6 +416,7 @@ function SpecsTable({ specs, productId, sampleTypes, getCategoryColor, getFreque
                                         specification={spec}
                                         availableParameters={[]}
                                         sampleTypes={sampleTypes}
+                                        samplingPoints={samplingPoints}
                                     />
                                 </td>
                             </tr>

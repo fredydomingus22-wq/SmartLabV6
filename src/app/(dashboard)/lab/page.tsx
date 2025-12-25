@@ -58,51 +58,14 @@ export default async function LabPage(props: {
 
     return (
         <div className="h-full flex-1 flex-col p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8 md:flex">
-            <Suspense fallback={<DashboardSkeleton />}>
-                <DashboardClient
-                    samples={samples || []}
-                    stats={stats}
-                    sampleTypes={sampleTypes || []}
-                    tanks={tanks as any[] || []}
-                    samplingPoints={samplingPoints || []}
-                    plantId={user.plant_id}
-                />
-            </Suspense>
-        </div>
-    );
-}
-
-function DashboardSkeleton() {
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-2">
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96" />
-                </div>
-                <Skeleton className="h-10 w-32" />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Skeleton className="h-24 rounded-xl" />
-                <Skeleton className="h-24 rounded-xl" />
-                <Skeleton className="h-24 rounded-xl" />
-                <Skeleton className="h-24 rounded-xl" />
-            </div>
-
-            <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <Skeleton className="h-10 flex-1" />
-                    <Skeleton className="h-10 w-[180px]" />
-                    <Skeleton className="h-10 w-[240px]" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <Skeleton key={i} className="h-[280px] rounded-xl" />
-                    ))}
-                </div>
-            </div>
+            <DashboardClient
+                samples={samples || []}
+                stats={stats}
+                sampleTypes={sampleTypes || []}
+                tanks={tanks as any[] || []}
+                samplingPoints={samplingPoints || []}
+                plantId={user.plant_id}
+            />
         </div>
     );
 }

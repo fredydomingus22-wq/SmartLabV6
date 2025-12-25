@@ -14,10 +14,16 @@ import {
 } from "lucide-react";
 
 export const menuItems = [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Painel Principal" },
+    {
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        label: "Painel Principal",
+        allowedRoles: ["admin", "system_owner", "analyst", "micro_analyst", "lab_analyst"]
+    },
     {
         label: "Laboratório (LIMS)",
         icon: FlaskConical,
+        allowedRoles: ["admin", "analyst", "lab_analyst"],
         children: [
             { href: "/lab", label: "Amostras" },
             { href: "/lab/history", label: "Histórico" },
@@ -27,6 +33,7 @@ export const menuItems = [
     {
         label: "Microbiologia",
         icon: Microscope,
+        allowedRoles: ["admin", "analyst", "micro_analyst"],
         children: [
             { href: "/micro/samples", label: "Amostras" },
             { href: "/micro/incubators", label: "Incubadoras" },
@@ -38,6 +45,7 @@ export const menuItems = [
     {
         label: "Produção",
         icon: Factory,
+        allowedRoles: ["admin", "operator"],
         children: [
             { href: "/production", label: "Lotes Ativos" },
             { href: "/production/lines", label: "Linhas & Tanques" },
@@ -47,6 +55,7 @@ export const menuItems = [
     {
         label: "CIP & Higiene",
         icon: RefreshCw,
+        allowedRoles: ["admin", "operator", "quality"],
         children: [
             { href: "/cip/register", label: "Registar CIP" },
             { href: "/cip/history", label: "Histórico" },
@@ -56,6 +65,7 @@ export const menuItems = [
     {
         label: "Qualidade (QMS)",
         icon: ShieldCheck,
+        allowedRoles: ["admin", "quality"],
         children: [
             { href: "/quality/qms", label: "Desvios (NC)" },
             { href: "/quality/qms/capa", label: "CAPA" },
@@ -76,6 +86,7 @@ export const menuItems = [
     {
         label: "Segurança Alimentar",
         icon: ShieldAlert,
+        allowedRoles: ["admin", "haccp"],
         children: [
             { href: "/haccp/prp", label: "Prerrequisitos (PRP)" },
             { href: "/haccp/hazards", label: "Perigos" },
@@ -88,6 +99,7 @@ export const menuItems = [
     {
         label: "Gestão de Materiais",
         icon: Warehouse,
+        allowedRoles: ["admin", "warehouse"],
         children: [
             { href: "/raw-materials/catalog", label: "Matérias-Primas" },
             { href: "/raw-materials/lots", label: "Lotes M.P." },
@@ -97,10 +109,16 @@ export const menuItems = [
             { href: "/raw-materials/suppliers", label: "Fornecedores" },
         ]
     },
-    { href: "/reports", icon: FileText, label: "Relatórios & Analytics" },
+    {
+        href: "/reports",
+        icon: FileText,
+        label: "Relatórios & Analytics",
+        allowedRoles: ["admin", "quality"]
+    },
     {
         label: "Administração",
         icon: Settings,
+        allowedRoles: ["admin", "system_owner"],
         children: [
             { href: "/settings", label: "Configurações" },
             { href: "/admin/users", label: "Utilizadores" },
@@ -110,6 +128,7 @@ export const menuItems = [
         label: "Sistema (SaaS)",
         icon: Globe,
         href: "/saas",
-        role: "system_owner"
+        role: "system_owner",
+        allowedRoles: ["system_owner"]
     }
 ];

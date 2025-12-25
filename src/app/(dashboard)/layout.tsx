@@ -3,6 +3,11 @@ import { AppHeader } from "@/components/layout/app-header";
 import { FAB } from "@/components/smart/fab";
 import { getSafeUser } from "@/lib/auth";
 import { MobileNav } from "@/components/smart/mobile-nav";
+import { menuItems } from "@/config/navigation";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { CommandMenu } from "@/components/smart/command-menu";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export default async function DashboardLayout({
     children,
@@ -10,9 +15,27 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const user = await getSafeUser();
+    const headersList = await headers();
+    const pathname = headersList.get("x-invoke-path") || "";
+
+    // Route Protection Logic
+    const currentMenuItem = menuItems.find(item => {
+        const isMainHrefMatched = item.href && (pathname === item.href || pathname.startsWith(item.href + "/"));
+        const isChildMatched = item.children?.some((child: any) =>
+            pathname === child.href || pathname.startsWith(child.href + "/")
+        );
+        return isMainHrefMatched || isChildMatched;
+    });
+
+    if (currentMenuItem && currentMenuItem.allowedRoles && !currentMenuItem.allowedRoles.includes(user.role)) {
+        redirect("/dashboard");
+    }
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-950">
+            {/* Command Palette */}
+            <CommandMenu user={user} />
+
             {/* Desktop Sidebar (hidden on mobile) */}
             <div className="hidden md:block h-full">
                 <AppSidebar user={user} />
@@ -29,8 +52,10 @@ export default async function DashboardLayout({
 
                 {/* Scrollable Content */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                    <div className="p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                        {children}
+                    <div className="p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8">
+                        <PageTransition>
+                            {children}
+                        </PageTransition>
                     </div>
                 </main>
             </div>

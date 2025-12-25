@@ -29,13 +29,21 @@ export async function getGlobalStats() {
 
         if (plantError) throw plantError;
 
+        // Fetch Recent Audit Logs (Real Data)
+        const { data: logs, error: logsError } = await supabase
+            .from('system_audit_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+
         return {
             success: true,
             data: {
                 totalOrganizations: orgCount || 0,
                 totalUsers: userCount || 0,
                 totalPlants: plantCount || 0,
-                systemStatus: 'Stable'
+                systemStatus: 'Stable',
+                recentLogs: logs || []
             }
         };
     } catch (error: any) {

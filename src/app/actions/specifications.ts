@@ -6,7 +6,7 @@ import { z } from "zod";
 
 // Validation schemas
 const SpecificationSchema = z.object({
-    product_id: z.string().uuid("Invalid product ID"),
+    product_id: z.string().uuid("Invalid product ID").nullable().optional(),
     qa_parameter_id: z.string().uuid("Invalid parameter ID"),
     min_value: z.coerce.number().optional(),
     max_value: z.coerce.number().optional(),
@@ -15,11 +15,15 @@ const SpecificationSchema = z.object({
     is_critical: z.coerce.boolean().default(false),
     sampling_frequency: z.string().default("per_batch"),
     test_method_override: z.string().optional(),
-    sample_type_id: z.string().nullable().optional(),
+    sample_type_id: z.string().uuid("Invalid physical stage ID").nullable().optional(),
+    sampling_point_id: z.string().uuid("Invalid sampling point ID").nullable().optional(),
+}).refine(data => data.product_id || data.sample_type_id || data.sampling_point_id, {
+    message: "Specification must belong to at least one of: Product, Phase, or Sampling Point",
+    path: ["product_id"]
 });
 
 /**
- * Create a new Product Specification
+ * Create a new Specification (Polymorphic)
  */
 export async function createSpecificationAction(formData: FormData) {
     const supabase = await createClient();
@@ -35,10 +39,16 @@ export async function createSpecificationAction(formData: FormData) {
     if (!profile) return { success: false, message: "Profile not found" };
 
     const rawSampleTypeId = formData.get("sample_type_id");
-    const sampleTypeId = rawSampleTypeId === "null" || rawSampleTypeId === "" ? null : rawSampleTypeId;
+    const sampleTypeId = rawSampleTypeId === "null" || !rawSampleTypeId ? null : rawSampleTypeId;
+
+    const rawProductId = formData.get("product_id");
+    const productId = rawProductId === "null" || !rawProductId ? null : rawProductId;
+
+    const rawSamplingPointId = formData.get("sampling_point_id");
+    const samplingPointId = rawSamplingPointId === "null" || !rawSamplingPointId ? null : rawSamplingPointId;
 
     const rawData = {
-        product_id: formData.get("product_id"),
+        product_id: productId,
         qa_parameter_id: formData.get("qa_parameter_id"),
         min_value: formData.get("min_value") || undefined,
         max_value: formData.get("max_value") || undefined,
@@ -48,6 +58,7 @@ export async function createSpecificationAction(formData: FormData) {
         sampling_frequency: formData.get("sampling_frequency") || "per_batch",
         test_method_override: formData.get("test_method_override") || undefined,
         sample_type_id: sampleTypeId,
+        sampling_point_id: samplingPointId,
     };
 
     const validation = SpecificationSchema.safeParse(rawData);
@@ -55,26 +66,28 @@ export async function createSpecificationAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Check for duplicate (same product + parameter + sample_type)
+    // Check for duplicate based on polymorphic key
     let query = supabase
         .from("product_specifications")
         .select("id")
-        .eq("product_id", validation.data.product_id)
         .eq("qa_parameter_id", validation.data.qa_parameter_id);
 
-    if (validation.data.sample_type_id) {
-        query = query.eq("sample_type_id", validation.data.sample_type_id);
-    } else {
-        query = query.is("sample_type_id", null);
-    }
+    if (validation.data.product_id) query = query.eq("product_id", validation.data.product_id);
+    else query = query.is("product_id", null);
+
+    if (validation.data.sample_type_id) query = query.eq("sample_type_id", validation.data.sample_type_id);
+    else query = query.is("sample_type_id", null);
+
+    if (validation.data.sampling_point_id) query = query.eq("sampling_point_id", validation.data.sampling_point_id);
+    else query = query.is("sampling_point_id", null);
 
     const { data: existing } = await query.maybeSingle();
 
     if (existing) {
-        return { success: false, message: "Specification for this parameter already exists for this phase" };
+        return { success: false, message: "Specification already exists for this configuration" };
     }
 
-    // Fetch the parameter's category to copy to the specification
+    // Fetch category from parameter
     const { data: parameter } = await supabase
         .from("qa_parameters")
         .select("category")
@@ -89,6 +102,7 @@ export async function createSpecificationAction(formData: FormData) {
         ...validation.data,
         category: specCategory,
         status: "active",
+        version: 1,
     });
 
     if (error) return { success: false, message: error.message };
@@ -98,8 +112,7 @@ export async function createSpecificationAction(formData: FormData) {
 }
 
 /**
- * Update an existing Product Specification with automatic versioning
- * Creates a history record before updating, increments version
+ * Update an existing Specification with automatic versioning
  */
 export async function updateSpecificationAction(formData: FormData) {
     const supabase = await createClient();
@@ -122,10 +135,16 @@ export async function updateSpecificationAction(formData: FormData) {
     }
 
     const rawSampleTypeId = formData.get("sample_type_id");
-    const sampleTypeId = rawSampleTypeId === "null" || rawSampleTypeId === "" ? null : rawSampleTypeId;
+    const sampleTypeId = rawSampleTypeId === "null" || !rawSampleTypeId ? null : rawSampleTypeId;
+
+    const rawProductId = formData.get("product_id");
+    const productId = rawProductId === "null" || !rawProductId ? null : rawProductId;
+
+    const rawSamplingPointId = formData.get("sampling_point_id");
+    const samplingPointId = rawSamplingPointId === "null" || !rawSamplingPointId ? null : rawSamplingPointId;
 
     const rawData = {
-        product_id: formData.get("product_id"),
+        product_id: productId,
         qa_parameter_id: formData.get("qa_parameter_id"),
         min_value: formData.get("min_value") || undefined,
         max_value: formData.get("max_value") || undefined,
@@ -135,6 +154,7 @@ export async function updateSpecificationAction(formData: FormData) {
         sampling_frequency: formData.get("sampling_frequency") || "per_batch",
         test_method_override: formData.get("test_method_override") || undefined,
         sample_type_id: sampleTypeId,
+        sampling_point_id: samplingPointId,
     };
 
     const validation = SpecificationSchema.safeParse(rawData);
@@ -142,7 +162,7 @@ export async function updateSpecificationAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Create history record of current version before updating
+    // Create history record
     const { error: historyError } = await supabase
         .from("specification_history")
         .insert({
@@ -150,6 +170,8 @@ export async function updateSpecificationAction(formData: FormData) {
             plant_id: currentSpec.plant_id,
             specification_id: id,
             product_id: currentSpec.product_id,
+            sample_type_id: currentSpec.sample_type_id,
+            sampling_point_id: currentSpec.sampling_point_id,
             qa_parameter_id: currentSpec.qa_parameter_id,
             version: currentSpec.version || 1,
             min_value: currentSpec.min_value,
@@ -163,12 +185,6 @@ export async function updateSpecificationAction(formData: FormData) {
             superseded_at: new Date().toISOString(),
             changed_by: user.id,
             change_reason: changeReason,
-            // Note: We might want to store sample_type_id in history too if we update schema, but for now it's okay.
-            // If the schema for history table hasn't been updated, this property would just be lost in history or error if we try to insert it?
-            // Wait, history table usually mirrors main table. If I updated product_specifications with sample_type_id, I should have updated history too.
-            // My migration file `20251222000000_add_spec_sample_type.sql` only touched `product_specifications`.
-            // I should double check if I broke history insert.
-            // But let's finish this update first.
         });
 
     if (historyError) {

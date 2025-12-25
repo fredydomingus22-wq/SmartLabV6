@@ -46,9 +46,8 @@ export function MobileNav({ user }: MobileNavProps) {
                 <div className="flex flex-col h-[calc(100vh-5rem)]">
                     <div className="flex-1 overflow-y-auto py-4 px-3">
                         <nav className="space-y-1">
-                            {menuItems.map((item, index) => {
-                                if (item.role && user.role !== item.role) return null;
-                                if (item.label === "Administração" && !["admin", "system_owner"].includes(user.role)) return null;
+                            {menuItems.map((item: any, index: number) => {
+                                if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return null;
 
                                 const isExpanded = expandedGroups.includes(item.label);
                                 const isActiveGroup = item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"));

@@ -90,12 +90,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto py-4 px-3 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                 <nav className="space-y-1">
-                    {menuItems.map((item, index) => {
-                        // Role-based filtering: 
-                        // If item has a specific role requirement, check it.
-                        // Special legacy check for "Administração" which remains for Org Admins.
-                        if (item.role && user.role !== item.role) return null;
-                        if (item.label === "Administração" && !["admin", "system_owner"].includes(user.role)) return null;
+                    {menuItems.map((item: any, index: number) => {
+                        // Role-based filtering:
+                        if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return null;
 
                         const isExpanded = expandedGroups.includes(item.label);
                         const isActiveGroup = item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"));
