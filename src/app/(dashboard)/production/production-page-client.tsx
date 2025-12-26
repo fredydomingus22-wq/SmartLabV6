@@ -3,11 +3,12 @@
 import { DataGrid } from "@/components/smart/data-grid";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface Batch {
     id: string;
     code: string;
-    status: string;
+    status: "planned" | "open" | "in_progress" | "completed" | "closed" | "blocked" | "released" | "rejected";
     planned_quantity: number;
     start_date: string;
     product?: { name: string }[] | { name: string };
@@ -41,12 +42,36 @@ export function ProductionPageClient({ batches }: ProductionPageClientProps) {
         },
         {
             key: "status",
-            label: "Status",
-            render: (row: Batch) => (
-                <Badge variant={row.status === "open" ? "default" : row.status === "closed" ? "secondary" : "destructive"}>
-                    {row.status}
-                </Badge>
-            )
+            label: "Estado",
+            render: (row: Batch) => {
+                const colors: Record<string, string> = {
+                    planned: "bg-blue-500/10 text-blue-700 border-none",
+                    open: "bg-amber-500/10 text-amber-700 border-none",
+                    in_progress: "bg-amber-500/10 text-amber-700 border-none",
+                    completed: "bg-purple-500/10 text-purple-700 border-none",
+                    closed: "bg-emerald-500/10 text-emerald-700 border-none",
+                    blocked: "bg-rose-500/10 text-rose-700 border-none",
+                    released: "bg-emerald-500/10 text-emerald-700 border-none",
+                    rejected: "bg-rose-500/10 text-rose-700 border-none",
+                };
+
+                const labels: Record<string, string> = {
+                    planned: "Planeado",
+                    open: "Em Processo",
+                    in_progress: "Em Processo",
+                    completed: "Finalizado",
+                    closed: "Liberado",
+                    released: "Liberado",
+                    blocked: "Bloqueado",
+                    rejected: "Rejeitado",
+                };
+
+                return (
+                    <Badge className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", colors[row.status] || "bg-muted text-muted-foreground")}>
+                        {labels[row.status] || row.status}
+                    </Badge>
+                );
+            }
         },
         { key: "planned_quantity", label: "Quantity" },
         {

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+export const dynamic = "force-dynamic";
 import { getDashboardSamples, getLabStats, getSampleTypes, getActiveTanks } from "@/lib/queries/lab";
 import { DashboardClient } from "./dashboard-client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,7 @@ export default async function LabPage(props: {
     // Parse filters
     const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
     const status = typeof searchParams.status === 'string' ? searchParams.status : undefined;
+    const labType = (searchParams.labType as 'FQ' | 'MICRO' | 'all') || 'all';
     const dateParam = typeof searchParams.date === 'string' ? searchParams.date : undefined;
 
     let from = typeof searchParams.from === 'string' ? searchParams.from : undefined;
@@ -47,6 +49,7 @@ export default async function LabPage(props: {
         getDashboardSamples({
             search,
             status,
+            labType,
             from,
             to,
         }),
@@ -65,6 +68,7 @@ export default async function LabPage(props: {
                 tanks={tanks as any[] || []}
                 samplingPoints={samplingPoints || []}
                 plantId={user.plant_id}
+                initialLabType={labType}
             />
         </div>
     );

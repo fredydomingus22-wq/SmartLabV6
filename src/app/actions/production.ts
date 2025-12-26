@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getBatchTraceabilityAction } from "./traceability";
+import { mapToEnterpriseReport } from "@/lib/reports/report-dtos";
 
 // --- Schemas ---
 
@@ -12,11 +14,12 @@ const CreateBatchSchema = z.object({
     code: z.string().min(3),
     planned_quantity: z.coerce.number().optional(),
     plant_id: z.string().uuid(),
+    start_date: z.string().optional(),
 });
 
 const UpdateBatchStatusSchema = z.object({
     batch_id: z.string().uuid(),
-    status: z.enum(["open", "closed", "blocked"]),
+    status: z.enum(["planned", "open", "in_progress", "completed", "closed", "blocked", "released", "rejected"]),
 });
 
 const CreateIntermediateSchema = z.object({
@@ -49,20 +52,45 @@ export async function createGoldenBatchFromFormAction(formData: FormData): Promi
         code: formData.get("code") ?? `GB-${Date.now()}`,
         planned_quantity: formData.get("planned_quantity") || undefined,
         plant_id: formData.get("plant_id"),
+        start_date: formData.get("start_date") || new Date().toISOString(),
     };
+
+    console.log("SERVER ACTION: createGoldenBatchFromFormAction", rawData);
 
     const validation = CreateBatchSchema.safeParse(rawData);
     if (!validation.success) {
+        console.error("VALIDATION ERROR:", validation.error.issues);
         throw new Error(validation.error.issues[0]?.message ?? "Invalid data");
     }
 
+    // Security Check: Get Plant's Organization
+    const { data: plant } = await supabase
+        .from("plants")
+        .select("organization_id")
+        .eq("id", validation.data.plant_id)
+        .single();
+
+    if (!plant) {
+        throw new Error("Invalid Plant ID");
+    }
+
+    // Verify User belongs to this Org (Optional but Good Practice)
+    // For now, we trust the RLS policies which limit INSERTs to user's org.
+    // However, explicitly setting organization_id guarantees we don't accidentally insert into null org if RLS was loose.
+
     const { error } = await supabase.from("production_batches").insert({
-        ...validation.data,
-        created_by: user.id,
-        status: "open",
+        organization_id: plant.organization_id, // CRITICAL: Must match Plant's Org
+        plant_id: validation.data.plant_id,
+        product_id: validation.data.product_id,
+        production_line_id: validation.data.production_line_id,
+        code: validation.data.code,
+        planned_quantity: validation.data.planned_quantity,
+        status: "planned", // EPIC 1.1: Default status is PLANNED
+        start_date: validation.data.start_date,
     });
 
     if (error) {
+        console.error("DB INSERT ERROR:", error);
         throw new Error(error.message);
     }
 
@@ -90,11 +118,6 @@ export async function createIntermediateProductAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // NC-001: CIP Validation Guard for Tanks
-    const { getEquipmentCIPStatus } = await import("@/lib/queries/production");
-    // Use equipment_id (UUID) for the check as per improved logic
-    const cipStatus = await getEquipmentCIPStatus(validation.data.equipment_id);
-
     // Check if equipment is currently occupied
     const { data: occupied } = await supabase
         .from("intermediate_products")
@@ -107,13 +130,6 @@ export async function createIntermediateProductAction(formData: FormData) {
         return {
             success: false,
             message: `Equipment ${occupied.code} is currently occupied (Status: ${occupied.status}). Must be finalized/consumed before reuse.`
-        };
-    }
-
-    if (!cipStatus.isClean) {
-        return {
-            success: false,
-            message: `SOP Violation: Equipment must be cleaned (CIP Valid) before use. Status: ${cipStatus.status || 'No CIP'}`
         };
     }
 
@@ -235,6 +251,16 @@ export async function linkIngredientAction(formData: FormData) {
  */
 export async function updateIntermediateStatusAction(formData: FormData) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
 
     const intermediate_id = formData.get("intermediate_id") as string;
     const status = formData.get("status") as string;
@@ -251,7 +277,9 @@ export async function updateIntermediateStatusAction(formData: FormData) {
     const { error } = await supabase
         .from("intermediate_products")
         .update(updateData)
-        .eq("id", intermediate_id);
+        .eq("id", intermediate_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -269,7 +297,7 @@ export async function approveIntermediateAction(formData: FormData) {
 
     const intermediate_id = formData.get("intermediate_id") as string;
 
-    const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('user_profiles').select('role, organization_id, plant_id').eq('id', user.id).single();
     if (profile?.role !== 'admin' && profile?.role !== 'manager') {
         return { success: false, message: "Only QA Managers can approve intermediates." };
     }
@@ -280,12 +308,45 @@ export async function approveIntermediateAction(formData: FormData) {
             approval_status: "approved",
             status: "in_use"
         })
-        .eq("id", intermediate_id);
+        .eq("id", intermediate_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
     revalidatePath("/production");
     return { success: true, message: "Intermediate Product Approved" };
+}
+
+/**
+ * Finalize Production Batch (Move from In Progress to Completed)
+ * Used by technicians when physical production is done.
+ */
+export async function finalizeBatchAction(batch_id: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    const { error } = await supabase
+        .from("production_batches")
+        .update({ status: "completed" })
+        .eq("id", batch_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/production");
+    revalidatePath(`/production/${batch_id}`);
+    return { success: true, message: "Produção finalizada. Aguardando revisão do Manager." };
 }
 
 /**
@@ -297,6 +358,20 @@ export async function releaseBatchAction(formData: FormData) {
     if (!user) return { success: false, message: "Unauthorized" };
 
     const batch_id = formData.get("batch_id") as string;
+    const action = formData.get("action") as "release" | "reject";
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id, role")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    // Security: Only managers/admins can release/reject
+    if (!["admin", "system_owner", "manager", "qa_manager"].includes(profile.role)) {
+        return { success: false, message: "Apenas Managers ou Admins podem liberar ou rejeitar lotes." };
+    }
 
     // 1. Fetch all intermediate products
     const { data: intermediates } = await supabase
@@ -304,23 +379,61 @@ export async function releaseBatchAction(formData: FormData) {
         .select('id, code, approval_status')
         .eq('production_batch_id', batch_id);
 
-    // 2. Validate Intermediates
-    const unapproved = intermediates?.filter(i => i.approval_status !== 'approved');
-    if (unapproved && unapproved.length > 0) {
-        return {
-            success: false,
-            message: `Cannot release: Intermediate products [${unapproved.map(u => u.code).join(', ')}] are not approved.`
-        };
+    // 2. Validate Intermediates (only for release)
+    if (action === "release") {
+        const unapproved = intermediates?.filter(i => i.approval_status !== 'approved');
+        if (unapproved && unapproved.length > 0) {
+            return {
+                success: false,
+                message: `Não é possível liberar: Produtos intermédios [${unapproved.map(u => u.code).join(', ')}] não estão aprovados.`
+            };
+        }
     }
 
-    // 3. Close the batch
+    // 3. Update the batch
+    const status = action === "release" ? "released" : "rejected";
     const { error } = await supabase
         .from("production_batches")
-        .update({ status: "closed", end_date: new Date().toISOString() })
-        .eq("id", batch_id);
+        .update({
+            status: status,
+            end_date: new Date().toISOString(),
+            qa_approved_by: user.id,
+            qa_approved_at: new Date().toISOString()
+        })
+        .eq("id", batch_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
+    // 4. Create Compliance Snapshot (ISO/FSSC Rule)
+    if (action === "release") {
+        try {
+            const traceabilityData = await getBatchTraceabilityAction(batch_id);
+            if (traceabilityData.success && traceabilityData.data) {
+                const enterpriseDTO = mapToEnterpriseReport(traceabilityData.data);
+
+                await supabase.from("generated_reports").insert({
+                    organization_id: profile.organization_id,
+                    plant_id: profile.plant_id,
+                    report_type: "FINAL",
+                    entity_type: "batch",
+                    entity_id: batch_id,
+                    report_number: `BQR-${enterpriseDTO.header.batchCode}`,
+                    title: "Production Batch Quality Report",
+                    report_data: enterpriseDTO as any, // The JSONB Snapshot
+                    generated_by: user.id,
+                    status: "signed",
+                    signed_by: user.id,
+                    signed_at: new Date().toISOString()
+                });
+            }
+        } catch (snapError) {
+            console.error("SNAPSHOT ERROR (Non-blocking):", snapError);
+        }
+    }
+
     revalidatePath("/production");
-    return { success: true, message: "Batch Released & Closed" };
+    revalidatePath(`/production/${batch_id}`);
+    return { success: true, message: `Lote ${action === "release" ? "Liberado" : "Rejeitado"} com sucesso.` };
 }

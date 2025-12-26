@@ -18,7 +18,11 @@ import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-export function FilterControls() {
+interface FilterControlsProps {
+    variant?: "default" | "compact";
+}
+
+export function FilterControls({ variant = "default" }: FilterControlsProps) {
     // URL state management
     const [search, setSearch] = useQueryState("search", { defaultValue: "", shallow: false });
     const [status, setStatus] = useQueryState("status", { defaultValue: "all", shallow: false });
@@ -33,6 +37,60 @@ export function FilterControls() {
             setDateParam(null); // Clear param
         }
     };
+
+    if (variant === "compact") {
+        return (
+            <div className="flex items-center gap-2">
+                <div className="relative w-[200px] sm:w-[250px]">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                    <Input
+                        placeholder="Pesquisar..."
+                        className="h-8 pl-8 text-xs bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                                "h-8 px-2 text-[10px] font-bold bg-muted/30 border-none hover:bg-muted/50",
+                                !date && "text-muted-foreground"
+                            )}
+                        >
+                            <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                            {date ? format(date, "dd/MM/yyyy") : "Data"}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <CalendarComponent
+                            mode="single"
+                            selected={date}
+                            onSelect={handleDateSelect}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
+
+                {(search || date) && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            setSearch("");
+                            setDateParam(null);
+                        }}
+                        className="h-8 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                    >
+                        Limpar
+                    </Button>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 glass rounded-xl border border-white/20 shadow-sm">
@@ -102,3 +160,4 @@ export function FilterControls() {
         </div>
     );
 }
+

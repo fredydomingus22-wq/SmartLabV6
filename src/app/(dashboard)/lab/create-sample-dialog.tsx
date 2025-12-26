@@ -28,6 +28,7 @@ import {
 import { Plus, Loader2, FlaskConical } from "lucide-react";
 import { createSampleAction } from "@/app/actions/lab";
 import { CreateSampleSchema, CreateSampleFormValues } from "@/schemas/lab";
+import { isFinishedProduct, isIntermediateProduct, isRawMaterial, isUtility } from "@/lib/constants/lab";
 
 interface Tank {
     id: string;
@@ -80,10 +81,10 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
     const selectedTypeId = form.watch("sample_type_id");
     const selectedType = sampleTypes.find(t => t.id === selectedTypeId);
 
-    // Business Rule: PA (Final Product) and IP (Intermediate) require Batch/Tank.
-    // Others (Water, Env, CIP) require Sampling Point.
-    const isProductSample = selectedType?.code?.startsWith("PA") || selectedType?.code?.startsWith("IP");
-    const isWaterOrEnv = selectedType?.code?.startsWith("WAT") || selectedType?.code?.startsWith("ENV") || selectedType?.code?.startsWith("CIP");
+    // Business Rule: FP (Final Product) and IP (Intermediate) require Batch/Tank.
+    // Others (Raw Material, Utilities, Env, Swabs) require Sampling Point.
+    const isProductSample = selectedType?.code ? (isFinishedProduct(selectedType.code) || isIntermediateProduct(selectedType.code)) : false;
+    const isSamplingPointSample = !isProductSample || (selectedType?.code ? (isRawMaterial(selectedType.code) || isUtility(selectedType.code) || selectedType.code.startsWith("ENV") || selectedType.code.startsWith("SB")) : false);
 
     // Helper to get product name from tank
     const getProductName = (tank: Tank) => {

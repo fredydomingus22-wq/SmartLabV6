@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { z } from "zod";
+import { SAMPLE_TYPE_CATEGORIES, isMicroCategory } from "@/lib/constants/lab";
 
 // --- Schemas ---
 
@@ -95,8 +96,15 @@ export async function createMicroSampleAction(formData: FormData) {
             .eq("id", validation.data.sample_type_id)
             .single();
 
-        if (!sampleType || (sampleType.test_category !== "microbiological" && sampleType.test_category !== "both")) {
-            return { success: false, message: "Sample type must be microbiological" };
+        if (!sampleType) {
+            return {
+                success: false,
+                message: "Tipo de amostra inválido ou expirado. Por favor, atualize a página (F5) e tente novamente."
+            };
+        }
+
+        if (!isMicroCategory(sampleType.test_category) && sampleType.test_category !== "both") {
+            return { success: false, message: "O tipo de amostra deve ser microbiológico" };
         }
 
         const sampleTypeCode = sampleType.code || "MICRO";
@@ -164,6 +172,33 @@ export async function createMicroSampleAction(formData: FormData) {
 
     if (error) {
         return { success: false, message: error.message };
+    }
+
+    // 3. Auto-load microbiological specifications and create pending lab_analysis records
+    // This ensures consistency between Lab and Micro modules for reports and dashboards
+    if (newSample?.id && productId) {
+        try {
+            const { data: specs } = await supabase
+                .from("product_specifications")
+                .select("qa_parameter_id, sample_type_id, qa_parameters!inner(category, status)")
+                .eq("product_id", productId)
+                .eq("qa_parameters.status", "active")
+                .eq("qa_parameters.category", SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL)
+                .eq("sample_type_id", validation.data.sample_type_id);
+
+            if (specs && specs.length > 0) {
+                const uniqueParamIds = Array.from(new Set(specs.map(s => s.qa_parameter_id)));
+                const analysisRecords = uniqueParamIds.map(paramId => ({
+                    organization_id: userData.organization_id,
+                    plant_id: validation.data.plant_id,
+                    sample_id: newSample.id,
+                    qa_parameter_id: paramId,
+                }));
+                await supabase.from("lab_analysis").insert(analysisRecords);
+            }
+        } catch (e) {
+            console.error("Failed to auto-load micro specs for lab_analysis:", e);
+        }
     }
 
     revalidatePath("/micro/samples");
@@ -305,19 +340,10 @@ export async function startIncubationAction(formData: FormData) {
             `)
             .eq("product_id", productId)
             .eq("status", "active")
-            .in("parameter.category", ["microbiological", "microbiology"])
-            .or(`sample_type_id.eq.${sample.sample_type_id},sample_type_id.is.null`);
+            .in("parameter.category", [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL])
+            .eq("sample_type_id", sample.sample_type_id);
 
-        // Deduplicate: specific > generic
-        const uniqueMap = new Map();
-        specs?.forEach(s => {
-            const existing = uniqueMap.get(s.qa_parameter_id);
-            if (!existing || (existing.sample_type_id === null && s.sample_type_id !== null)) {
-                uniqueMap.set(s.qa_parameter_id, s);
-            }
-        });
-
-        microParams = Array.from(uniqueMap.values());
+        microParams = specs || [];
     }
 
     // Fallback: If no micro specs defined, get any microbiological parameter
@@ -325,7 +351,7 @@ export async function startIncubationAction(formData: FormData) {
         const { data: fallbackParams } = await supabase
             .from("qa_parameters")
             .select("id")
-            .in("category", ["microbiological", "microbiology"])
+            .in("category", [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL])
             .limit(5);
 
         if (fallbackParams && fallbackParams.length > 0) {
@@ -389,7 +415,9 @@ export async function startIncubationAction(formData: FormData) {
     await supabase
         .from("samples")
         .update({ status: "in_analysis" })
-        .eq("id", rawData.sample_id);
+        .eq("id", rawData.sample_id)
+        .eq("organization_id", userData.organization_id)
+        .eq("plant_id", userData.plant_id);
 
     revalidatePath("/micro/incubators");
     revalidatePath("/micro/reading");
@@ -427,6 +455,15 @@ export async function registerMicroResultAction(formData: FormData) {
         .eq("id", validation.data.result_id)
         .single();
 
+    // Fetch profile for tenant isolation update
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
     if (!result) return { success: false, message: "Result not found" };
 
     // Get spec limit for conformity check
@@ -444,12 +481,10 @@ export async function registerMicroResultAction(formData: FormData) {
             .eq("product_id", productId)
             .eq("qa_parameter_id", result.qa_parameter_id)
             .eq("status", "active")
-            .or(`sample_type_id.eq.${sample.sample_type_id},sample_type_id.is.null`);
+            .eq("sample_type_id", sample.sample_type_id)
+            .single();
 
-        const spec = specs?.find(s => s.sample_type_id === sample.sample_type_id)
-            || specs?.find(s => s.sample_type_id === null);
-
-        maxColonyCount = spec?.max_colony_count ?? null;
+        maxColonyCount = specs?.max_colony_count ?? null;
     }
 
     // Determine conformity
@@ -478,7 +513,10 @@ export async function registerMicroResultAction(formData: FormData) {
             read_at: new Date().toISOString(),
             status: "completed",
         })
-        .eq("id", validation.data.result_id);
+        .eq("id", validation.data.result_id)
+        // Note: result already select includes organization_id/plant_id? No, let's fetch it from user profile for safety
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 

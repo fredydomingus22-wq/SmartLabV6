@@ -18,6 +18,7 @@ interface CreateBatchDialogProps {
 
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -35,11 +36,17 @@ export function CreateBatchDialog({ products, lines, plantId }: CreateBatchDialo
 
     const handleSubmit = async (formData: FormData) => {
         try {
+            if (!formData.get("product_id") || !formData.get("production_line_id")) {
+                toast.error("Please select Product and Line");
+                return;
+            }
+
             await createGoldenBatchFromFormAction(formData);
+            toast.success("Batch created successfully");
             setOpen(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            // In a real app we would show a toast here
+            toast.error(error.message || "Failed to create batch");
         }
     };
 

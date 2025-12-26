@@ -16,10 +16,22 @@ const ProductionLineSchema = z.object({
  */
 export async function getProductionLinesAction() {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized", data: [] };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found", data: [] };
 
     const { data, error } = await supabase
         .from("production_lines")
         .select("*")
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id)
         .order("name");
 
     if (error) return { success: false, message: error.message, data: [] };
@@ -87,10 +99,19 @@ export async function updateProductionLineAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+    if (!profile) return { success: false, message: "Profile not found" };
+
     const { error } = await supabase
         .from("production_lines")
         .update(validation.data)
-        .eq("id", id);
+        .eq("id", id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -109,11 +130,20 @@ export async function deleteProductionLineAction(formData: FormData) {
     const id = formData.get("id") as string;
     if (!id) return { success: false, message: "ID required" };
 
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+    if (!profile) return { success: false, message: "Profile not found" };
+
     // Check if used by any batches
     const { data: usedByBatches } = await supabase
         .from("production_batches")
         .select("id")
         .eq("production_line_id", id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id)
         .limit(1);
 
     if (usedByBatches && usedByBatches.length > 0) {
@@ -123,7 +153,9 @@ export async function deleteProductionLineAction(formData: FormData) {
     const { error } = await supabase
         .from("production_lines")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 

@@ -1,13 +1,17 @@
+
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FlaskConical, CheckCircle, Clock, User, MapPin, XCircle } from "lucide-react";
+import { ArrowLeft, FlaskConical, CheckCircle, Clock, User, MapPin, XCircle, Sparkles, AlertTriangle, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { AnalysisForm } from "./analysis-form";
 import { ValidateDialog } from "./validate-dialog";
+import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
+import { PDFDownloadButton } from "@/components/reports/PDFDownloadButton";
+import { CertificateOfAnalysis } from "@/components/reports/templates/CertificateOfAnalysis";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +31,7 @@ interface Analysis {
     parameter: { id: string; name: string; code: string; unit: string | null } | null;
     analyst?: { full_name: string } | null;
     final_value?: string | number | null;
+    ai_insight?: { status: 'approved' | 'warning' | 'blocked' | 'info'; message: string; confidence: number } | null;
 }
 
 export default async function SampleDetailPage({ params }: PageProps) {
@@ -37,31 +42,31 @@ export default async function SampleDetailPage({ params }: PageProps) {
     const { data: sample, error: sampleError } = await supabase
         .from("samples")
         .select(`
-            *,
-            type:sample_types(id, name, code),
-            batch:production_batches(
-                id, code,
-                product:products(id, name, sku)
-            ),
-            intermediate_product:intermediate_products(
+    *,
+    type: sample_types(id, name, code),
+        batch: production_batches(
+            id, code,
+            product: products(id, name, sku)
+        ),
+            intermediate_product: intermediate_products(
                 id, code, status,
-                equipment:equipments(id, code, name)
+                equipment: equipments(id, code, name)
             ),
-            sampling_point:sampling_points(id, name, code, location),
-            lab_analysis(
-                id,
-                value_numeric,
-                value_text,
-                is_conforming,
-                analyzed_by,
-                analyzed_at,
-                qa_parameter_id,
-                parameter:qa_parameters(
-                    id, name, code, unit
-                ),
-                analyst:user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name)
-            )
-        `)
+                sampling_point: sampling_points(id, name, code, location),
+                    lab_analysis(
+                        id,
+                        value_numeric,
+                        value_text,
+                        is_conforming,
+                        analyzed_by,
+                        analyzed_at,
+                        qa_parameter_id,
+                        parameter: qa_parameters(
+                            id, name, code, unit
+                        ),
+                        analyst: user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name)
+                    )
+                        `)
         .eq("id", id)
         .single();
 
@@ -72,16 +77,31 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
     const analysesRaw = (sample as any).lab_analysis || [];
 
+    // Fetch AI Insights
+    const analysisIds = analysesRaw.map((a: any) => a.id);
+    let insights: any[] = [];
+    if (analysisIds.length > 0) {
+        const { data } = await supabase
+            .from("ai_insights")
+            .select("*")
+            .eq("entity_type", "lab_analysis")
+            .in("entity_id", analysisIds);
+        insights = data || [];
+    }
+    const insightsMap = new Map(insights.map(i => [i.entity_id, i]));
+
     // Normalize analyses to ensure parameter and analyst are objects (not arrays)
     const normalizedAnalyses: Analysis[] = analysesRaw.map((a: any) => {
         const parameter = Array.isArray(a.parameter) ? (a.parameter[0] || null) : (a.parameter || null);
         const analyst = Array.isArray(a.analyst) ? (a.analyst[0] || null) : (a.analyst || null);
+        const ai_insight = insightsMap.get(a.id) || null;
 
         // Explicitly map properties to ensure they are available to the UI
         return {
             ...a,
             parameter,
             analyst,
+            ai_insight,
             // Ensure numeric values are prioritized if they exist
             final_value: a.value_numeric !== null && a.value_numeric !== undefined ? a.value_numeric : a.value_text
         };
@@ -109,20 +129,17 @@ export default async function SampleDetailPage({ params }: PageProps) {
             .eq("product_id", productId)
             .eq("status", "active");
 
-        const genericSpecs: typeof specs = {};
-        const specificSpecs: typeof specs = {};
-
+        // Specific specs ONLY (Strict Mode requested by User)
+        // "samples should get parameters only from the specific sample_type... others don't need to appear"
         productSpecs?.forEach(spec => {
             if (spec.sample_type_id === sample.sample_type_id) {
-                specificSpecs[spec.qa_parameter_id] = spec;
-            } else if (!spec.sample_type_id) {
-                genericSpecs[spec.qa_parameter_id] = spec;
+                specs[spec.qa_parameter_id] = spec;
             }
         });
-
-        // Specific specs override generic ones
-        specs = { ...genericSpecs, ...specificSpecs };
     }
+
+    // Filter analyses to ONLY show those that have a defined Specification for this Sample Type
+    const filteredAnalyses = normalizedAnalyses.filter(a => !!specs[a.qa_parameter_id]);
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
@@ -139,7 +156,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
     const isValidated = sample.status === "validated" || sample.status === "approved" || !!sample.validated_at;
     const isReviewed = sample.status === "reviewed" || isValidated;
-    const canValidate = normalizedAnalyses?.every(a => a.value_numeric !== null || a.value_text !== null);
+    const canValidate = filteredAnalyses?.every(a => a.value_numeric !== null || a.value_text !== null);
 
     return (
         <div className="container py-8 space-y-6">
@@ -165,15 +182,53 @@ export default async function SampleDetailPage({ params }: PageProps) {
                         </span>
                     </div>
                 </div>
-                {!isValidated && canValidate && (
-                    <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
-                )}
-                {isValidated && (
-                    <Badge className="bg-green-100 text-green-700 text-lg px-4 py-2">
-                        <CheckCircle className="h-5 w-5 mr-2" />
-                        Validated
-                    </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                    {isValidated && (
+                        <>
+                            <PDFDownloadButton
+                                document={
+                                    <CertificateOfAnalysis
+                                        sample={{
+                                            id: sample.id,
+                                            sample_code: sample.code || 'N/A',
+                                            product_name: sample.batch?.product?.name || 'Unknown Product',
+                                            batch_code: sample.batch?.code || 'N/A',
+                                            collection_date: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
+                                            description: sample.description || undefined
+                                        }}
+                                        analyses={filteredAnalyses.map(a => ({
+                                            parameter_name: a.parameter?.name || 'Unknown Parameter',
+                                            method_name: a.parameter?.code, // Using code as method placeholder for now
+                                            result: a.final_value?.toString() || 'Pending',
+                                            unit: a.parameter?.unit || '',
+                                            min_limit: specs[a.qa_parameter_id]?.min_value,
+                                            max_limit: specs[a.qa_parameter_id]?.max_value,
+                                            status: a.is_conforming === true ? 'compliant' : a.is_conforming === false ? 'non_compliant' : 'pending'
+                                        }))}
+                                        organization={{
+                                            name: "SmartLab Enterprise",
+                                            address: "123 Quality Street, Innovation City",
+                                            // logoUrl: "..." 
+                                        }}
+                                        approver={{
+                                            name: validatedByName,
+                                            role: "Quality Manager"
+                                        }}
+                                    />
+                                }
+                                fileName={`CoA_${sample.code || sample.id}.pdf`}
+                                label="Certificate"
+                            />
+                            <Badge className="bg-green-100 text-green-700 text-lg px-4 py-2">
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Validated
+                            </Badge>
+                        </>
+                    )}
+                    {!isValidated && canValidate && (
+                        <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
+                    )}
+                </div>
             </div>
 
             {/* Error Display for Debugging */}
@@ -264,7 +319,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
             {/* Debug Info (Visible only for investigation) */}
             <div className="text-[10px] text-muted-foreground opacity-50 font-mono">
-                DEBUG: Analyses Count: {normalizedAnalyses?.length || 0} |
+                DEBUG: Analyses Count: {filteredAnalyses?.length || 0} |
                 Sample User ID: {sample.collected_by || "—"} |
                 Org ID: {sample.organization_id || "—"}
             </div>
@@ -284,9 +339,9 @@ export default async function SampleDetailPage({ params }: PageProps) {
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    {normalizedAnalyses && normalizedAnalyses.length > 0 ? (
+                    {filteredAnalyses && filteredAnalyses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {normalizedAnalyses.map(a => {
+                            {filteredAnalyses.map(a => {
                                 const param = a.parameter;
                                 const spec = param ? specs[param.id] : null;
                                 const isValuePresent = a.final_value !== null && a.final_value !== undefined;
@@ -301,7 +356,12 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                                 <p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">{param?.code}</p>
                                                 <h4 className="font-bold text-base text-slate-100 leading-tight pr-8">{param?.name}</h4>
                                             </div>
-                                            <div className="absolute top-0 right-0">
+                                            <div className="absolute top-0 right-0 flex gap-2">
+                                                {/* AI Insight Badge (Realtime) */}
+                                                <RealtimeAIBadge
+                                                    analysisId={a.id}
+                                                    initialInsight={a.ai_insight || null}
+                                                />
                                                 {a.is_conforming === true && <div className="bg-green-500/10 p-1.5 rounded-full"><CheckCircle className="h-5 w-5 text-green-400" /></div>}
                                                 {a.is_conforming === false && <div className="bg-red-500/10 p-1.5 rounded-full"><XCircle className="h-5 w-5 text-red-400" /></div>}
                                                 {a.is_conforming === null && isValuePresent && <div className="bg-amber-500/10 p-1.5 rounded-full"><Clock className="h-5 w-5 text-amber-400" /></div>}
@@ -344,7 +404,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                                 <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold tracking-tight uppercase">
                                                     <User className="h-3 w-3 text-blue-500" />
                                                     <span className="text-slate-300 font-bold">
-                                                        {a.analyst?.full_name || (a.analyzed_by ? `ID: ${String(a.analyzed_by).substring(0, 8).toUpperCase()}` : "Not signed")}
+                                                        {a.analyst?.full_name || (a.analyzed_by ? `ID: ${String(a.analyzed_by).substring(0, 8).toUpperCase()} ` : "Not signed")}
                                                     </span>
                                                 </div>
                                                 {a.analyzed_at && (
@@ -371,7 +431,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
                 <AnalysisForm
                     sampleId={sample.id}
                     sampleCode={sample.code || ""}
-                    analyses={normalizedAnalyses || []}
+                    analyses={filteredAnalyses || []}
                     specs={specs}
                     isValidated={isValidated}
                 />

@@ -43,6 +43,8 @@ export async function generateCoAAction(formData: FormData) {
         .from("samples")
         .select("code")
         .eq("id", sampleId)
+        .eq("organization_id", userData.organization_id)
+        .eq("plant_id", userData.plant_id)
         .single();
 
     // Get analysis results
@@ -52,7 +54,9 @@ export async function generateCoAAction(formData: FormData) {
             *,
             parameter:qa_parameters(name, code, unit)
         `)
-        .eq("sample_id", sampleId);
+        .eq("sample_id", sampleId)
+        .eq("organization_id", userData.organization_id)
+        .eq("plant_id", userData.plant_id);
 
     // Generate report number
     const year = new Date().getFullYear();
@@ -123,6 +127,8 @@ export async function generateBatchReportAction(formData: FormData) {
         .from("production_batches")
         .select("batch_number, product_name")
         .eq("id", batchId)
+        .eq("organization_id", userData.organization_id)
+        .eq("plant_id", userData.plant_id)
         .single();
 
     // Get full batch report data
@@ -186,6 +192,14 @@ export async function exportDataAction(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Unauthorized" };
 
+    const { data: userData } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!userData) return { success: false, message: "Profile not found" };
+
     const dataType = formData.get("data_type") as string;
     const startDate = formData.get("start_date") as string;
     const endDate = formData.get("end_date") as string;
@@ -198,6 +212,8 @@ export async function exportDataAction(formData: FormData) {
             const { data: samples } = await supabase
                 .from("samples")
                 .select("*")
+                .eq("organization_id", userData.organization_id)
+                .eq("plant_id", userData.plant_id)
                 .gte("collected_at", startDate)
                 .lte("collected_at", endDate);
             data = samples || [];
@@ -208,6 +224,8 @@ export async function exportDataAction(formData: FormData) {
             const { data: batches } = await supabase
                 .from("production_batches")
                 .select("*")
+                .eq("organization_id", userData.organization_id)
+                .eq("plant_id", userData.plant_id)
                 .gte("production_date", startDate)
                 .lte("production_date", endDate);
             data = batches || [];
@@ -218,6 +236,8 @@ export async function exportDataAction(formData: FormData) {
             const { data: ncs } = await supabase
                 .from("nonconformities")
                 .select("*")
+                .eq("organization_id", userData.organization_id)
+                .eq("plant_id", userData.plant_id)
                 .gte("detected_date", startDate)
                 .lte("detected_date", endDate);
             data = ncs || [];
@@ -238,6 +258,8 @@ export async function exportDataAction(formData: FormData) {
             const { data: analysis } = await supabase
                 .from("lab_analysis")
                 .select("*")
+                .eq("organization_id", userData.organization_id)
+                .eq("plant_id", userData.plant_id)
                 .gte("analyzed_at", startDate)
                 .lte("analyzed_at", endDate);
             data = analysis || [];
@@ -274,6 +296,14 @@ export async function signReportAction(formData: FormData) {
         return { success: false, message: "Invalid password. Signature failed." };
     }
 
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
     // Update report with signature
     const { error: updateError } = await supabase
         .from("generated_reports")
@@ -282,7 +312,9 @@ export async function signReportAction(formData: FormData) {
             signed_by: user.id,
             signed_at: new Date().toISOString(),
         })
-        .eq("id", reportId);
+        .eq("id", reportId)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (updateError) {
         return { success: false, message: updateError.message };

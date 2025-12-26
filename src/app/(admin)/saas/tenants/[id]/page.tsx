@@ -80,7 +80,7 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                                 <ActionForm
                                     action={createPlantAction}
                                     submitText="Adicionar"
-                                    onSuccess={() => { }} // Revalidate happens in action
+                                    // onSuccess removed: cannot pass function from Server Component
                                     className="flex items-center gap-2"
                                 >
                                     <input type="hidden" name="organization_id" value={org.id} />

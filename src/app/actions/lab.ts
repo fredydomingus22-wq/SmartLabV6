@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { z } from "zod";
+import { SAMPLE_TYPE_CATEGORIES, isFinishedProduct, isIntermediateProduct } from "@/lib/constants/lab";
 
 // --- Schemas ---
 
@@ -89,18 +90,25 @@ export async function createSampleAction(formData: FormData) {
     let sampleTypeCode = "NOSKU";
 
     try {
-        // Fetch Sample Type
+        // Fetch Sample Type and verify existence
         const { data: sampleType } = await supabase
             .from("sample_types")
-            .select("test_category, code")
+            .select("id, test_category, code")
             .eq("id", validation.data.sample_type_id)
             .single();
+
+        if (!sampleType) {
+            return {
+                success: false,
+                message: "Tipo de amostra inválido ou expirado. Por favor, atualize a página (F5) e tente novamente."
+            };
+        }
 
         sampleTypeCode = sampleType?.code || "NOTYPE";
         const testCategory = sampleType?.test_category || "physico_chemical";
 
-        // Business Rule Validation: PA and IP require Batch/Tank
-        const isProductSample = sampleTypeCode.startsWith("PA") || sampleTypeCode.startsWith("IP");
+        // Business Rule Validation: FP and IP require Batch/Tank
+        const isProductSample = isFinishedProduct(sampleTypeCode) || isIntermediateProduct(sampleTypeCode);
         if (isProductSample) {
             if (!validation.data.production_batch_id && !validation.data.intermediate_product_id) {
                 return {
@@ -110,12 +118,12 @@ export async function createSampleAction(formData: FormData) {
             }
         }
 
-        if (testCategory === "physico_chemical") {
-            categoryFilter = ["physico_chemical", "physico-chemical"];
-        } else if (testCategory === "microbiological") {
-            categoryFilter = ["microbiological", "microbiology"];
+        if (testCategory === SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL) {
+            categoryFilter = [SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL];
+        } else if (testCategory === SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL) {
+            categoryFilter = [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL];
         } else if (testCategory === "both") {
-            categoryFilter = ["physico_chemical", "physico-chemical", "microbiological", "microbiology"];
+            categoryFilter = [SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL, SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL];
         }
 
         // Fetch Product ID
@@ -212,7 +220,7 @@ export async function createSampleAction(formData: FormData) {
                 .eq("product_id", productId)
                 .eq("qa_parameters.status", "active")
                 .in("qa_parameters.category", categoryFilter)
-                .or(`sample_type_id.eq.${validation.data.sample_type_id},sample_type_id.is.null`);
+                .eq("sample_type_id", validation.data.sample_type_id);
 
             if (specs && specs.length > 0) {
                 // Deduplicate: If both specific and generic exist, we just need the parameter ID once.
@@ -259,10 +267,23 @@ export async function updateSampleStatusAction(data: FormData | { id: string, st
         return { success: false, message: "Invalid data" };
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
     const { error } = await supabase
         .from("samples")
         .update({ status })
-        .eq("id", sample_id);
+        .eq("id", sample_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -310,10 +331,24 @@ export async function advanceSampleAction(sampleId: string) {
     }
 
     if (nextStatus !== sample.status) {
+        // Fetch user profile for tenant isolation (Defense in depth)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, message: "Unauthorized" };
+
+        const { data: profile } = await supabase
+            .from("user_profiles")
+            .select("organization_id, plant_id")
+            .eq("id", user.id)
+            .single();
+
+        if (!profile) return { success: false, message: "Profile not found" };
+
         const { error } = await supabase
             .from("samples")
             .update({ status: nextStatus })
-            .eq("id", sampleId);
+            .eq("id", sampleId)
+            .eq("organization_id", profile.organization_id)
+            .eq("plant_id", profile.plant_id);
 
         if (error) return { success: false, message: error.message };
 
@@ -354,27 +389,62 @@ export async function registerResultAction(formData: FormData) {
         return { success: false, message: `ACESSO NEGADO: ${qualCheck.reason}` };
     }
 
-    // 1. Get sample context (product, sample_type) EARLY for validation and status updates
+    // 1. Get sample context and SPEC early
     const { data: sampleContext } = await supabase
         .from("samples")
-        .select("organization_id, plant_id, sample_type_id, production_batches(product_id), intermediate_products(production_batches(product_id))")
+        .select(`
+            organization_id, 
+            plant_id, 
+            sample_type_id, 
+            production_batch_id,
+            intermediate_product_id,
+            batch:production_batches(product_id), 
+            intermediate:intermediate_products(batch:production_batches(product_id))
+        `)
         .eq("id", validation.data.sample_id)
         .single();
 
-    if (!sampleContext) return { success: false, message: "Sample not found" };
+    if (!sampleContext) return { success: false, message: "Amostra não encontrada" };
 
     // Resolve Product ID
     let pId: string | undefined;
-    if (sampleContext.production_batches) {
-        const pb = Array.isArray(sampleContext.production_batches) ? sampleContext.production_batches[0] : sampleContext.production_batches;
+    if (sampleContext.batch) {
+        const pb = Array.isArray(sampleContext.batch) ? sampleContext.batch[0] : sampleContext.batch;
         pId = pb?.product_id;
-    } else if (sampleContext.intermediate_products) {
-        const ip = Array.isArray(sampleContext.intermediate_products) ? sampleContext.intermediate_products[0] : sampleContext.intermediate_products;
-        const pb = Array.isArray(ip?.production_batches) ? ip.production_batches[0] : ip?.production_batches;
+    } else if (sampleContext.intermediate) {
+        const ip = Array.isArray(sampleContext.intermediate) ? sampleContext.intermediate[0] : sampleContext.intermediate;
+        const pb = Array.isArray(ip?.batch) ? ip.batch[0] : ip?.batch;
         pId = pb?.product_id;
     }
 
-    // Check for duplicate (unique constraint in DB handles this, but give better error)
+    // --- AUTOMATIC COMPLIANCE CHECK ---
+    let autoConforming = validation.data.is_conforming;
+    let spec: any = null;
+
+    if (pId && validation.data.value_numeric !== undefined) {
+        const { data: specs } = await supabase
+            .from("product_specifications")
+            .select("is_critical, min_value, max_value, qa_parameter:qa_parameters(name)")
+            .eq("qa_parameter_id", validation.data.qa_parameter_id)
+            .eq("product_id", pId)
+            .eq("sample_type_id", sampleContext.sample_type_id);
+
+        spec = specs?.[0];
+
+        if (spec) {
+            const val = validation.data.value_numeric;
+            const min = spec.min_value;
+            const max = spec.max_value;
+
+            let isPass = true;
+            if (min !== null && val < min) isPass = false;
+            if (max !== null && val > max) isPass = false;
+
+            autoConforming = isPass;
+        }
+    }
+
+    // Check for duplicate
     const { data: existingResult } = await supabase
         .from("lab_analysis")
         .select("id")
@@ -383,50 +453,41 @@ export async function registerResultAction(formData: FormData) {
         .maybeSingle();
 
     if (existingResult) {
-        return { success: false, message: "Result already exists for this parameter. Use retest if needed." };
+        return { success: false, message: "Resultado já existe para este parâmetro." };
     }
 
-    const { error } = await supabase.from("lab_analysis").insert({
+    const { data: newResult, error } = await supabase.from("lab_analysis").insert({
         organization_id: sampleContext.organization_id,
         plant_id: sampleContext.plant_id,
         sample_id: validation.data.sample_id,
         qa_parameter_id: validation.data.qa_parameter_id,
         value_numeric: validation.data.value_numeric || null,
         value_text: validation.data.value_text || null,
-        is_conforming: validation.data.is_conforming ?? null,
+        is_conforming: autoConforming,
         notes: validation.data.notes || null,
         analyzed_by: user.id,
-    });
+    }).select("id").single();
 
     if (error) return { success: false, message: error.message };
 
-    // Auto-create NC for critical parameter failures
+    // --- AUTOMATIC BATCH BLOCKING ---
     let ncCreated = false;
     let ncNumber = "";
-    if (validation.data.is_conforming === false && pId) {
-        const { data: specs } = await supabase
-            .from("product_specifications")
-            .select("is_critical, min_value, max_value, sample_type_id, qa_parameter:qa_parameters(name)")
-            .eq("qa_parameter_id", validation.data.qa_parameter_id)
-            .eq("product_id", pId)
-            .or(`sample_type_id.eq.${sampleContext.sample_type_id},sample_type_id.is.null`);
+    let batchBlocked = false;
 
-        // Prioritize specific over generic
-        const spec = specs?.find(s => s.sample_type_id === sampleContext.sample_type_id)
-            || specs?.find(s => s.sample_type_id === null);
-
-        if (spec?.is_critical) {
+    if (autoConforming === false && spec) {
+        // Create NC if critical
+        if (spec.is_critical) {
             const paramName = Array.isArray(spec.qa_parameter)
                 ? (spec.qa_parameter[0] as any)?.name
                 : (spec.qa_parameter as any)?.name;
 
-            // Import and call createNCFromFailedResult
             const { createNCFromFailedResult } = await import("@/app/actions/qms");
             const ncResult = await createNCFromFailedResult({
                 sampleId: validation.data.sample_id,
                 parameterId: validation.data.qa_parameter_id,
                 parameterName: paramName || "Unknown",
-                value: validation.data.value_numeric ?? "",
+                value: validation.data.value_numeric ?? validation.data.value_text ?? "N/A",
                 specMin: spec.min_value,
                 specMax: spec.max_value,
                 isCritical: true,
@@ -436,55 +497,81 @@ export async function registerResultAction(formData: FormData) {
             });
             ncCreated = ncResult.ncCreated || false;
             ncNumber = ncResult.ncNumber || "";
+
+            // BLOCK THE BATCH
+            const batchId = sampleContext.production_batch_id ||
+                (sampleContext.intermediate_products as any)?.production_batch_id;
+
+            if (batchId) {
+                const { error: blockError } = await supabase
+                    .from("production_batches")
+                    .update({ status: "blocked" })
+                    .eq("id", batchId)
+                    .eq("organization_id", sampleContext.organization_id)
+                    .eq("plant_id", sampleContext.plant_id);
+
+                if (!blockError) batchBlocked = true;
+            }
         }
     }
 
-    // Check if all specs are satisfied to auto-advance to "reviewed"
-    let newStatus = "in_analysis";
+    // Trigger AI Validation
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && newResult) {
+        try {
+            fetch(`${process.env.SUPABASE_URL}/functions/v1/ai-validator`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    record: {
+                        id: newResult.id,
+                        sample_id: validation.data.sample_id,
+                        qa_parameter_id: validation.data.qa_parameter_id
+                    }
+                })
+            });
+        } catch (aiError) {
+            console.warn("AI trigger failed:", aiError);
+        }
+    }
 
+    // Auto-advance sample status
+    let newStatus = "in_analysis";
     if (pId) {
-        // Get the number of unique QA parameters required for this sample's product/sample_type
-        // Note: Counting unique qa_parameter_id
         const { count: uniqueSpecParams } = await supabase
             .from("product_specifications")
             .select("qa_parameter_id", { count: "exact", head: true })
             .eq("product_id", pId)
-            .or(`sample_type_id.eq.${sampleContext.sample_type_id},sample_type_id.is.null`);
+            .eq("sample_type_id", sampleContext.sample_type_id);
 
-        // Count completed results for this sample
         const { count: resultCount } = await supabase
             .from("lab_analysis")
             .select("*", { count: "exact", head: true })
             .eq("sample_id", validation.data.sample_id);
 
-        // If all specs have results, mark as reviewed
         if (uniqueSpecParams !== null && resultCount !== null && resultCount >= uniqueSpecParams) {
             newStatus = "reviewed";
         }
     }
 
-    // Update sample status
-    await supabase
-        .from("samples")
-        .update({ status: newStatus })
-        .eq("id", validation.data.sample_id);
+    await supabase.from("samples").update({ status: newStatus }).eq("id", validation.data.sample_id);
 
     revalidatePath("/lab");
+    revalidatePath("/production");
 
-    // Build response message
-    let message = "Result Registered";
-    if (newStatus === "reviewed") {
-        message = "All parameters complete! Sample ready for review.";
-    }
-    if (ncCreated) {
-        message += ` ⚠️ NC ${ncNumber} auto-created (critical failure).`;
-    }
+    let message = "Resultado Registado";
+    if (newStatus === "reviewed") message = "Todos os parâmetros concluídos! Amostra pronta para revisão.";
+    if (ncCreated) message += ` ⚠️ NC ${ncNumber} criada (Falha Crítica).`;
+    if (batchBlocked) message += ` 🛡️ Lote BLOQUEADO automaticamente.`;
 
     return {
         success: true,
         message,
         ncCreated,
         ncNumber: ncNumber || undefined,
+        batchBlocked
     };
 }
 
@@ -510,12 +597,21 @@ export async function approveSampleAction(formData: FormData) {
     // Generate signature hash (MVP: just UUID, production would use crypto)
     const signatureHash = crypto.randomUUID();
 
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+    if (!profile) return { success: false, message: "Profile not found" };
+
     const { error } = await supabase
         .from("samples")
         .update({
             status: validation.data.status,
         })
-        .eq("id", validation.data.sample_id);
+        .eq("id", validation.data.sample_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -523,7 +619,9 @@ export async function approveSampleAction(formData: FormData) {
     await supabase
         .from("lab_analysis")
         .update({ signed_transaction_hash: signatureHash })
-        .eq("sample_id", validation.data.sample_id);
+        .eq("sample_id", validation.data.sample_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     revalidatePath("/lab");
     return {
@@ -539,6 +637,16 @@ export async function approveSampleAction(formData: FormData) {
  */
 export async function getPendingSamplesAction() {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized", data: [] };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found", data: [] };
 
     const { data: samples, error } = await supabase
         .from("samples")
@@ -550,6 +658,8 @@ export async function getPendingSamplesAction() {
             sample_type:sample_types(name),
             batch:production_batches(code, product:products(name))
         `)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id)
         .in("status", ["pending", "collected", "in_analysis"])
         .order("collected_at", { ascending: true });
 
@@ -602,12 +712,21 @@ export async function approveSampleWithPasswordAction(formData: FormData) {
     };
     const signatureHash = btoa(JSON.stringify(signatureData));
 
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+    if (!profile) return { success: false, message: "Profile not found" };
+
     const { error } = await supabase
         .from("samples")
         .update({
             status: validation.data.status,
         })
-        .eq("id", validation.data.sample_id);
+        .eq("id", validation.data.sample_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -615,7 +734,9 @@ export async function approveSampleWithPasswordAction(formData: FormData) {
     await supabase
         .from("lab_analysis")
         .update({ signed_transaction_hash: signatureHash })
-        .eq("sample_id", validation.data.sample_id);
+        .eq("sample_id", validation.data.sample_id)
+        .eq("organization_id", profile.organization_id)
+        .eq("plant_id", profile.plant_id);
 
     revalidatePath("/lab");
     return {
@@ -924,6 +1045,28 @@ export async function signAndSaveResultsAction(
                 console.warn("SPC alert check failed (non-blocking):", spcError);
             }
         }
+
+        // AI Validation Trigger
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+                await fetch(`${process.env.SUPABASE_URL}/functions/v1/ai-validator`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        record: {
+                            id: result.analysisId,
+                            sample_id: sampleId,
+                            qa_parameter_id: paramId,
+                        }
+                    })
+                });
+            } catch (aiError) {
+                console.warn(`AI validation trigger failed for ${result.analysisId}:`, aiError);
+            }
+        }
     }
 
     const resultsCount = results.filter(r => r.value !== null && r.value !== "").length;
@@ -975,8 +1118,10 @@ export async function saveAllResultsAction(
             status,
             organization_id,
             plant_id,
-            production_batches(product_id),
-            intermediate_products(production_batches(product_id))
+            production_batch_id,
+            intermediate_product_id,
+            batch:production_batches(product_id),
+            intermediate:intermediate_products(batch:production_batches(product_id))
         `)
         .eq("id", sampleId)
         .single();
@@ -999,12 +1144,12 @@ export async function saveAllResultsAction(
     // 2. Fetch ALL relevant specifications for this product upfront
     // Resilient product lookup: check both production_batches and intermediate_products
     let productId = null;
-    const batchData = Array.isArray(sample?.production_batches) ? sample?.production_batches[0] : sample?.production_batches;
+    const batchData = Array.isArray(sample?.batch) ? sample?.batch[0] : sample?.batch;
     productId = batchData?.product_id;
 
-    if (!productId && sample?.intermediate_products) {
-        const ip = Array.isArray(sample.intermediate_products) ? sample.intermediate_products[0] : sample.intermediate_products;
-        const ipBatch = Array.isArray(ip?.production_batches) ? ip.production_batches[0] : ip?.production_batches;
+    if (!productId && sample?.intermediate) {
+        const ip = Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate;
+        const ipBatch = Array.isArray(ip?.batch) ? ip.batch[0] : ip?.batch;
         productId = ipBatch?.product_id;
     }
 
@@ -1085,8 +1230,21 @@ export async function saveAllResultsAction(
                         userId: user.id,
                     });
                     ncCreatedCount++;
+
+                    // BLOCK THE BATCH automatically
+                    const batchId = sample.production_batch_id ||
+                        (sample.intermediate as any)?.production_batch_id;
+
+                    if (batchId) {
+                        await supabase
+                            .from("production_batches")
+                            .update({ status: "blocked" })
+                            .eq("id", batchId)
+                            .eq("organization_id", sample.organization_id)
+                            .eq("plant_id", sample.plant_id);
+                    }
                 } catch (e) {
-                    console.error("Failed to auto-create NC in bulk save:", e);
+                    console.error("Failed to auto-create NC or block batch in bulk save:", e);
                 }
             }
         }

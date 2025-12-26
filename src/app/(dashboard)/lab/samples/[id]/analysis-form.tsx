@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignatureDialog } from "./signature-dialog";
 import { signAndSaveResultsAction } from "@/app/actions/lab";
+import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
 
 // Handle Supabase returning nested relations as arrays
 interface ParameterInfo {
@@ -32,6 +33,7 @@ interface Analysis {
     parameter: ParameterInfo | ParameterInfo[] | null;
     analyst?: { full_name: string } | null;
     final_value?: string | number | null;
+    ai_insight?: { status: 'approved' | 'warning' | 'blocked' | 'info'; message: string; confidence: number } | null;
 }
 
 // Helper to normalize parameter (Supabase may return array or object)
@@ -249,6 +251,7 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Result</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Unit</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Spec</th>
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AI</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Notes</th>
                                     <th className="text-center p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Status</th>
                                 </tr>
@@ -289,6 +292,12 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                                                 <Badge variant="outline" className="text-[10px] bg-slate-900 border-slate-800 text-slate-300 font-mono">
                                                     {formatSpec(param?.id || "")}
                                                 </Badge>
+                                            </td>
+                                            <td className="p-4">
+                                                <RealtimeAIBadge
+                                                    analysisId={analysis.id}
+                                                    initialInsight={analysis.ai_insight || null}
+                                                />
                                             </td>
                                             <td className="p-4">
                                                 <Input
@@ -337,7 +346,7 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                                 className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 px-8 py-6 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                                SIGN & FINALIZE RESULTS
+                                SIGN & FINALIZE RESULTS (AI AUTO-VALIDATION)
                             </Button>
                         </div>
                     )}

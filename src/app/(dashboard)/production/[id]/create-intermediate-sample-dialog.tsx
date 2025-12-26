@@ -28,6 +28,7 @@ import { Loader2, TestTube2 } from "lucide-react";
 import { createSampleAction } from "@/app/actions/lab";
 import { CreateSampleSchema } from "@/schemas/lab";
 import * as z from "zod";
+import { cn } from "@/lib/utils";
 
 // We can extend or modify the schema if needed, but reusing CreateSampleSchema is best if compatible.
 // CreateSampleSchema likely requires 'sample_type_id', 'intermediate_product_id', etc.
@@ -47,10 +48,11 @@ interface SamplingPoint {
 interface CreateIntermediateSampleDialogProps {
     intermediateId: string;
     intermediateCode: string;
-    batchCode: string; // For display/context
-    sampleTypes: SampleType[]; // We will filter for "Intermediate" or let user pick which "Intermediate" type
+    batchCode: string;
+    sampleTypes: SampleType[];
     samplingPoints: SamplingPoint[];
     plantId: string;
+    category?: 'FQ' | 'MICRO'; // New Prop
 }
 
 export function CreateIntermediateSampleDialog({
@@ -60,14 +62,17 @@ export function CreateIntermediateSampleDialog({
     sampleTypes,
     samplingPoints,
     plantId,
+    category,
 }: CreateIntermediateSampleDialogProps) {
     const [open, setOpen] = useState(false);
     const router = useRouter();
 
-    // Find the default "Intermediate Product" type if possible
-    // We assume there's a type named "Intermediate Product" or similar.
-    // For now, we'll select the first one that contains "Intermediate" or just default to empty.
-    const defaultSampleType = sampleTypes.find(st => st.name.includes("Intermediate") || st.name.includes("Tank"))?.id;
+    // Filter sample types based on category if provided
+    const filteredTypes = category
+        ? sampleTypes.filter(st => st.name.toUpperCase().includes(category))
+        : sampleTypes;
+
+    const defaultSampleType = filteredTypes.find(st => st.name.includes("Intermediate") || st.name.includes("Tank"))?.id || filteredTypes[0]?.id;
 
     // We use the same schema but we'll pre-fill values
     const form = useForm<z.infer<typeof CreateSampleSchema>>({
@@ -126,9 +131,17 @@ export function CreateIntermediateSampleDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1">
+                <Button
+                    variant={category === 'FQ' ? 'outline' : category === 'MICRO' ? 'outline' : 'outline'}
+                    size="sm"
+                    className={cn(
+                        "h-8 gap-1.5 font-bold uppercase tracking-widest text-[9px] px-3",
+                        category === 'FQ' && "text-blue-600 border-blue-200 hover:bg-blue-50",
+                        category === 'MICRO' && "text-purple-600 border-purple-200 hover:bg-purple-50",
+                    )}
+                >
                     <TestTube2 className="h-3.5 w-3.5" />
-                    Sample
+                    {category ? `Colher ${category}` : "Colher Amostra"}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -159,11 +172,11 @@ export function CreateIntermediateSampleDialog({
                                         <SearchableSelect
                                             onValueChange={field.onChange}
                                             value={field.value}
-                                            options={sampleTypes.map((type) => ({
+                                            options={filteredTypes.map((type) => ({
                                                 label: type.name,
                                                 value: type.id
                                             }))}
-                                            placeholder="Select type..."
+                                            placeholder={`Selecionar tipo ${category || ""}...`}
                                         />
                                     </FormControl>
                                     <FormMessage />

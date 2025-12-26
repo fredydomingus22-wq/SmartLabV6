@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth";
+import { SAMPLE_TYPE_CATEGORIES } from "@/lib/constants/lab";
 
 /**
  * Get pending samples for analysis queue
@@ -21,7 +22,7 @@ export async function getPendingSamples(options?: {
             status,
             collected_at,
             collected_by,
-            sample_type:sample_types(id, name),
+            type:sample_types(id, name),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
         `)
@@ -46,6 +47,7 @@ export async function getDashboardSamples(options?: {
     status?: string;
     search?: string;
     sampleTypeIds?: string[];
+    labType?: 'FQ' | 'MICRO' | 'all';
     from?: string | Date;
     to?: string | Date;
 }) {
@@ -60,7 +62,7 @@ export async function getDashboardSamples(options?: {
             status,
             collected_at,
             collected_by,
-            sample_type:sample_types(id, name, test_category),
+            type:sample_types(id, name, test_category),
             batch:production_batches(id, code, product:products(name, id)),
             intermediate:intermediate_products(id, code),
             sampling_point:sampling_points(name, id)
@@ -72,8 +74,8 @@ export async function getDashboardSamples(options?: {
     if (options?.status && options.status !== "all") {
         query = query.eq("status", options.status);
     } else if (options?.status !== "all") {
-        // Default filter: Only show samples ready for results (Collected) or in progress (In Analysis)
-        query = query.in("status", ["collected", "in_analysis"]);
+        // Default filter: Show actionable samples (Pending/Collected/In Analysis)
+        query = query.in("status", ["pending", "collected", "in_analysis"]);
     }
 
     if (options?.sampleTypeIds && options.sampleTypeIds.length > 0) {
@@ -100,6 +102,23 @@ export async function getDashboardSamples(options?: {
     const { data, error } = await query;
 
     if (error) throw error;
+
+    // Post-filter by labType if needed
+    if (options?.labType && options.labType !== "all") {
+        return data?.filter(sample => {
+            const typeObj: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
+            const rawCategory = typeObj?.test_category;
+            if (!rawCategory) return false;
+
+            // Map physico_chemical -> FQ and microbiological -> MICRO
+            const category = rawCategory === SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL ? 'FQ' :
+                rawCategory === SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL ? 'MICRO' :
+                    rawCategory.toUpperCase();
+
+            return category === options.labType || rawCategory.toUpperCase() === options.labType;
+        }) || [];
+    }
+
     return data;
 }
 
@@ -120,7 +139,7 @@ export async function getSampleWithResults(sampleId: string) {
             collected_at,
             collected_by,
             notes,
-            sample_type:sample_types(id, name),
+            type:sample_types(id, name),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
         `)
@@ -192,32 +211,28 @@ export async function getSampleWithResults(sampleId: string) {
 
     let specsMap: Record<string, any> = {};
     if (realProductId) {
-        const sampleType: any = Array.isArray(sample.sample_type) ? sample.sample_type[0] : sample.sample_type;
+        const sampleType: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
         const { data: specData } = await supabase
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical")
             .eq("product_id", realProductId)
-            .or(`sample_type_id.eq.${sampleType.id},sample_type_id.is.null`);
+            .eq("sample_type_id", sampleType.id);
 
         specData?.forEach(s => {
-            // Prioritize specific over generic if multiple exist? 
-            // The query returns both. We should pick the most specific one.
-            // For simplicity, just map it.
-            if (!specsMap[s.qa_parameter_id]) {
-                specsMap[s.qa_parameter_id] = s;
-            }
+            specsMap[s.qa_parameter_id] = s;
         });
     }
 
-    // Merge specs into results
-    const resultsWithSpecs = results?.map(r => ({
+    // Filter results to ONLY include parameters that have a specific spec for this sample type
+    // This allows hiding "generic" results if the user restricted the sample type
+    const filteredResults = results?.filter(r => !!specsMap[(r.parameter as any).id])?.map(r => ({
         ...r,
-        spec: specsMap[(r.parameter as any).id] || null
-    }));
+        spec: specsMap[(r.parameter as any).id]
+    })) || [];
 
     return {
         sample,
-        results: resultsWithSpecs
+        results: filteredResults
     };
 }
 
@@ -352,6 +367,7 @@ export async function getLabStats() {
         total: samples?.length || 0,
         today: samplesToday,
         pending: samples?.filter(s => s.status === "pending").length || 0,
+        collected: samples?.filter(s => s.status === "collected").length || 0,
         in_analysis: samples?.filter(s => s.status === "in_analysis").length || 0,
         reviewed: samples?.filter(s => s.status === "reviewed").length || 0,
         approved: samples?.filter(s => s.status === "approved").length || 0,
@@ -483,7 +499,7 @@ export async function getKanbanSamples(options?: { sampleTypeIds?: string[] }) {
             code,
             status,
             collected_at,
-            sample_type:sample_types(id, name),
+            type:sample_types(id, name),
             batch:production_batches(
                 id, 
                 code, 

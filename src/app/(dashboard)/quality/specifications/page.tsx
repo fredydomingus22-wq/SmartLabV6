@@ -15,6 +15,7 @@ import { ProductSelector } from "./product-selector";
 import { SpecDialog } from "./spec-dialog";
 import { CopySpecsDialog } from "./copy-specs-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isFinishedProduct, isIntermediateProduct } from "@/lib/constants/lab";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +194,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                                     <LabTypeTabs
                                         specs={specifications.filter(s =>
                                             !s.sample_type_id ||
-                                            s.sample_type?.code?.startsWith("PA")
+                                            (s.sample_type?.code ? isFinishedProduct(s.sample_type.code) : false)
                                         )}
                                         productId={selectedProductId}
                                         sampleTypes={sampleTypes || []}
@@ -208,7 +209,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                                     <LabTypeTabs
                                         specs={specifications.filter(s =>
                                             s.sample_type_id &&
-                                            s.sample_type?.code?.startsWith("IP")
+                                            (s.sample_type?.code ? isIntermediateProduct(s.sample_type.code) : false)
                                         )}
                                         productId={selectedProductId}
                                         sampleTypes={sampleTypes || []}
@@ -224,8 +225,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                                     {(() => {
                                         const otherSpecsGrouped = specifications.filter(s =>
                                             s.sample_type_id &&
-                                            !s.sample_type?.code?.startsWith("PA") &&
-                                            !s.sample_type?.code?.startsWith("IP")
+                                            (s.sample_type?.code ? (!isFinishedProduct(s.sample_type.code) && !isIntermediateProduct(s.sample_type.code)) : false)
                                         );
                                         if (otherSpecsGrouped.length === 0) {
                                             return (

@@ -2,6 +2,7 @@ import { getGlobalAuditLogs } from "@/app/actions/admin/stats";
 import { PageHeader } from "@/components/smart/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     History,
     User,
@@ -9,8 +10,12 @@ import {
     Terminal,
     Box,
     Clock,
-    Database
+    Database,
+    ChevronLeft,
+    Home,
+    RefreshCw
 } from "lucide-react";
+import Link from "next/link";
 
 export default async function AuditPage() {
     const res = await getGlobalAuditLogs();
@@ -18,6 +23,29 @@ export default async function AuditPage() {
 
     return (
         <div className="space-y-8">
+            {/* Navigation Bar */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" asChild className="hover:bg-slate-900 rounded-full">
+                        <Link href="/saas">
+                            <ChevronLeft className="h-5 w-5" />
+                        </Link>
+                    </Button>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Link href="/saas" className="hover:text-slate-300 transition-colors flex items-center gap-1">
+                            <Home className="h-3 w-3" /> SaaS
+                        </Link>
+                        <span>/</span>
+                        <span className="text-slate-300 font-medium">Audit Trail</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 hover:text-slate-100 hover:bg-slate-800 gap-2">
+                        <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+                    </Button>
+                </div>
+            </div>
+
             <PageHeader
                 title="Rastreabilidade do Sistema"
                 description="Histórico imutável de todas as ações administrativas realizadas na consola global."

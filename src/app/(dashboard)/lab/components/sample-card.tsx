@@ -41,88 +41,68 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
-    const status = statusConfig[sample.status] || { label: sample.status, color: "text-muted-foreground", bg: "bg-muted border-slate-200" };
-
-    // Parse date safely
+    const status = statusConfig[sample.status] || { label: sample.status, color: "text-muted-foreground", bg: "bg-muted" };
     const date = sample.collected_at ? new Date(sample.collected_at) : new Date();
+    const isActionRequired = sample.status === 'collected' || sample.status === 'in_analysis';
 
     return (
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card hover:bg-accent/10 border-border/60">
-            <div className={cn("absolute top-0 left-0 w-1 h-full transition-colors duration-300", status.bg.replace("bg-", "bg-").replace(" border-", " "))} />
-
-            <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2 space-y-2 pl-4 sm:pl-5">
-                <div className="flex justify-between items-start">
-                    <div className="flex gap-3 items-center">
-                        <div className={cn("p-2.5 rounded-xl shadow-sm transition-colors", status.bg)}>
-                            <TestTube2 className={cn("h-5 w-5", status.color)} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-base sm:text-lg leading-none tracking-tight text-card-foreground font-mono">
-                                {sample.code}
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-1.5 font-medium flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                                {sample.type?.name}
-                            </p>
+        <div className="group flex flex-col gap-4 p-4 rounded-xl transition-all duration-200 hover:bg-muted/30 border border-transparent hover:border-border/20">
+            <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-bold text-foreground/90 tracking-tight">
+                            {sample.code}
+                        </span>
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(0,0,0,0.1)]",
+                                status.color.replace("text-", "bg-"))} />
+                            <span className={cn("text-[10px] uppercase font-bold tracking-wider", status.color)}>
+                                {status.label}
+                            </span>
                         </div>
                     </div>
-                    <Badge variant="outline" className={cn("capitalize px-2.5 py-0.5 text-xs font-bold tracking-wide shadow-sm", status.bg, status.color, "border bg-opacity-10 dark:bg-opacity-20")}>
-                        {status.label}
-                    </Badge>
+                    <p className="text-[11px] font-bold text-muted-foreground/80 leading-tight truncate">
+                        {sample.type?.name}
+                    </p>
                 </div>
-            </CardHeader>
+            </div>
 
-            <CardContent className="p-3 pt-2 sm:p-4 sm:pt-3 space-y-3 sm:space-y-4 pl-4 sm:pl-5">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-1.5">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1.5">
-                            <Calendar className="h-3 w-3" /> Recolha
-                        </span>
-                        <p className="font-medium text-foreground text-xs">
-                            {format(date, "dd MMM, HH:mm", { locale: pt })}
-                        </p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3" /> Origem
-                        </span>
-                        <p className="font-medium text-foreground text-xs truncate" title={sample.batch?.code || sample.sampling_point?.name}>
-                            {sample.batch?.code || sample.sampling_point?.name || "N/A"}
-                        </p>
-                    </div>
+            <div className="space-y-2">
+                <div className="flex justify-between items-center text-[11px] font-medium">
+                    <span className="text-muted-foreground/60">{format(date, "dd MMM, HH:mm", { locale: pt })}</span>
+                    <span className="font-bold text-foreground/70">{sample.batch?.code || sample.sampling_point?.name || "—"}</span>
                 </div>
 
                 {sample.batch?.product && (
-                    <div className="pt-3 border-t border-border">
-                        <div className="flex items-center gap-2">
-                            <Beaker className="h-3.5 w-3.5 text-muted-foreground" />
-                            <p className="text-xs font-medium text-foreground/80 line-clamp-1" title={sample.batch.product.name}>
-                                {sample.batch.product.name}
-                            </p>
-                        </div>
-                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-tight text-primary/50 truncate border-t border-border/10 pt-2">
+                        {sample.batch.product.name}
+                    </p>
                 )}
-            </CardContent>
+            </div>
 
-            <CardFooter className="p-3 pt-1 sm:p-4 sm:pt-1 flex justify-between gap-3 bg-muted/20">
-                <Button variant="outline" size="sm" asChild className="h-8 text-xs font-medium bg-background hover:bg-muted text-foreground border-border">
+            <div className="flex gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="link" size="sm" asChild className="h-7 px-0 text-[10px] font-bold text-muted-foreground hover:text-foreground">
                     <a href={`/lab/samples/${sample.id}`}>Detalhes</a>
                 </Button>
-                <Button
-                    onClick={() => onEnterResults(sample.id)}
-                    disabled={sample.status === 'approved' || sample.status === 'validated'}
-                    size="sm"
-                    className={cn(
-                        "h-8 text-xs font-bold transition-all shadow-sm",
-                        (sample.status === 'collected' || sample.status === 'in_analysis')
-                            ? "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-500"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    )}
-                >
-                    {status.label === 'Colhida' ? 'Registar' : 'Resultados'}
-                </Button>
-            </CardFooter>
-        </Card >
+                <div className="ml-auto flex gap-2">
+                    <Button
+                        onClick={() => onEnterResults(sample.id)}
+                        disabled={!isActionRequired}
+                        size="sm"
+                        variant={isActionRequired ? "default" : "ghost"}
+                        className={cn(
+                            "h-7 px-3 text-[10px] font-bold transition-all rounded-md",
+                            isActionRequired
+                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-none"
+                                : "text-muted-foreground/40"
+                        )}
+                    >
+                        {sample.status === 'collected' ? 'Registar' : 'Resultados'}
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
+
+

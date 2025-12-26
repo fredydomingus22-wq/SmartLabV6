@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/smart/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Building, Building2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Check, Zap, Building, Building2, ShieldCheck, ChevronLeft, Home } from "lucide-react";
+import Link from "next/link";
 
 export default function PlansPage() {
     const plans = [
@@ -42,6 +44,29 @@ export default function PlansPage() {
 
     return (
         <div className="space-y-8 pb-10">
+            {/* Navigation Bar */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" asChild className="hover:bg-slate-900 rounded-full">
+                        <Link href="/saas">
+                            <ChevronLeft className="h-5 w-5" />
+                        </Link>
+                    </Button>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Link href="/saas" className="hover:text-slate-300 transition-colors flex items-center gap-1">
+                            <Home className="h-3 w-3" /> SaaS
+                        </Link>
+                        <span>/</span>
+                        <span className="text-slate-300 font-medium">Planos</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild className="border-slate-700 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                        <Link href="/saas/billing">Ver Faturação</Link>
+                    </Button>
+                </div>
+            </div>
+
             <PageHeader
                 title="Gestão de Planos & Tiers"
                 description="Configuração de quotas e limites para as organizações do ecossistema."

@@ -1,14 +1,17 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { IngredientDialog } from "./ingredient-dialog";
-import { ChevronDown, ChevronRight, Package, CheckCircle2, ArchiveX } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { approveIntermediateAction, updateIntermediateStatusAction } from "@/app/actions/production";
-
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+    CheckCircle2, ArchiveX, Droplet,
+    FlaskConical, Pipette, Info
+} from "lucide-react";
+import { IngredientDialog } from "./ingredient-dialog";
 import { CreateIntermediateSampleDialog } from "./create-intermediate-sample-dialog";
+import { approveIntermediateAction, updateIntermediateStatusAction } from "@/app/actions/production";
 
 interface Ingredient {
     id: string;
@@ -47,156 +50,135 @@ export function IntermediatesTable({ intermediates, sampleTypes, samplingPoints,
 
     const toggleRow = (id: string) => {
         const newSet = new Set(expandedRows);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-        }
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
         setExpandedRows(newSet);
     };
 
-    const statusColor: Record<string, string> = {
-        pending: "bg-yellow-100 text-yellow-800",
-        approved: "bg-green-100 text-green-800",
-        rejected: "bg-red-100 text-red-800",
-        in_use: "bg-blue-100 text-blue-800",
-        consumed: "bg-gray-100 text-gray-800 line-through",
+    const statusColors: Record<string, string> = {
+        pending: "bg-amber-500/10 text-amber-700 border-none",
+        approved: "bg-emerald-500/10 text-emerald-700 border-none",
+        rejected: "bg-rose-500/10 text-rose-700 border-none",
+        in_use: "bg-blue-500/10 text-blue-700 border-none",
+        consumed: "bg-muted text-muted-foreground/50 border-none",
     };
 
     return (
-        <div className="space-y-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {intermediates.map((intermediate) => {
                 const isExpanded = expandedRows.has(intermediate.id);
                 const ingredients = intermediate.ingredients || [];
 
                 return (
-                    <div key={intermediate.id} className="border rounded-lg overflow-hidden">
-                        {/* Main Row */}
-                        <div
-                            className="flex items-center justify-between p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => toggleRow(intermediate.id)}
-                        >
-                            <div className="flex items-center gap-3">
-                                {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <Package className="h-5 w-5 text-primary" />
-                                <div>
-                                    <span className="font-medium">{intermediate.code}</span>
-                                    {intermediate.volume && (
-                                        <span className="text-muted-foreground ml-2">
-                                            ({intermediate.volume} {intermediate.unit})
+                    <div key={intermediate.id} className="glass rounded-2xl border-none shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-5 flex-1 space-y-4">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-bold tracking-tight">{intermediate.code}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <Badge className={cn("text-[8px] font-bold uppercase tracking-widest px-2 h-4", statusColors[intermediate.status] || "bg-muted")}>
+                                            {intermediate.status === 'in_use' ? 'EM USO' : intermediate.status.toUpperCase()}
+                                        </Badge>
+                                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                                            {intermediate.volume} {intermediate.unit}
                                         </span>
-                                    )}
+                                    </div>
+                                </div>
+                                <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center">
+                                    <Droplet className="h-5 w-5 text-primary/40" />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                {/* Sample Button */}
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <CreateIntermediateSampleDialog
-                                        intermediateId={intermediate.id}
-                                        intermediateCode={intermediate.code}
-                                        batchCode={batchCode}
-                                        sampleTypes={sampleTypes}
-                                        samplingPoints={samplingPoints}
-                                        plantId={plantId}
-                                    />
-                                </div>
 
+                            {/* Guided Sample Buttons */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <CreateIntermediateSampleDialog
+                                    intermediateId={intermediate.id}
+                                    intermediateCode={intermediate.code}
+                                    batchCode={batchCode}
+                                    sampleTypes={sampleTypes}
+                                    samplingPoints={samplingPoints}
+                                    plantId={plantId}
+                                    category="FQ"
+                                />
+                                <CreateIntermediateSampleDialog
+                                    intermediateId={intermediate.id}
+                                    intermediateCode={intermediate.code}
+                                    batchCode={batchCode}
+                                    sampleTypes={sampleTypes}
+                                    samplingPoints={samplingPoints}
+                                    plantId={plantId}
+                                    category="MICRO"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="px-5 py-3 bg-muted/20 border-t border-border/5 flex items-center justify-between">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[10px] font-bold uppercase tracking-widest h-7 px-2 text-muted-foreground hover:text-primary transition-none"
+                                onClick={() => toggleRow(intermediate.id)}
+                            >
+                                <Info className="h-3 w-3 mr-1.5 opacity-50" />
+                                {isExpanded ? 'Ocultar' : `${ingredients.length} Matérias`}
+                            </Button>
+
+                            <div className="flex items-center gap-1">
                                 {intermediate.status === "pending" && (
-                                    <form
-                                        action={async (formData) => {
-                                            const result = await approveIntermediateAction(formData);
-                                            if (result.success) {
-                                                toast.success(result.message);
-                                            } else {
-                                                toast.error(result.message);
-                                            }
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <form action={async (formData) => {
+                                        const result = await approveIntermediateAction(formData);
+                                        if (result.success) toast.success(result.message);
+                                        else toast.error(result.message);
+                                    }}>
                                         <input type="hidden" name="intermediate_id" value={intermediate.id} />
-                                        <Button size="sm" variant="outline" className="h-7 text-green-600 border-green-200 hover:bg-green-50">
-                                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                                            Approve
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50">
+                                            <CheckCircle2 className="h-4 w-4" />
                                         </Button>
                                     </form>
                                 )}
                                 {intermediate.status === "in_use" && (
-                                    <form
-                                        action={async (formData) => {
-                                            const result = await updateIntermediateStatusAction(formData);
-                                            if (result.success) {
-                                                toast.success(result.message);
-                                            } else {
-                                                toast.error(result.message);
-                                            }
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <form action={async (formData) => {
+                                        const result = await updateIntermediateStatusAction(formData);
+                                        if (result.success) toast.success(result.message);
+                                        else toast.error(result.message);
+                                    }}>
                                         <input type="hidden" name="intermediate_id" value={intermediate.id} />
                                         <input type="hidden" name="status" value="consumed" />
-                                        <Button size="sm" variant="outline" className="h-7 text-gray-600 border-gray-200 hover:bg-gray-50">
-                                            <ArchiveX className="mr-1 h-3 w-3" />
-                                            Finalize
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-600">
+                                            <ArchiveX className="h-4 w-4" />
                                         </Button>
                                     </form>
                                 )}
-                                <Badge className={statusColor[intermediate.status] || "bg-gray-100"}>
-                                    {intermediate.status}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                    {ingredients.length} ingredients
-                                </span>
-                            </div>                        </div>
+                            </div>
+                        </div>
 
-                        {/* Expanded Content - Ingredients */}
+                        {/* Expanded Ingredients List */}
                         {isExpanded && (
-                            <div className="p-4 bg-background border-t">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h4 className="font-medium text-sm">Ingredients / Raw Materials</h4>
-                                    <IngredientDialog
-                                        intermediateId={intermediate.id}
-                                        intermediateName={intermediate.code}
-                                    />
+                            <div className="p-5 bg-background/50 border-t border-border/5 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Composição do Tanque</span>
+                                    <IngredientDialog intermediateId={intermediate.id} intermediateName={intermediate.code} />
                                 </div>
-
                                 {ingredients.length > 0 ? (
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="text-left text-muted-foreground border-b">
-                                                <th className="pb-2">Lot Code</th>
-                                                <th className="pb-2">Raw Material</th>
-                                                <th className="pb-2">Quantity</th>
-                                                <th className="pb-2">Unit</th>
-                                                <th className="pb-2">Added</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {ingredients.map((ing) => {
-                                                const lot = ing.lot;
-                                                const material = lot?.raw_material;
-                                                const materialName = Array.isArray(material) ? material[0]?.name : material?.name;
-                                                return (
-                                                    <tr key={ing.id} className="border-b last:border-0">
-                                                        <td className="py-2 font-mono">{lot?.lot_code || ing.raw_material_lot_code}</td>
-                                                        <td className="py-2">{materialName || "-"}</td>
-                                                        <td className="py-2">{ing.quantity}</td>
-                                                        <td className="py-2">{ing.unit}</td>
-                                                        <td className="py-2 text-muted-foreground">
-                                                            {new Date(ing.added_at).toLocaleDateString()}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                    <div className="space-y-2">
+                                        {ingredients.map((ing) => {
+                                            const lot = ing.lot;
+                                            const material = lot?.raw_material;
+                                            const materialName = Array.isArray(material) ? material[0]?.name : material?.name;
+                                            return (
+                                                <div key={ing.id} className="flex items-center justify-between text-[10px] py-1 border-b border-border/10 last:border-0 pb-1">
+                                                    <div className="flex flex-col max-w-[70%]">
+                                                        <span className="font-bold truncate">{materialName || "-"}</span>
+                                                        <span className="text-[8px] font-mono text-muted-foreground">{lot?.lot_code || ing.raw_material_lot_code}</span>
+                                                    </div>
+                                                    <span className="font-bold text-primary/80">{ing.quantity} {ing.unit}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                        No ingredients added yet.
-                                    </p>
+                                    <p className="text-[9px] text-muted-foreground uppercase text-center py-2 opacity-30">Sem matérias registadas</p>
                                 )}
                             </div>
                         )}
