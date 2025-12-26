@@ -63,6 +63,24 @@ export async function revalidateAI(analysisId: string): Promise<AIValidationActi
 }
 
 /**
+ * Bridge function for UI compatibility. Triggers the Edge Function validation.
+ */
+export async function validateAnalysisWithAI(
+    analysisId: string,
+    _paramName: string,
+    _value: number,
+    _unit: string,
+    _specMin: number | null,
+    _specMax: number | null,
+    _productName?: string
+): Promise<AIValidationActionState> {
+    // We delegate to revalidateAI since it already handles the Edge Function call correctly
+    // and the Edge Function is designed to fetch all necessary context from the database
+    // ensuring consistency even if the UI state is slightly out of sync.
+    return revalidateAI(analysisId);
+}
+
+/**
  * Gets the AI validation insight for a specific analysis.
  */
 export async function getAnalysisAIInsight(analysisId: string) {
