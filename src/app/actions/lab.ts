@@ -399,7 +399,7 @@ export async function registerResultAction(formData: FormData) {
             production_batch_id,
             intermediate_product_id,
             batch:production_batches(product_id), 
-            intermediate:intermediate_products(batch:production_batches(product_id))
+            intermediate:intermediate_products(production_batch_id, batch:production_batches(product_id))
         `)
         .eq("id", validation.data.sample_id)
         .single();
@@ -499,8 +499,8 @@ export async function registerResultAction(formData: FormData) {
             ncNumber = ncResult.ncNumber || "";
 
             // BLOCK THE BATCH
-            const batchId = sampleContext.production_batch_id ||
-                (sampleContext.intermediate_products as any)?.production_batch_id;
+            const ipData = Array.isArray(sampleContext.intermediate) ? sampleContext.intermediate[0] : sampleContext.intermediate;
+            const batchId = sampleContext.production_batch_id || ipData?.production_batch_id;
 
             if (batchId) {
                 const { error: blockError } = await supabase
