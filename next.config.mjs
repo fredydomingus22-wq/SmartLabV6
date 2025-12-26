@@ -4,6 +4,7 @@ const nextConfig = {
         config.resolve.alias["supabase/functions"] = false;
         return config;
     },
+    turbopack: {},
 };
 
 export default nextConfig;
