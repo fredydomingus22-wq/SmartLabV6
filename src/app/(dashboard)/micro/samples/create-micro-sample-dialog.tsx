@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -50,11 +50,23 @@ interface CreateMicroSampleDialogProps {
 }
 
 export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, plantId }: CreateMicroSampleDialogProps) {
+    const searchParams = useSearchParams();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedTank, setSelectedTank] = useState<string>("");
     const [selectedSamplingPoint, setSelectedSamplingPoint] = useState<string>("");
     const router = useRouter();
+
+    // Auto-open if create=true is in URL
+    useEffect(() => {
+        if (searchParams.get("create") === "true") {
+            setOpen(true);
+            // Clear parameter after opening to prevent re-opening loops
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("create");
+            router.replace(`/micro/samples?${params.toString()}`, { scroll: false });
+        }
+    }, [searchParams, router]);
 
     // Filter only microbiological sample types
     const microSampleTypes = sampleTypes.filter(t =>

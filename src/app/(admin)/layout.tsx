@@ -1,6 +1,6 @@
 import { AdminSidebar } from "@/components/smart/admin-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
@@ -35,3 +35,4 @@ export default async function AdminLayout({
         </div>
     );
 }
+

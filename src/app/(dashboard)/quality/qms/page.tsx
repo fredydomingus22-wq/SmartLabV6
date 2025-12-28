@@ -1,27 +1,36 @@
-import { getNonconformities, getQMSKpis } from "@/lib/queries/qms";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, AlertCircle, Clock, CheckCircle, FileWarning } from "lucide-react";
-import Link from "next/link";
+import { getNonconformities, getQMSKpis, getOrganizationUsers } from "@/lib/queries/qms";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileWarning, LayoutDashboard, ListFilter, Target, Zap } from "lucide-react";
 import { NCListClient } from "./nc-list-client";
 import { CreateNCDialog } from "./create-nc-dialog";
 import { NCFilters } from "./nc-filters";
 import { Suspense } from "react";
+import { QMSDashboard } from "./qms-dashboard";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    searchParams: Promise<{ status?: string; severity?: string; type?: string }>;
+    searchParams: Promise<{ status?: string; severity?: string; type?: string; tab?: string }>;
 }
 
 export default async function QMSPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const kpis = await getQMSKpis();
+    const { data: users } = await getOrganizationUsers();
+
+    // Fetch nonconformities for the list
     const { data: nonconformities } = await getNonconformities({
         status: params.status,
         severity: params.severity,
         ncType: params.type,
     });
+
+    // Recent NCs for the dashboard (top 5)
+    const recentNCs = nonconformities.slice(0, 5);
+
+    const defaultTab = params.tab || "dashboard";
 
     return (
         <div className="space-y-8">
@@ -29,99 +38,97 @@ export default async function QMSPage({ searchParams }: PageProps) {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileWarning className="h-8 w-8 text-primary" />
+                        <FileWarning className="h-8 w-8 text-indigo-500" />
                         Gestão da Qualidade (QMS)
                     </h1>
                     <p className="text-muted-foreground">
                         Não Conformidades (NC), CAPA e Relatórios 8D
                     </p>
                 </div>
-                <CreateNCDialog />
+                <CreateNCDialog users={users || []} />
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <Card className="glass">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">NCs Abertas</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpis.openNCs}</div>
-                        <p className="text-xs text-muted-foreground">
-                            A requerer atenção
+            <Tabs defaultValue={defaultTab} className="space-y-6">
+                <TabsList className="glass border-slate-800 p-1">
+                    <TabsTrigger value="dashboard" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger value="nc" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 gap-2">
+                        <ListFilter className="h-4 w-4" />
+                        Desvios (NC)
+                    </TabsTrigger>
+                    <TabsTrigger value="capa" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 gap-2">
+                        <Target className="h-4 w-4" />
+                        Ações CAPA
+                    </TabsTrigger>
+                    <TabsTrigger value="8d" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400 gap-2">
+                        <Zap className="h-4 w-4" />
+                        Relatórios 8D
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="dashboard" className="animate-in fade-in duration-500 border-none p-0 outline-none">
+                    <QMSDashboard kpis={kpis} recentNCs={recentNCs} />
+                </TabsContent>
+
+                <TabsContent value="nc" className="space-y-6 animate-in fade-in duration-500 border-none p-0 outline-none">
+                    {/* Filters */}
+                    <Suspense fallback={<div className="h-16 bg-muted/30 rounded-lg animate-pulse" />}>
+                        <NCFilters />
+                    </Suspense>
+
+                    {/* Nonconformities List */}
+                    <div className="glass border-none shadow-xl rounded-2xl overflow-hidden">
+                        <div className="p-6 border-b border-border/50 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold">Lista de Não Conformidades</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {nonconformities.length} resultado(s) detetados
+                                    {(params.status || params.severity || params.type) && " (filtrado)"}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-0">
+                            <NCListClient nonconformities={nonconformities} />
+                        </div>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="capa" className="animate-in fade-in duration-500 border-none p-0 outline-none">
+                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
+                        <div className="h-20 w-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
+                            <Target className="h-10 w-10 text-emerald-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold">Módulo de CAPA</h2>
+                        <p className="text-muted-foreground max-w-md mx-auto">
+                            Gira as suas Ações Corretivas e Preventivas de forma centralizada.
                         </p>
-                    </CardContent>
-                </Card>
+                        <Link href="/quality/qms/capa">
+                            <Button className="bg-emerald-600 hover:bg-emerald-500 mt-4">
+                                Abrir Gestão de CAPA
+                            </Button>
+                        </Link>
+                    </div>
+                </TabsContent>
 
-                <Card className="glass border-red-500/30">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Atrasadas</CardTitle>
-                        <Clock className="h-4 w-4 text-red-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-500">{kpis.overdueNCs}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Data limite ultrapassada
+                <TabsContent value="8d" className="animate-in fade-in duration-500 border-none p-0 outline-none">
+                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
+                        <div className="h-20 w-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
+                            <Zap className="h-10 w-10 text-amber-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold">Relatórios 8D</h2>
+                        <p className="text-muted-foreground max-w-md mx-auto">
+                            Metodologia 8D para resolução de problemas complexos e análise de causa raiz.
                         </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass border-yellow-500/30">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Críticas</CardTitle>
-                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-500">{kpis.criticalNCs}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Alta gravidade ativas
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">CAPAs Abertas</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpis.openCAPAs}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Ações pendentes
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex gap-2">
-                <Link href="/quality/qms/capa">
-                    <Button variant="outline">Ver Todas as CAPAs</Button>
-                </Link>
-                <Link href="/quality/qms/8d">
-                    <Button variant="outline">Relatórios 8D</Button>
-                </Link>
-            </div>
-
-            {/* Filters */}
-            <Suspense fallback={<div className="h-16 bg-muted/30 rounded-lg animate-pulse" />}>
-                <NCFilters />
-            </Suspense>
-
-            {/* Nonconformities List */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Não Conformidades</CardTitle>
-                    <CardDescription>
-                        {nonconformities.length} resultado(s)
-                        {(params.status || params.severity || params.type) && " (filtrado)"}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <NCListClient nonconformities={nonconformities} />
-                </CardContent>
-            </Card>
+                        <Link href="/quality/qms/8d">
+                            <Button className="bg-amber-600 hover:bg-amber-500 mt-4">
+                                Abrir Relatórios 8D
+                            </Button>
+                        </Link>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

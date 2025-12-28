@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -304,5 +304,54 @@ export async function evaluateTrainingAction(formData: FormData) {
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Bulk Attendance Logging Action
+ */
+export async function bulkLogAttendanceAction(entries: { employee_id: string; status: 'present' | 'late' | 'absent'; notes?: string }[]) {
+    try {
+        const user = await getSafeUser();
+        const supabase = await createClient();
+
+        const dataToInsert = entries.map(entry => ({
+            ...entry,
+            organization_id: user.organization_id,
+            plant_id: user.plant_id,
+            check_in: new Date().toISOString(),
+        }));
+
+        const { error } = await supabase
+            .from("attendance_logs")
+            .insert(dataToInsert);
+
+        if (error) throw error;
+
+        revalidatePath("/(dashboard)/quality/training", "layout");
+        return { success: true, message: `${entries.length} registos de assiduidade guardados.` };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Deactivate Employee Action
+ */
+export async function deactivateEmployeeAction(employeeId: string) {
+    try {
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from("employees")
+            .update({ status: 'inactive' })
+            .eq("id", employeeId);
+
+        if (error) throw error;
+
+        revalidatePath("/(dashboard)/quality/training", "layout");
+        return { success: true, message: "Funcionário desativado com sucesso." };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
 
 

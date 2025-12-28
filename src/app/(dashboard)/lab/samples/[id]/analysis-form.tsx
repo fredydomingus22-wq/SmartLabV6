@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SignatureDialog } from "./signature-dialog";
 import { signAndSaveResultsAction } from "@/app/actions/lab";
 import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
+import { LabInstrumentSelect } from "@/components/lab/lab-instrument-select";
 
 // Handle Supabase returning nested relations as arrays
 interface ParameterInfo {
@@ -29,7 +30,8 @@ interface Analysis {
     notes: string | null;
     analyzed_by: string | null;
     analyzed_at: string | null;
-    qa_parameter_id: string;
+    analysis_method: string | null;
+    equipment_id: string | null;
     parameter: ParameterInfo | ParameterInfo[] | null;
     analyst?: { full_name: string } | null;
     final_value?: string | number | null;
@@ -46,6 +48,7 @@ interface Spec {
     min_value?: number;
     max_value?: number;
     target_value?: number;
+    haccp?: { is_pcc?: boolean; category?: string };
 }
 
 interface AnalysisFormProps {
@@ -67,6 +70,13 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
             } else if (a.value_text !== null && a.value_text !== undefined) {
                 initial[a.id] = a.value_text;
             }
+        });
+        return initial;
+    });
+    const [equipmentIds, setEquipmentIds] = useState<Record<string, string>>(() => {
+        const initial: Record<string, string> = {};
+        analyses.forEach(a => {
+            if (a.equipment_id) initial[a.id] = a.equipment_id;
         });
         return initial;
     });
@@ -110,6 +120,10 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
         setResults(prev => ({ ...prev, [analysisId]: filtered }));
     };
 
+    const handleEquipmentChange = (analysisId: string, value: string) => {
+        setEquipmentIds(prev => ({ ...prev, [analysisId]: value }));
+    };
+
     const handleNoteChange = (analysisId: string, value: string) => {
         setNotes(prev => ({ ...prev, [analysisId]: value }));
     };
@@ -128,6 +142,18 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
             return;
         }
 
+        // Enforce Equipment Selection for provided results
+        const missingEquipment = analyses.some(a => {
+            const val = results[a.id] || "";
+            const eqId = equipmentIds[a.id];
+            return val !== "" && !eqId;
+        });
+
+        if (missingEquipment) {
+            toast.error("Obrigatório: Selecione o instrumento utilizado para todos os resultados preenchidos.");
+            return;
+        }
+
         setSignatureOpen(true);
     };
 
@@ -137,7 +163,8 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
         const resultsArray = Object.entries(results).map(([analysisId, value]) => ({
             analysisId,
             value: value.trim() === "" ? null : value,
-            notes: notes[analysisId] || undefined
+            notes: notes[analysisId] || undefined,
+            equipmentId: equipmentIds[analysisId] || undefined
         }));
 
         const result = await signAndSaveResultsAction(sampleId, resultsArray, password);
@@ -250,6 +277,7 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Parameter</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Result</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Unit</th>
+                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Instrumento</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Spec</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AI</th>
                                     <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Notes</th>
@@ -289,9 +317,30 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                                                 {param?.unit || "-"}
                                             </td>
                                             <td className="p-4">
+                                                <LabInstrumentSelect
+                                                    value={equipmentIds[analysis.id]}
+                                                    onValueChange={(val) => handleEquipmentChange(analysis.id, val)}
+                                                    disabled={isValidated}
+                                                    error={(results[analysis.id] || "") !== "" && !equipmentIds[analysis.id]}
+                                                />
+                                            </td>
+                                            <td className="p-4">
                                                 <Badge variant="outline" className="text-[10px] bg-slate-900 border-slate-800 text-slate-300 font-mono">
                                                     {formatSpec(param?.id || "")}
                                                 </Badge>
+                                                {specs[param?.id || ""]?.haccp && (
+                                                    <div className="mt-1">
+                                                        {specs[param?.id || ""]?.haccp?.is_pcc ? (
+                                                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px] px-1 py-0 hover:bg-red-500/30">
+                                                                CCP
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[9px] px-1 py-0 hover:bg-blue-500/30">
+                                                                OPRP
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="p-4">
                                                 <RealtimeAIBadge

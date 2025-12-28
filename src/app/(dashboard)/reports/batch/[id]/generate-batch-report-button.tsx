@@ -1,9 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
-import { useTransition } from "react";
-import { generateBatchReportAction } from "@/app/actions/reports";
+import { Download, Loader2, Printer, FileText } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface GenerateBatchReportButtonProps {
@@ -12,31 +11,49 @@ interface GenerateBatchReportButtonProps {
 }
 
 export function GenerateBatchReportButton({ batchId, batchNumber }: GenerateBatchReportButtonProps) {
-    const [isPending, startTransition] = useTransition();
+    const [generating, setGenerating] = useState(false);
 
-    const handleGenerate = () => {
-        startTransition(async () => {
-            const formData = new FormData();
-            formData.set("batch_id", batchId);
+    const handleGenerate = async () => {
+        setGenerating(true);
+        try {
+            const response = await fetch("/api/reports/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    reportType: "batch_record",
+                    params: { batchId }
+                })
+            });
 
-            const result = await generateBatchReportAction(formData);
+            const data = await response.json();
 
-            if (result.success) {
-                toast.success(result.message);
-            } else {
-                toast.error(result.message);
-            }
-        });
+            if (!response.ok) throw new Error(data.error || "Failed to generate report");
+
+            // Handle Download
+            const link = document.createElement('a');
+            link.href = `data:application/pdf;base64,${data.pdf}`;
+            link.download = data.filename || `BMR_${batchNumber}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast.success("Batch Record gerado com sucesso!");
+        } catch (error: any) {
+            console.error("Report generation error:", error);
+            toast.error("Erro ao gerar PDF: " + error.message);
+        } finally {
+            setGenerating(false);
+        }
     };
 
     return (
-        <Button onClick={handleGenerate} disabled={isPending}>
-            {isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        <Button onClick={handleGenerate} disabled={generating} className="gap-2">
+            {generating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-                <Download className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
             )}
-            Generate Report
+            Download BMR (PDF)
         </Button>
     );
 }

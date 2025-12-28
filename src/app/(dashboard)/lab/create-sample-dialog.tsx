@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,12 +61,15 @@ interface CreateSampleDialogProps {
     tanks: Tank[];
     samplingPoints: SamplingPoint[];
     plantId: string;
+    users: { id: string, full_name: string | null, role: string }[];
 }
 
-export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId }: CreateSampleDialogProps) {
-    const [open, setOpen] = useState(false);
+export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId, users }: CreateSampleDialogProps) {
+    const searchParams = useSearchParams();
     const router = useRouter();
+    const [open, setOpen] = useState(false);
 
+    // Initialize form
     const form = useForm<CreateSampleFormValues>({
         resolver: zodResolver(CreateSampleSchema),
         defaultValues: {
@@ -75,6 +78,17 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
             collected_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         },
     });
+
+    // Auto-open if create=true is in URL
+    useEffect(() => {
+        if (searchParams.get("create") === "true") {
+            setOpen(true);
+            // Clear parameter after opening to prevent re-opening loops
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("create");
+            router.replace(`/lab?${params.toString()}`, { scroll: false });
+        }
+    }, [searchParams, router]);
 
     const isSubmitting = form.formState.isSubmitting;
     const selectedTankId = form.watch("intermediate_product_id");
@@ -107,6 +121,7 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
         formData.append("sample_type_id", data.sample_type_id);
         if (data.collected_at) formData.append("collected_at", data.collected_at);
         if (data.plant_id) formData.append("plant_id", data.plant_id);
+        if (data.assignee_id) formData.append("assignee_id", data.assignee_id);
 
         // For Product Samples (PA/IP), Tank/Batch is mandatory
         if (isProductSample) {
@@ -254,6 +269,30 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
                                 )}
                             />
                         )}
+
+                        {/* Technician/Analyst Assignment */}
+                        <FormField
+                            control={form.control}
+                            name="assignee_id"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Técnico / Analista Responsável</FormLabel>
+                                    <SearchableSelect
+                                        options={users.map(u => ({
+                                            value: u.id,
+                                            label: `${u.full_name || 'Sem Nome'} (${u.role})`
+                                        }))}
+                                        placeholder="Selecionar técnico..."
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                    />
+                                    <p className="text-[10px] text-slate-500 italic">
+                                        Ao selecionar um responsável, uma tarefa de análise será criada automaticamente no seu Dashboard.
+                                    </p>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         {/* Collected At */}
                         <FormField

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Forward Trace: Get all production batches that used a specific raw material lot
@@ -232,3 +232,4 @@ export async function searchTraceableEntities(query: string, entityType: "lot" |
         }));
     }
 }
+

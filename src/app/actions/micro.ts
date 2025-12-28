@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { z } from "zod";
 import { SAMPLE_TYPE_CATEGORIES, isMicroCategory } from "@/lib/constants/lab";
+import { requirePermission } from "@/lib/permissions.server";
 
 // --- Schemas ---
 
@@ -54,19 +55,8 @@ const CreateMicroSampleSchema = z.object({
  * Redirects user to incubators page after creation
  */
 export async function createMicroSampleAction(formData: FormData) {
+    const userData = await requirePermission('micro', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const { data: userData } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id")
-        .eq("id", user.id)
-        .single();
-
-    if (!userData?.organization_id) {
-        return { success: false, message: "User profile not found" };
-    }
 
     const rawData = {
         code: formData.get("code") || undefined,
@@ -164,7 +154,7 @@ export async function createMicroSampleAction(formData: FormData) {
             sampling_point_id: validation.data.sampling_point_id || null,
             code: finalCode || `AMS-MICRO-${format(new Date(), "yyyyMMdd-HHmm")}`,
             collected_at: collectedAt,
-            collected_by: user.id,
+            collected_by: userData.id,
             status: "pending",
         })
         .select("id")
@@ -211,6 +201,7 @@ export async function createMicroSampleAction(formData: FormData) {
 }
 
 export async function createMediaLotAction(formData: FormData) {
+    const userData = await requirePermission('micro', 'write');
     const supabase = await createClient();
 
     const rawData = {
@@ -226,19 +217,9 @@ export async function createMediaLotAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    // Get Org ID (helper or session)
-    // Assuming the user is logged in, we fetch their org_id from public.users or similar if needed,
-    // but for now we rely on RLS/Auth or just pass it if we have context.
-    // Wait, our tables insert usually requires org_id.
-    // Let's fetch it from metadata or helper query.
-    const { data: userData } = await supabase.from('user_profiles').select('organization_id').eq('id', user.id).single();
-
     const payload = {
         ...validation.data,
-        organization_id: userData?.organization_id,
+        organization_id: userData.organization_id,
         quantity_initial: validation.data.quantity,
         quantity_current: validation.data.quantity,
     };
@@ -254,9 +235,8 @@ export async function createMediaLotAction(formData: FormData) {
 }
 
 export async function createIncubatorAction(formData: FormData) {
+    const userData = await requirePermission('micro', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const rawData = {
         name: formData.get("name"),
@@ -268,12 +248,10 @@ export async function createIncubatorAction(formData: FormData) {
     const validation = RegisterIncubatorSchema.safeParse(rawData);
     if (!validation.success) return { success: false, message: validation.error.issues[0].message };
 
-    const { data: userData } = await supabase.from('user_profiles').select('organization_id').eq('id', user.id).single();
-
     const { error } = await supabase.from("micro_incubators").insert({
         name: validation.data.name,
         plant_id: validation.data.plant_id,
-        organization_id: userData?.organization_id,
+        organization_id: userData.organization_id,
         setpoint_temp_c: validation.data.temperature,
         capacity_plates: validation.data.capacity,
     });
@@ -285,6 +263,7 @@ export async function createIncubatorAction(formData: FormData) {
 }
 
 export async function startIncubationAction(formData: FormData) {
+    const userData = await requirePermission('micro', 'write');
     const supabase = await createClient();
 
     const rawData = {
@@ -296,17 +275,6 @@ export async function startIncubationAction(formData: FormData) {
     if (!rawData.incubator_id || !rawData.sample_id || !rawData.media_lot_id) {
         return { success: false, message: "Missing required fields" };
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    // 1. Get User Org/Plant
-    const { data: userData } = await supabase
-        .from('user_profiles')
-        .select('organization_id, plant_id')
-        .eq('id', user.id)
-        .single();
-    if (!userData) return { success: false, message: "User profile not found" };
 
     // 2. Get sample and its linked product (via batch)
     const { data: sample } = await supabase
@@ -386,7 +354,7 @@ export async function startIncubationAction(formData: FormData) {
             organization_id: userData.organization_id,
             plant_id: userData.plant_id,
             incubator_id: rawData.incubator_id,
-            started_by: user.id,
+            started_by: userData.id,
             status: "incubating"
         })
         .select()
@@ -425,9 +393,8 @@ export async function startIncubationAction(formData: FormData) {
 }
 
 export async function registerMicroResultAction(formData: FormData) {
+    const userData = await requirePermission('micro', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const rawData = {
         result_id: formData.get("result_id"),
@@ -455,16 +422,10 @@ export async function registerMicroResultAction(formData: FormData) {
         .eq("id", validation.data.result_id)
         .single();
 
-    // Fetch profile for tenant isolation update
-    const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id")
-        .eq("id", user.id)
-        .single();
-
-    if (!profile) return { success: false, message: "Profile not found" };
-
     if (!result) return { success: false, message: "Result not found" };
+
+    // Use userData from requirePermission
+    const profile = userData;
 
     // Get spec limit for conformity check
     const sample = Array.isArray(result.sample) ? result.sample[0] : result.sample;
@@ -509,14 +470,13 @@ export async function registerMicroResultAction(formData: FormData) {
             is_tntc: isTntc,
             result_text: validation.data.result_text || null,
             is_conforming: isConforming,
-            read_by: user.id,
+            read_by: userData.id,
             read_at: new Date().toISOString(),
             status: "completed",
         })
         .eq("id", validation.data.result_id)
-        // Note: result already select includes organization_id/plant_id? No, let's fetch it from user profile for safety
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
+        .eq("organization_id", userData.organization_id)
+        .eq("plant_id", userData.plant_id);
 
     if (error) return { success: false, message: error.message };
 

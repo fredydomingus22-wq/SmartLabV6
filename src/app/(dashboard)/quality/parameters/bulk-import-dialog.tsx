@@ -92,9 +92,9 @@ export function BulkImportDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium shadow-none transition-all">
                     <Upload className="h-4 w-4 mr-2" />
-                    Import CSV
+                    Importar CSV
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">

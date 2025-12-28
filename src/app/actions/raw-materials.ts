@@ -99,8 +99,9 @@ export async function createSupplierAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/raw-materials");
-    return { success: true, message: "Supplier Created" };
+    revalidatePath("/materials/raw");
+    revalidatePath("/materials/suppliers");
+    return { success: true, message: "Fornecedor criado" };
 }
 
 /**
@@ -154,8 +155,8 @@ export async function createRawMaterialAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/raw-materials");
-    return { success: true, message: "Raw Material Created" };
+    revalidatePath("/materials/raw");
+    return { success: true, message: "Matéria-prima criada" };
 }
 
 /**
@@ -213,8 +214,8 @@ export async function receiveLotAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/raw-materials");
-    return { success: true, message: "Lot Received - In Quarantine" };
+    revalidatePath("/materials/raw");
+    return { success: true, message: "Lote recebido - Em quarentena" };
 }
 
 /**
@@ -244,12 +245,12 @@ export async function approveLotAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/raw-materials");
+    revalidatePath("/materials/raw");
     return {
         success: true,
         message: validation.data.status === "approved"
-            ? "Lot Approved"
-            : "Lot Rejected"
+            ? "Lote aprovado"
+            : "Lote rejeitado"
     };
 }
 
@@ -295,6 +296,6 @@ export async function consumeLotAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/raw-materials");
-    return { success: true, message: "Consumption Recorded" };
+    revalidatePath("/materials/raw");
+    return { success: true, message: "Consumo registado" };
 }

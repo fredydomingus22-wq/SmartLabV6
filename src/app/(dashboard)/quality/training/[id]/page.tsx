@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddQualificationDialog } from "../_components/add-qualification-dialog";
 import { AddTrainingRecordDialog } from "../_components/add-training-record-dialog";
 import { EvaluateTrainingDialog } from "../_components/evaluate-training-dialog";
+import { DeactivateEmployeeButton } from "../_components/deactivate-employee-button";
 
 
 export default async function EmployeeDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +74,12 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                         <TabsContent value="qualifications" className="mt-4 space-y-4">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-medium text-slate-200">Qualificações Analíticas</h3>
+                                {employee.status === 'active' && (
+                                    <DeactivateEmployeeButton
+                                        employeeId={employee.id}
+                                        employeeName={employee.full_name}
+                                    />
+                                )}
                                 <AddQualificationDialog employeeId={employee.id} parameters={parameters} />
                             </div>
 
@@ -173,7 +180,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                                             </div>
                                             <div>
                                                 <p className="text-xs text-slate-500">Presenças (Este Mês)</p>
-                                                <p className="text-xl font-bold text-slate-100">18 dias</p>
+                                                <p className="text-xl font-bold text-slate-100">{employee.attendanceStats?.present || 0} dias</p>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -183,8 +190,10 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                                                 <Clock className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-slate-500">Atrasos</p>
-                                                <p className="text-xl font-bold text-slate-100">2</p>
+                                                <p className="text-xs text-slate-500">Faltas / Atrasos</p>
+                                                <p className="text-xl font-bold text-slate-100">
+                                                    {employee.attendanceStats?.absent || 0} F / {employee.attendanceStats?.late || 0} A
+                                                </p>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -242,7 +251,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-400">Supervisor:</span>
-                                        <span className="text-slate-200">{employee.team?.supervisor?.full_name || "N/A"}</span>
+                                        <span className="text-slate-200">{(employee.team?.supervisor as any)?.full_name || "N/A"}</span>
                                     </div>
                                 </div>
                             </div>

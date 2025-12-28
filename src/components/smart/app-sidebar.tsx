@@ -18,7 +18,8 @@ interface AppSidebarProps {
     user: SafeUser;
 }
 
-import { menuItems } from "@/config/navigation";
+import { menuItems, MenuItem } from "@/config/navigation";
+import { hasAccess } from "@/lib/permissions";
 
 export function AppSidebar({ user }: AppSidebarProps) {
     const pathname = usePathname();
@@ -90,9 +91,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto py-4 px-3 scrollbar-none hover:scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                 <nav className="space-y-1">
-                    {menuItems.map((item: any, index: number) => {
-                        // Role-based filtering:
-                        if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return null;
+                    {menuItems.map((item: MenuItem, index: number) => {
+                        // Role-based filtering using the new RBAC system:
+                        if (!hasAccess(user.role, item.module)) return null;
 
                         const isExpanded = expandedGroups.includes(item.label);
                         const isActiveGroup = item.children?.some((c: { href: string; label: string }) => pathname === c.href || pathname.startsWith(c.href + "/"));
@@ -146,7 +147,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                         return (
                             <Link
                                 key={index}
-                                href={item.href}
+                                href={item.href || "#"}
                                 className={cn(
                                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                                     isActive

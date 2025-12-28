@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 export async function getPRPTemplates() {
     const supabase = await createClient();
@@ -53,3 +53,4 @@ export async function getPRPTemplateItems(templateId: string) {
 
     return data;
 }
+

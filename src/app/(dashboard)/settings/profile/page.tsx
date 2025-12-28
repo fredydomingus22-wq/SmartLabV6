@@ -1,4 +1,4 @@
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import {
     User,
     Mail,
@@ -152,3 +152,4 @@ export default async function ProfilePage() {
         </div>
     );
 }
+

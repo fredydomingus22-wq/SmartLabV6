@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get equipment with full metrological history
@@ -14,7 +14,8 @@ export async function getEquipmentWithMetrology(id: string) {
       *,
       maintenance_plans(*),
       maintenance_logs(*, performed_by_profile:user_profiles!performed_by(full_name)),
-      calibration_certificates(*)
+      calibration_certificates(*),
+      lab_analysis(*, qa_parameters(name, unit), samples(sample_number))
     `)
         .eq("organization_id", user.organization_id)
         .eq("id", id)
@@ -82,3 +83,4 @@ export async function getCalibrationCertificates(equipmentId: string) {
 
     return { data: data || [], error };
 }
+

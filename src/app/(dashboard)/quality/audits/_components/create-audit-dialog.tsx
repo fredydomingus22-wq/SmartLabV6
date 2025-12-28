@@ -108,6 +108,66 @@ export function CreateAuditDialog({ checklists, users }: CreateAuditDialogProps)
                             </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="audit_type">Tipo de Auditoria *</Label>
+                                <SearchableSelect
+                                    name="audit_type"
+                                    defaultValue="internal"
+                                    options={[
+                                        { value: "internal", label: "Interna" },
+                                        { value: "external", label: "Externa (Certificação)" },
+                                        { value: "client", label: "Cliente" },
+                                        { value: "supplier", label: "Fornecedor" },
+                                    ]}
+                                    placeholder="Selecionar tipo..."
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="standard">Norma/Certificação</Label>
+                                <SearchableSelect
+                                    name="standard"
+                                    options={[
+                                        { value: "ISO 9001:2015", label: "ISO 9001:2015" },
+                                        { value: "FSSC 22000 v6", label: "FSSC 22000 v6" },
+                                        { value: "ISO 22000:2018", label: "ISO 22000:2018" },
+                                        { value: "IFS Food v8", label: "IFS Food v8" },
+                                        { value: "BRC GS v9", label: "BRC GS v9" },
+                                        { value: "ISO 14001:2015", label: "ISO 14001:2015" },
+                                        { value: "ISO 45001:2018", label: "ISO 45001:2018" },
+                                        { value: "Outras", label: "Outras" },
+                                    ]}
+                                    placeholder="Selecionar norma..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="situation">Situação</Label>
+                                <SearchableSelect
+                                    name="situation"
+                                    defaultValue="scheduled"
+                                    options={[
+                                        { value: "scheduled", label: "Programada" },
+                                        { value: "surprise", label: "Surpresa" },
+                                    ]}
+                                    placeholder="Selecionar..."
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="external_entity">Entidade Externa</Label>
+                                <Input
+                                    id="external_entity"
+                                    name="external_entity"
+                                    placeholder="ex: SGS, APCER, Cliente XYZ..."
+                                    className="glass"
+                                />
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="scope">Âmbito da Auditoria</Label>
                             <Textarea

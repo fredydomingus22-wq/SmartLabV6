@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Microscope, Clock, CheckCircle, AlertTriangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { CreateMicroSampleDialog } from "./create-micro-sample-dialog";
 
 export const dynamic = "force-dynamic";
@@ -175,7 +175,11 @@ export default async function MicroSamplesPage() {
 
                                         return (
                                             <tr key={sample.id} className="border-b hover:bg-muted/30">
-                                                <td className="p-3 font-mono font-medium">{sample.code}</td>
+                                                <td className="p-3 font-mono font-medium">
+                                                    <Link href={`/micro/samples/${sample.id}`} className="text-blue-600 hover:text-blue-500 hover:underline">
+                                                        {sample.code}
+                                                    </Link>
+                                                </td>
                                                 <td className="p-3 text-muted-foreground">{sampleType?.name || "—"}</td>
                                                 <td className="p-3">
                                                     <span className="text-sm">{batch?.code || "—"}</span>
@@ -225,3 +229,4 @@ export default async function MicroSamplesPage() {
         </div>
     );
 }
+

@@ -140,17 +140,30 @@ export async function createPlantAction(formData: FormData): Promise<AdminTenant
         const supabase = createAdminClient();
 
         const name = formData.get('name') as string;
+        const code = formData.get('code') as string;
         const organizationId = formData.get('organization_id') as string;
+        const timezone = formData.get('timezone') as string || 'UTC';
+        const city = formData.get('city') as string;
+        const country = formData.get('country') as string || 'PT';
 
-        if (!name || !organizationId) {
-            return { success: false, message: "Name and Organization ID are required" };
+        if (!name || !organizationId || !code) {
+            return { success: false, message: "Name, Code and Organization ID are required" };
         }
+
+        const address = {
+            city,
+            country,
+            line1: formData.get('address_line1') as string || ''
+        };
 
         const { data: plant, error } = await supabase
             .from('plants')
             .insert({
                 name,
-                organization_id: organizationId
+                code,
+                organization_id: organizationId,
+                timezone,
+                address
             })
             .select()
             .single();
@@ -168,6 +181,59 @@ export async function createPlantAction(formData: FormData): Promise<AdminTenant
 
         revalidatePath(`/saas/tenants/${organizationId}`);
         return { success: true, message: "Unidade criada com sucesso", data: plant };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}
+
+export async function updatePlantAction(formData: FormData): Promise<AdminTenantActionState> {
+    try {
+        const user = await ensureSystemOwner();
+        const supabase = createAdminClient();
+
+        const plantId = formData.get('plant_id') as string;
+        const organizationId = formData.get('organization_id') as string;
+        const name = formData.get('name') as string;
+        const code = formData.get('code') as string;
+        const timezone = formData.get('timezone') as string;
+        const city = formData.get('city') as string;
+        const country = formData.get('country') as string;
+
+        if (!plantId || !name) {
+            return { success: false, message: "Plant ID and Name are required" };
+        }
+
+        const address = {
+            city: city,
+            country: country,
+            line1: formData.get('address_line1') as string || ''
+        };
+
+        const { data: plant, error } = await supabase
+            .from('plants')
+            .update({
+                name,
+                code,
+                timezone,
+                address
+            })
+            .eq('id', plantId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Log action
+        await logSystemAction({
+            actorId: user.id,
+            action: 'UPDATE_PLANT',
+            entityType: 'plant',
+            entityId: plant.id,
+            newData: plant
+        });
+
+        revalidatePath(`/saas/tenants/${organizationId}`);
+        return { success: true, message: "Unidade atualizada com sucesso", data: plant };
     } catch (error: any) {
         return { success: false, message: error.message };
     }

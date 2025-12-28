@@ -14,7 +14,7 @@ const UserSchema = z.object({
 
 export type UserProfile = z.infer<typeof UserSchema>;
 
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { ActionState } from "@/lib/types";
 
 
@@ -111,3 +111,4 @@ export async function updateUser(id: string, formData: FormData): Promise<Action
     revalidatePath("/admin/users");
     return { success: true, message: "User updated successfully" };
 }
+

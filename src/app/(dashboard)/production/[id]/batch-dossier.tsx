@@ -13,7 +13,10 @@ import {
     UserCheck,
     ArrowRight,
     Download,
-    AlertCircle
+    AlertCircle,
+    Zap,
+    Thermometer,
+    Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -145,9 +148,29 @@ export function BatchDossier({ data, batchId: propBatchId }: BatchDossierProps) 
                             tanks.map((t: any, idx: number) => (
                                 <div key={idx} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border-l-4 border-primary/20">
                                     <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center text-[10px] font-bold">{t.tank?.tank_number}</div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold uppercase tracking-tight">Cisterna / Misturador</span>
+                                    <div className="flex flex-col flex-1">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold uppercase tracking-tight">Cisterna / Misturador</span>
+                                            {t.tank?.last_cip && (
+                                                <Badge variant="outline" className={cn(
+                                                    "text-[8px] font-bold h-4 px-1 border-none",
+                                                    t.tank.last_cip.status === 'valid' ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
+                                                )}>
+                                                    CIP: {t.tank.last_cip.status === 'valid' ? 'OK' : 'PENDENTE'}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <span className="text-[9px] text-muted-foreground uppercase">{t.tank?.status}</span>
+                                        {t.tank?.last_cip && (
+                                            <div className="flex items-center gap-2 mt-1 opacity-70">
+                                                <span className="text-[8px] text-muted-foreground font-medium">
+                                                    <Zap className="inline h-2 w-2 mr-0.5" /> {t.tank.last_cip.program}
+                                                </span>
+                                                <span className="text-[8px] text-muted-foreground font-medium">
+                                                    <Clock className="inline h-2 w-2 mr-0.5" /> {format(new Date(t.tank.last_cip.date), "dd/MM")}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -180,7 +203,15 @@ export function BatchDossier({ data, batchId: propBatchId }: BatchDossierProps) 
                                             {sample.status}
                                         </Badge>
                                     </div>
-                                    <CardTitle className="text-[9px] font-bold text-muted-foreground uppercase mt-1">{sample.sample_type?.name}</CardTitle>
+                                    <CardTitle className="text-[9px] font-bold text-muted-foreground uppercase mt-1 flex justify-between">
+                                        <span>{sample.sample_type?.name}</span>
+                                        {sample.analysis?.[0]?.equipment && (
+                                            <span className="text-[8px] opacity-70 font-mono flex items-center gap-1">
+                                                <Thermometer className="h-2 w-2" />
+                                                {sample.analysis[0].equipment.name}
+                                            </span>
+                                        )}
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-4 space-y-3">
                                     <div className="space-y-2">

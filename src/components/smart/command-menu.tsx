@@ -74,9 +74,8 @@ export function CommandMenu({ user }: CommandMenuProps) {
         command();
     }, []);
 
-    // Flatten menu items for easy access, filtering by role
+    // Flatten menu items for easy access
     const accessibleItems = menuItems.flatMap((item) => {
-        if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return [];
 
         const items = [];
         if (item.href) {

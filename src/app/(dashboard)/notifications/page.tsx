@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { cn } from "@/lib/utils";
 import {
     Bell,
@@ -168,3 +168,4 @@ export default async function NotificationsPage() {
         </div>
     );
 }
+

@@ -17,6 +17,7 @@ interface Equipment {
     name: string;
     code: string;
     equipment_type: string;
+    target_type?: string; // 'tank', 'production_line', 'process_equipment'
 }
 
 interface Program {

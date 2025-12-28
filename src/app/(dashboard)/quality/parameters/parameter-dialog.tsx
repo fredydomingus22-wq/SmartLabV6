@@ -35,6 +35,7 @@ interface Parameter {
     method?: string;
     precision?: number;
     analysis_time_minutes?: number;
+    incubation_temp_c?: number;
     equipment_required?: string;
     description?: string;
     status: string;
@@ -60,6 +61,7 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
         method: "",
         precision: "2",
         analysis_time_minutes: "",
+        incubation_temp_c: "",
         equipment_required: "",
         description: "",
         status: "active",
@@ -76,6 +78,7 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
                 method: parameter.method || "",
                 precision: String(parameter.precision ?? 2),
                 analysis_time_minutes: parameter.analysis_time_minutes ? String(parameter.analysis_time_minutes) : "",
+                incubation_temp_c: parameter.incubation_temp_c ? String(parameter.incubation_temp_c) : "",
                 equipment_required: parameter.equipment_required || "",
                 description: parameter.description || "",
                 status: parameter.status || "active",
@@ -89,6 +92,7 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
                 method: "",
                 precision: "2",
                 analysis_time_minutes: "",
+                incubation_temp_c: "",
                 equipment_required: "",
                 description: "",
                 status: "active",
@@ -108,6 +112,7 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
         fd.set("method", formData.method);
         fd.set("precision", formData.precision);
         fd.set("analysis_time_minutes", formData.analysis_time_minutes);
+        fd.set("incubation_temp_c", formData.incubation_temp_c);
         fd.set("equipment_required", formData.equipment_required);
         fd.set("description", formData.description);
         fd.set("status", formData.status);
@@ -158,13 +163,13 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {mode === "create" ? (
-                    <Button>
+                    <Button className="rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
                         <Plus className="h-4 w-4 mr-2" />
-                        New Parameter
+                        Novo Parâmetro
                     </Button>
                 ) : (
-                    <Button variant="ghost" size="sm">
-                        <Pencil className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                        <Pencil className="h-3.5 w-3.5" />
                     </Button>
                 )}
             </DialogTrigger>
@@ -269,6 +274,23 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
                             />
                         </div>
                     </div>
+
+                    {/* Conditional: Incubation Temperature for Microbiological */}
+                    {formData.category === "microbiological" && (
+                        <div className="space-y-2 p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg">
+                            <Label htmlFor="incubation_temp_c" className="text-orange-400">Incubation Temperature (°C)</Label>
+                            <Input
+                                id="incubation_temp_c"
+                                type="number"
+                                min="0"
+                                max="60"
+                                value={formData.incubation_temp_c}
+                                onChange={(e) => updateField("incubation_temp_c", e.target.value)}
+                                placeholder="e.g., 35, 25"
+                            />
+                            <p className="text-xs text-muted-foreground">Used for incubator compatibility matching</p>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="equipment_required">Equipment Required</Label>

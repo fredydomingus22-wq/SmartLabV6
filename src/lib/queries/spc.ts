@@ -1,40 +1,60 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
+import { format } from "date-fns";
 
 export interface SPCDataPoint {
     id: string;
     date: string;
     value: number;
     isConforming: boolean;
+    batchCode?: string;
+}
+
+export interface SPCSubgroup {
+    id: string;
+    label: string;
+    values: number[];
+    mean: number;
+    range: number;
+    stdDev: number;
 }
 
 export interface SPCResult {
     parameter: { id: string; name: string; unit: string };
     data: SPCDataPoint[];
+    subgroups: SPCSubgroup[];
     mean: number;
-    stdDev: number;
-    ucl: number; // Upper Control Limit = Mean + 3σ
-    lcl: number; // Lower Control Limit = Mean - 3σ
+    sigmaShort: number;
+    sigmaLong: number;
+    ucl: number;
+    lcl: number;
+    uclR?: number;
+    lclR?: number;
+    uclS?: number;
+    lclS?: number;
+    avgRange?: number;
+    avgStdDev?: number;
     specLimits?: { usl: number | null; lsl: number | null; target: number | null };
     processCapability?: {
-        cp: number | null;   // Process Capability
-        cpk: number | null;  // Process Capability Index
-        ppk: number | null;  // Process Performance Index
+        cp: number | null;
+        cpk: number | null;
+        ppk: number | null;
     };
+    violations?: RunRuleViolation[];
 }
 
-/**
- * Fetches analysis results for a parameter and calculates SPC statistics.
- * Now includes process capability metrics (Cp, Cpk) and filtering options.
- */
 export interface SPCFilterOptions {
     productId?: string;
     batchId?: string;
     sampleTypeId?: string;
     dateFrom?: string;
     dateTo?: string;
+    subgroupSize?: number; // If provided, groups data into N points
 }
 
+/**
+ * Fetches analysis results for a parameter and calculates SPC statistics.
+ */
 export async function getSPCData(
     parameterId: string,
     days: number = 30,
@@ -53,35 +73,28 @@ export async function getSPCData(
 
     if (!param) return null;
 
-    // 2. Fetch Spec Limits from product_specifications
+    // 2. Fetch Spec Limits - Prioritize explicit filter or "Produto Final"
     let specQuery = supabase
         .from("product_specifications")
-        .select("min_value, max_value, target_value")
+        .select(`
+            min_value, 
+            max_value, 
+            target_value
+        `)
         .eq("organization_id", user.organization_id)
-        .eq("qa_parameter_id", parameterId);
+        .eq("qa_parameter_id", parameterId)
+        .eq("product_id", filters?.productId || "");
 
-    if (filters?.productId) {
-        specQuery = specQuery.eq("product_id", filters.productId);
+    if (filters?.sampleTypeId) {
+        specQuery = specQuery.eq("sample_type_id", filters.sampleTypeId);
     }
 
-    // Filter by sample type if provided, otherwise default to NULL (Final Product) if strictly filtering by product, 
-    // OR if not product filtering, just take first (legacy behavior).
-    // Better: If filters.sampleTypeId is defined, use it.
-    if (filters?.sampleTypeId !== undefined) {
-        if (filters.sampleTypeId === null || filters.sampleTypeId === "null") {
-            specQuery = specQuery.is("sample_type_id", null);
-        } else {
-            specQuery = specQuery.eq("sample_type_id", filters.sampleTypeId);
-        }
-    } else if (filters?.productId) {
-        // If product is selected but no sample type, prioritize Finished Product (null)
-        // But we can't force it easily without potentially missing data if they only have intermediate specs.
-        // Let's order by sample_type_id nulls first?
-        specQuery = specQuery.order("sample_type_id", { ascending: true }); // nulls last usually?
-        // Actually, just let it be. The user should provide sampleTypeId for precision.
-    }
+    const { data: specList } = await specQuery;
 
-    const { data: specs } = await specQuery.limit(1).maybeSingle();
+    // Selection Logic:
+    // With current schema, product_specifications doesn't link to sample_type_id.
+    // We pick the spec for the product/parameter.
+    const specs = specList?.[0];
 
     const specLimits = specs ? {
         lsl: specs.min_value,
@@ -89,7 +102,7 @@ export async function getSPCData(
         target: specs.target_value
     } : undefined;
 
-    // 3. Fetch Results for the Parameter with filters
+    // 3. Date Filtering (unchanged)
     let dateFromStr: string;
     let dateToStr: string | null = null;
 
@@ -102,10 +115,11 @@ export async function getSPCData(
     }
 
     if (filters?.dateTo) {
-        dateToStr = new Date(filters.dateTo + "T23:59:59").toISOString();
+        const dt = filters.dateTo.includes("T") ? filters.dateTo : filters.dateTo + "T23:59:59";
+        dateToStr = new Date(dt).toISOString();
     }
 
-    // Build base query with sample join for product/batch filtering
+    // 4. Load Analysis Data
     let query = supabase
         .from("lab_analysis")
         .select(`
@@ -113,12 +127,23 @@ export async function getSPCData(
             analyzed_at, 
             value_numeric, 
             is_conforming,
-            sample:samples!inner(id, production_batch_id, sample_type_id, batch:production_batches(id, product_id))
+            sample:samples!inner(
+                id, 
+                production_batch_id, 
+                sample_type_id, 
+                sample_type:sample_types!inner(name, code),
+                batch:production_batches(id, product_id, code)
+            )
         `)
         .eq("organization_id", user.organization_id)
         .eq("qa_parameter_id", parameterId)
         .gte("analyzed_at", dateFromStr)
+        .not("value_numeric", "is", null)
         .order("analyzed_at", { ascending: true });
+
+    if (filters?.sampleTypeId) {
+        query = query.eq("sample.sample_type_id", filters.sampleTypeId);
+    }
 
     if (dateToStr) {
         query = query.lte("analyzed_at", dateToStr);
@@ -128,18 +153,31 @@ export async function getSPCData(
         query = query.eq("sample.batch.product_id", filters.productId);
     }
 
-    if (filters?.sampleTypeId) {
-        query = query.eq("sample.sample_type_id", filters.sampleTypeId);
+    if (filters?.batchId) {
+        query = query.eq("sample.production_batch_id", filters.batchId);
     }
 
-    const { data: results } = await query;
+    const { data: rawResults } = await query;
+
+    // Filter results strictly for Finished Product if no explicit sampleTypeId
+    const results = (rawResults || []).filter((r: any) => {
+        if (filters?.sampleTypeId) return true; // Already filtered by query
+
+        const st: any = Array.isArray(r.sample?.sample_type) ? r.sample.sample_type[0] : r.sample?.sample_type;
+        const name = st?.name?.toLowerCase() || "";
+        const code = st?.code?.toLowerCase() || "";
+        return name.includes("final") || name.includes("finished") ||
+            code.startsWith("fp");
+    });
 
     if (!results || results.length === 0) {
         return {
             parameter: { id: param.id, name: param.name, unit: param.unit || "" },
             data: [],
+            subgroups: [],
             mean: 0,
-            stdDev: 0,
+            sigmaShort: 0,
+            sigmaLong: 0,
             ucl: 0,
             lcl: 0,
             specLimits,
@@ -147,104 +185,147 @@ export async function getSPCData(
         };
     }
 
-    // 4. Transform Data
-    const data: SPCDataPoint[] = results
-        .filter(r => r.value_numeric !== null)
-        .map(r => ({
-            id: r.id,
-            date: r.analyzed_at,
-            value: Number(r.value_numeric),
-            isConforming: r.is_conforming ?? true
-        }));
+    // 5. Transform & Group
+    const data: SPCDataPoint[] = results.map(r => ({
+        id: r.id,
+        date: r.analyzed_at,
+        value: Number(r.value_numeric),
+        isConforming: r.is_conforming ?? true,
+        batchCode: (r.sample as any)?.batch?.code
+    }));
 
-    // 5. Calculate Statistics
-    const values = data.map(d => d.value);
-    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const subgroupSize = filters?.subgroupSize || 1;
+    const subgroups: SPCSubgroup[] = [];
 
-    const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
-    const stdDev = Math.sqrt(variance);
+    if (subgroupSize > 1) {
+        for (let i = 0; i < data.length; i += subgroupSize) {
+            const chunk = data.slice(i, i + subgroupSize);
+            const vals = chunk.map(d => d.value);
+            const meanVal = vals.reduce((a, b) => a + b, 0) / vals.length;
+            const maxVal = Math.max(...vals);
+            const minVal = Math.min(...vals);
+            const rangeVal = maxVal - minVal;
 
-    const ucl = mean + 3 * stdDev;
-    const lcl = mean - 3 * stdDev;
+            // Subgroup StdDev
+            const subVariance = vals.reduce((a, b) => a + Math.pow(b - meanVal, 2), 0) / (vals.length - 1 || 1);
+            const subStdDev = Math.sqrt(subVariance);
 
-    // 6. Calculate Process Capability (Cp, Cpk)
+            subgroups.push({
+                id: `SG-${i}`,
+                label: chunk[0].batchCode || format(new Date(chunk[0].date), "dd/MM"),
+                values: vals,
+                mean: meanVal,
+                range: rangeVal,
+                stdDev: subStdDev
+            });
+        }
+    }
+
+    const values = subgroupSize > 1 ? subgroups.map(s => s.mean) : data.map(d => d.value);
+    const n = values.length;
+    const mean = values.reduce((sum, v) => sum + v, 0) / n;
+
+    // Long-term Variation (StdDev of all points)
+    const allValues = data.map(d => d.value);
+    const globalVariance = allValues.reduce((sum, v) => sum + Math.pow(v - (allValues.reduce((a, b) => a + b, 0) / allValues.length), 2), 0) / (allValues.length - 1 || 1);
+    const sigmaLong = Math.sqrt(globalVariance);
+
+    // Short-term Variation (Moving Range or Pooled depending on subgroup size)
+    let sigmaShort = 0;
+    let avgRange = 0;
+    let avgStdDev = 0;
+    let ucl = 0;
+    let lcl = 0;
+    let uclR: number | undefined;
+    let lclR: number | undefined;
+    let uclS: number | undefined;
+    let lclS: number | undefined;
+
+    if (subgroupSize === 1) {
+        let totalMR = 0;
+        for (let i = 1; i < values.length; i++) {
+            totalMR += Math.abs(values[i] - values[i - 1]);
+        }
+        const avgMR = n > 1 ? totalMR / (n - 1) : 0;
+        sigmaShort = avgMR / 1.128;
+        ucl = mean + 3 * sigmaShort;
+        lcl = Math.max(0, mean - 3 * sigmaShort);
+    } else {
+        avgRange = subgroups.reduce((a, b) => a + b.range, 0) / subgroups.length;
+        avgStdDev = subgroups.reduce((a, b) => a + b.stdDev, 0) / subgroups.length;
+
+        // Constants for subgrouping
+        const d2Values: Record<number, number> = { 2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078 };
+        const D4Values: Record<number, number> = { 2: 3.267, 3: 2.574, 4: 2.282, 5: 2.114, 6: 2.004, 7: 1.924, 8: 1.864, 9: 1.816, 10: 1.777 };
+        const D3Values: Record<number, number> = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0.076, 8: 0.136, 9: 0.184, 10: 0.223 };
+        const B4Values: Record<number, number> = { 2: 3.267, 3: 2.568, 4: 2.266, 5: 2.089, 6: 1.970, 7: 1.882, 8: 1.815, 9: 1.761, 10: 1.716 };
+        const B3Values: Record<number, number> = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0.030, 7: 0.118, 8: 0.185, 9: 0.239, 10: 0.284 };
+        const A2Values: Record<number, number> = { 2: 1.880, 3: 1.023, 4: 0.729, 5: 0.577, 6: 0.483, 7: 0.419, 8: 0.373, 9: 0.337, 10: 0.308 };
+
+        const d2 = d2Values[subgroupSize] || 3;
+        const D4 = D4Values[subgroupSize] || 2;
+        const D3 = D3Values[subgroupSize] || 0;
+        const B4 = B4Values[subgroupSize] || 2;
+        const B3 = B3Values[subgroupSize] || 0;
+        const A2 = A2Values[subgroupSize] || 0.3;
+
+        sigmaShort = avgRange / d2;
+
+        // X-Bar limits
+        ucl = mean + A2 * avgRange;
+        lcl = Math.max(0, mean - A2 * avgRange);
+
+        // R-Chart limits
+        uclR = avgRange * D4;
+        lclR = Math.max(0, avgRange * D3);
+
+        // S-Chart limits
+        uclS = avgStdDev * B4;
+        lclS = Math.max(0, avgStdDev * B3);
+    }
+
+    // 6. Capability Indices
     let processCapability: SPCResult["processCapability"] = { cp: null, cpk: null, ppk: null };
 
-    if (specLimits && specLimits.usl !== null && specLimits.lsl !== null && stdDev > 0) {
-        const usl = specLimits.usl;
-        const lsl = specLimits.lsl;
-
-        // Cp = (USL - LSL) / (6 * σ)
-        const cp = (usl - lsl) / (6 * stdDev);
-
-        // Cpk = min(Cpu, Cpl) where Cpu = (USL - μ)/(3σ), Cpl = (μ - LSL)/(3σ)
-        const cpu = (usl - mean) / (3 * stdDev);
-        const cpl = (mean - lsl) / (3 * stdDev);
+    if (specLimits && specLimits.usl !== null && specLimits.lsl !== null && sigmaShort > 0) {
+        const cp = (specLimits.usl - specLimits.lsl) / (6 * sigmaShort);
+        const cpu = (specLimits.usl - mean) / (3 * sigmaShort);
+        const cpl = (mean - specLimits.lsl) / (3 * sigmaShort);
         const cpk = Math.min(cpu, cpl);
 
-        // Ppk is similar but uses overall standard deviation (same for small samples)
-        const ppk = cpk;
-
         processCapability = {
-            cp: parseFloat(cp.toFixed(2)),
-            cpk: parseFloat(cpk.toFixed(2)),
-            ppk: parseFloat(ppk.toFixed(2))
+            cp: Number(cp.toFixed(2)),
+            cpk: Number(cpk.toFixed(2)),
+            ppk: Number(cpk.toFixed(2)) // Simplified for I-Chart
         };
     }
+
+    // 7. Nelson Rules (Detect on whatever the chart is showing - individual vs means)
+    const violations = detectRunRuleViolations(values, mean, ucl, lcl);
 
     return {
         parameter: { id: param.id, name: param.name, unit: param.unit || "" },
         data,
+        subgroups,
         mean: parseFloat(mean.toFixed(3)),
-        stdDev: parseFloat(stdDev.toFixed(3)),
+        sigmaShort: parseFloat(sigmaShort.toFixed(3)),
+        sigmaLong: parseFloat(sigmaLong.toFixed(3)),
         ucl: parseFloat(ucl.toFixed(3)),
         lcl: parseFloat(lcl.toFixed(3)),
+        uclR: uclR !== undefined ? parseFloat(uclR.toFixed(3)) : undefined,
+        lclR: lclR !== undefined ? parseFloat(lclR.toFixed(3)) : undefined,
+        uclS: uclS !== undefined ? parseFloat(uclS.toFixed(3)) : undefined,
+        lclS: lclS !== undefined ? parseFloat(lclS.toFixed(3)) : undefined,
+        avgRange: avgRange !== undefined ? parseFloat(avgRange.toFixed(3)) : undefined,
+        avgStdDev: avgStdDev !== undefined ? parseFloat(avgStdDev.toFixed(3)) : undefined,
         specLimits,
-        processCapability
+        processCapability,
+        violations
     };
 }
 
 /**
- * Get SPC summary for multiple parameters
- */
-export async function getSPCSummary() {
-    const supabase = await createClient();
-    const user = await getSafeUser();
-
-    // Get parameters with recent data
-    const { data: params } = await supabase
-        .from("qa_parameters")
-        .select("id, name, code, unit")
-        .eq("organization_id", user.organization_id)
-        .eq("status", "active")
-        .limit(20);
-
-    if (!params) return [];
-
-    const summaries = await Promise.all(
-        params.map(async (p) => {
-            const spcData = await getSPCData(p.id, 30);
-            return {
-                parameterId: p.id,
-                parameterName: p.name,
-                code: p.code,
-                unit: p.unit,
-                dataPoints: spcData?.data.length || 0,
-                mean: spcData?.mean || 0,
-                cpk: spcData?.processCapability?.cpk || null,
-                outOfControl: spcData?.data.filter(d =>
-                    d.value > (spcData?.ucl || 0) || d.value < (spcData?.lcl || 0)
-                ).length || 0
-            };
-        })
-    );
-
-    return summaries.filter(s => s.dataPoints > 0);
-}
-
-/**
- * Western Electric SPC Run Rules
- * Detects patterns that indicate process is out of statistical control
+ * Enhanced Western Electric / Nelson Rules
  */
 export interface RunRuleViolation {
     rule: number;
@@ -253,122 +334,152 @@ export interface RunRuleViolation {
 }
 
 export function detectRunRuleViolations(
-    data: SPCDataPoint[],
+    values: number[],
     mean: number,
     ucl: number,
     lcl: number
 ): RunRuleViolation[] {
-    if (data.length < 2) return [];
+    if (values.length < 2) return [];
 
     const violations: RunRuleViolation[] = [];
     const sigma = (ucl - mean) / 3;
-    const sigma2Upper = mean + 2 * sigma;
-    const sigma2Lower = mean - 2 * sigma;
-    const sigma1Upper = mean + sigma;
-    const sigma1Lower = mean - sigma;
 
-    // Rule 1: Any single point beyond 3σ (UCL/LCL)
-    data.forEach((point, i) => {
-        if (point.value > ucl || point.value < lcl) {
-            violations.push({
-                rule: 1,
-                description: "Point beyond 3σ control limit",
-                pointIndexes: [i]
-            });
+    // Rule 1: Point beyond 3σ
+    values.forEach((v, i) => {
+        if (v > ucl || v < lcl) {
+            violations.push({ rule: 1, description: "Ponto fora dos limites de 3σ", pointIndexes: [i] });
         }
     });
 
-    // Rule 2: 9 consecutive points on same side of mean
-    for (let i = 0; i <= data.length - 9; i++) {
-        const slice = data.slice(i, i + 9);
-        const allAbove = slice.every(p => p.value > mean);
-        const allBelow = slice.every(p => p.value < mean);
-        if (allAbove || allBelow) {
-            violations.push({
-                rule: 2,
-                description: "9 consecutive points on same side of centerline",
-                pointIndexes: Array.from({ length: 9 }, (_, j) => i + j)
-            });
-            break; // Only report first occurrence
+    // Rule 2: 9 points on same side of mean
+    for (let i = 0; i <= values.length - 9; i++) {
+        const slice = values.slice(i, i + 9);
+        if (slice.every(v => v > mean) || slice.every(v => v < mean)) {
+            violations.push({ rule: 2, description: "9 pontos consecutivos do mesmo lado da média", pointIndexes: Array.from({ length: 9 }, (_, j) => i + j) });
         }
     }
 
-    // Rule 3: 6 consecutive points steadily increasing or decreasing
-    for (let i = 0; i <= data.length - 6; i++) {
-        const slice = data.slice(i, i + 6);
-        let increasing = true;
-        let decreasing = true;
-        for (let j = 1; j < slice.length; j++) {
-            if (slice[j].value <= slice[j - 1].value) increasing = false;
-            if (slice[j].value >= slice[j - 1].value) decreasing = false;
+    // Rule 3: 6 points increasing/decreasing
+    for (let i = 0; i <= values.length - 6; i++) {
+        const slice = values.slice(i, i + 6);
+        let inc = true, dec = true;
+        for (let j = 1; j < 6; j++) {
+            if (slice[j] <= slice[j - 1]) inc = false;
+            if (slice[j] >= slice[j - 1]) dec = false;
         }
-        if (increasing || decreasing) {
-            violations.push({
-                rule: 3,
-                description: `6 consecutive points steadily ${increasing ? 'increasing' : 'decreasing'}`,
-                pointIndexes: Array.from({ length: 6 }, (_, j) => i + j)
-            });
-            break;
+        if (inc || dec) {
+            violations.push({ rule: 3, description: `6 pontos em tendência ${inc ? 'ascendente' : 'descendente'}`, pointIndexes: Array.from({ length: 6 }, (_, j) => i + j) });
         }
     }
 
-    // Rule 4: 2 out of 3 consecutive points beyond 2σ
-    for (let i = 0; i <= data.length - 3; i++) {
-        const slice = data.slice(i, i + 3);
-        const beyond2Sigma = slice.filter(p =>
-            p.value > sigma2Upper || p.value < sigma2Lower
-        );
-        if (beyond2Sigma.length >= 2) {
-            violations.push({
-                rule: 4,
-                description: "2 of 3 consecutive points beyond 2σ",
-                pointIndexes: Array.from({ length: 3 }, (_, j) => i + j)
-            });
-            break;
+    // Rule 4: 14 points alternating
+    for (let i = 0; i <= values.length - 14; i++) {
+        const slice = values.slice(i, i + 14);
+        let alt = true;
+        for (let j = 1; j < 14; j++) {
+            if ((slice[j] > slice[j - 1] && j > 1 && slice[j - 1] > slice[j - 2]) ||
+                (slice[j] < slice[j - 1] && j > 1 && slice[j - 1] < slice[j - 2])) {
+                alt = false; break;
+            }
         }
-    }
-
-    // Rule 5: 4 out of 5 consecutive points beyond 1σ
-    for (let i = 0; i <= data.length - 5; i++) {
-        const slice = data.slice(i, i + 5);
-        const beyond1Sigma = slice.filter(p =>
-            p.value > sigma1Upper || p.value < sigma1Lower
-        );
-        if (beyond1Sigma.length >= 4) {
-            violations.push({
-                rule: 5,
-                description: "4 of 5 consecutive points beyond 1σ",
-                pointIndexes: Array.from({ length: 5 }, (_, j) => i + j)
-            });
-            break;
-        }
+        if (alt) violations.push({ rule: 4, description: "14 pontos alternando para cima e para baixo", pointIndexes: Array.from({ length: 14 }, (_, j) => i + j) });
     }
 
     return violations;
 }
 
 /**
- * Get SPC data with run rule analysis
+ * Get data for Scatter Diagram (Correlation between two parameters)
  */
-export async function getSPCDataWithRules(
-    parameterId: string,
-    days: number = 30,
-    filters?: SPCFilterOptions
+export async function getCorrelationData(
+    param1Id: string,
+    param2Id: string,
+    filters: SPCFilterOptions
 ) {
-    const spcData = await getSPCData(parameterId, days, filters);
-    if (!spcData || spcData.data.length === 0) return null;
+    const supabase = await createClient();
+    const user = await getSafeUser();
 
-    const runRuleViolations = detectRunRuleViolations(
-        spcData.data,
-        spcData.mean,
-        spcData.ucl,
-        spcData.lcl
-    );
+    // Fetch data for both parameters
+    const [p1, p2] = await Promise.all([
+        getSPCData(param1Id, 100, filters),
+        getSPCData(param2Id, 100, filters)
+    ]);
+
+    if (!p1 || !p2) {
+        return {
+            data: [],
+            correlation: 0,
+            param1: { name: "N/A", unit: "" },
+            param2: { name: "N/A", unit: "" }
+        };
+    }
+
+    // Align data by sample/batch
+    const dataMap = new Map();
+
+    p1.data.forEach(d => {
+        const key = d.batchCode || d.id;
+        dataMap.set(key, { x: d.value, xLabel: d.batchCode || format(new Date(d.date), "dd/MM") });
+    });
+
+    const combinedData: any[] = [];
+    p2.data.forEach(d => {
+        const key = d.batchCode || d.id;
+        if (dataMap.has(key)) {
+            const entry = dataMap.get(key);
+            combinedData.push({
+                ...entry,
+                y: d.value,
+                yLabel: d.batchCode || format(new Date(d.date), "dd/MM"),
+                name: key
+            });
+        }
+    });
+
+    // Calculate Pearson Correlation
+    const n = combinedData.length;
+    if (n < 2) return { data: combinedData, correlation: 0 };
+
+    const sumX = combinedData.reduce((s, d) => s + d.x, 0);
+    const sumY = combinedData.reduce((s, d) => s + d.y, 0);
+    const sumXY = combinedData.reduce((s, d) => s + d.x * d.y, 0);
+    const sumX2 = combinedData.reduce((s, d) => s + d.x * d.x, 0);
+    const sumY2 = combinedData.reduce((s, d) => s + d.y * d.y, 0);
+
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+    const correlation = denominator === 0 ? 0 : numerator / denominator;
 
     return {
-        ...spcData,
-        runRuleViolations,
-        hasViolations: runRuleViolations.length > 0
+        data: combinedData,
+        correlation: parseFloat(correlation.toFixed(3)),
+        param1: p1.parameter,
+        param2: p2.parameter
     };
 }
+
+/**
+ * Summary and Rules wrapper kept for backward compatibility if needed
+ */
+export async function getSPCSummary() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+    const { data: params } = await supabase.from("qa_parameters").select("id, name, code, unit").eq("organization_id", user.organization_id).eq("status", "active").limit(20);
+    if (!params) return [];
+    return Promise.all(params.map(async (p) => {
+        const spcData = await getSPCData(p.id, 30);
+        return {
+            parameterId: p.id, parameterName: p.name, code: p.code, unit: p.unit,
+            dataPoints: spcData?.data.length || 0,
+            mean: spcData?.mean || 0,
+            cpk: spcData?.processCapability?.cpk || null,
+            outOfControl: spcData?.violations?.length || 0
+        };
+    })).then(res => res.filter(s => s.dataPoints > 0));
+}
+
+export async function getSPCDataWithRules(parameterId: string, days: number = 30, filters?: SPCFilterOptions) {
+    return getSPCData(parameterId, days, filters);
+}
+
 

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
+import { ClientOnly } from "@/components/client-only"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -86,47 +87,50 @@ export function SearchableSelect({
     }
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className={cn("w-full justify-between font-normal", !value && "text-muted-foreground", className)}
-                    disabled={disabled}
-                >
-                    {value
-                        ? options.find((option) => option.value === value)?.label
-                        : placeholder}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
-                    <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
-                    <CommandList>
-                        <CommandEmpty>{emptyMessage}</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((option) => (
-                                <CommandItem
-                                    key={option.value}
-                                    value={option.label} // Use label for searchable text
-                                    onSelect={handleSelect}
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === option.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {option.label}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-            {name && <input type="hidden" name={name} value={value} required={required} />}
-        </Popover>
+        <ClientOnly>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn("w-full justify-between font-normal", !value && "text-muted-foreground", className)}
+                        disabled={disabled}
+                    >
+                        {value
+                            ? options.find((option) => option.value === value)?.label
+                            : placeholder}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
+                        <CommandList>
+                            <CommandEmpty>{emptyMessage}</CommandEmpty>
+                            <CommandGroup>
+                                {options.map((option) => (
+                                    <CommandItem
+                                        key={option.value}
+                                        value={option.label} // Use label for searchable text
+                                        onSelect={handleSelect}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                value === option.value ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {option.label}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+                {name && <input type="hidden" name={name} value={value} required={required} />}
+            </Popover>
+        </ClientOnly>
     )
 }
+

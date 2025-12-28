@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all quality objectives for the organization
@@ -78,3 +78,4 @@ export async function getObjectiveKpis() {
 
     return { total, onTrack, atRisk, achieved, missed, avgProgress };
 }
+

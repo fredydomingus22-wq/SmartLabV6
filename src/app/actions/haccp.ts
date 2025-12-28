@@ -26,7 +26,7 @@ const LogPCCSchema = z.object({
     action_taken: z.string().optional(),
 });
 
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 // ... other imports
 
 export async function createHazardAction(formData: FormData) {
@@ -169,4 +169,61 @@ export async function submitPRPChecklistAction(templateId: string, answers: { it
 
     revalidatePath("/haccp/prp");
     return { success: true, message: "Checklist submitted successfully" };
+}
+
+/**
+ * Create a simplified HACCP Hazard (Quick Mode for Specs)
+ */
+export async function createQuickHazardAction(description: string, category: "biological" | "chemical" | "physical" | "allergen" | "radiological", isPcc: boolean) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    // Default values for required fields in Quick Mode
+    // We assume significant if it's a PCC, otherwise we default values to result in < 9
+    const probability = isPcc ? 3 : 2;
+    const severity = isPcc ? 4 : 2;
+    const isSignificant = (probability * severity) >= 9;
+
+    const { data, error } = await supabase
+        .from("haccp_hazards")
+        .insert({
+            organization_id: profile.organization_id,
+            plant_id: profile.plant_id,
+            process_step: "Production / Specification Limit",
+            hazard_description: description,
+            hazard_category: category,
+            risk_probability: probability,
+            risk_severity: severity,
+            is_significant: isSignificant,
+            is_pcc: isPcc,
+            control_measure: "Monitoring via LIMS Specification",
+            status: "active"
+        })
+        .select("id")
+        .single();
+
+    if (error) return { success: false, message: error.message };
+
+    return { success: true, hazardId: data.id };
+}
+
+export async function searchHaccpHazardsAction(query: string) {
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from("haccp_hazards")
+        .select("id, hazard_description, is_pcc, hazard_category")
+        .ilike("hazard_description", `%${query}%`)
+        .eq("status", "active")
+        .limit(10);
+
+    return data || [];
 }

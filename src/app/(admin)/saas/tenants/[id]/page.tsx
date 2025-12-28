@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ActionForm } from "@/components/smart/action-form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { CreatePlantDialog } from "../create-plant-dialog";
+import { UpdatePlantDialog } from "../update-plant-dialog";
+import { UpdateUserDialog } from "../../users/update-user-dialog";
+import { CreateGlobalUserDialog } from "../../users/create-user-dialog";
 
 interface OrgDetailPageProps {
     params: Promise<{ id: string }>;
@@ -77,23 +78,7 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <ActionForm
-                                    action={createPlantAction}
-                                    submitText="Adicionar"
-                                    // onSuccess removed: cannot pass function from Server Component
-                                    className="flex items-center gap-2"
-                                >
-                                    <input type="hidden" name="organization_id" value={org.id} />
-                                    <Input
-                                        name="name"
-                                        placeholder="Nome da unidade..."
-                                        className="h-9 w-48 bg-slate-900 border-slate-700 text-sm"
-                                        required
-                                    />
-                                    <Button size="sm" className="h-9 bg-indigo-600 hover:bg-indigo-700">
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </ActionForm>
+                                <CreatePlantDialog organizationId={org.id} />
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -112,10 +97,10 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                                                     </div>
                                                     <div>
                                                         <h4 className="font-semibold text-slate-100 text-sm">{plant.name}</h4>
-                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">ID: {plant.id.split('-')[0]}</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">ID: {plant.code || plant.id.split('-')[0]}</p>
                                                     </div>
                                                 </div>
-                                                <Button variant="secondary" size="sm" className="opacity-0 group-hover:opacity-100 h-8 text-[10px] uppercase font-bold">Gerir</Button>
+                                                <UpdatePlantDialog plant={plant} />
                                             </div>
                                         </div>
                                     ))
@@ -131,6 +116,12 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                                 <Users className="h-5 w-5 text-blue-400" />
                                 Utilizadores Associados
                             </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CreateGlobalUserDialog
+                                    tenants={[org]}
+                                    defaultOrganizationId={org.id}
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
@@ -148,7 +139,16 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
                                                     <p className="text-xs text-slate-500 capitalize">{user.role}</p>
                                                 </div>
                                             </div>
-                                            <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-800">Context {user.plant_id ? 'Planta' : 'Global'}</Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-800">
+                                                    {user.plant_id ? 'Planta' : 'Global'}
+                                                </Badge>
+                                                <UpdateUserDialog
+                                                    user={user}
+                                                    organizations={[org]}
+                                                    plants={org.plants}
+                                                />
+                                            </div>
                                         </div>
                                     ))
                                 )}

@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
+import { SafeUser } from "@/lib/auth";
 
 const CreateAuditSchema = z.object({
     title: z.string().min(1, "O título é obrigatório"),
@@ -13,6 +14,10 @@ const CreateAuditSchema = z.object({
     planned_date: z.string().optional(),
     scope: z.string().optional(),
     plant_id: z.string().uuid().optional(),
+    audit_type: z.enum(["internal", "external", "client", "supplier"]).optional(),
+    standard: z.string().optional(),
+    situation: z.enum(["scheduled", "surprise"]).optional(),
+    external_entity: z.string().optional(),
 });
 
 const AuditResponseSchema = z.object({
@@ -21,6 +26,16 @@ const AuditResponseSchema = z.object({
     result: z.enum(["compliant", "minor_nc", "major_nc", "observation", "ofi", "na"]),
     evidence: z.string().optional(),
     notes: z.string().optional(),
+    attachments: z.array(z.any()).optional().default([]), // Using any for JSONB array
+});
+
+const UpdateAuditEvaluationSchema = z.object({
+    id: z.string().uuid(),
+    strong_points: z.string().optional(),
+    improvement_areas: z.string().optional(),
+    conclusions: z.string().optional(),
+    audit_objective: z.string().optional(),
+    executive_summary: z.string().optional(),
 });
 
 /**
@@ -47,6 +62,10 @@ export async function createAuditAction(formData: FormData) {
         planned_date: formData.get("planned_date") || undefined,
         scope: formData.get("scope") || undefined,
         plant_id: formData.get("plant_id") || undefined,
+        audit_type: formData.get("audit_type") || "internal",
+        standard: formData.get("standard") || undefined,
+        situation: formData.get("situation") || "scheduled",
+        external_entity: formData.get("external_entity") || undefined,
     };
 
     const validation = CreateAuditSchema.safeParse(rawData);
@@ -88,6 +107,10 @@ export async function createAuditAction(formData: FormData) {
         auditor_id: validation.data.auditor_id,
         auditee_id: validation.data.auditee_id,
         planned_date: validation.data.planned_date,
+        audit_type: validation.data.audit_type,
+        standard: validation.data.standard,
+        situation: validation.data.situation,
+        external_entity: validation.data.external_entity,
         status: "planned",
         created_by: user.id,
     });
@@ -119,7 +142,7 @@ export async function submitAuditResponseAction(data: z.infer<typeof AuditRespon
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    const { error } = await supabase
+    const { data: savedResponse, error } = await supabase
         .from("audit_responses")
         .upsert({
             audit_id: validation.data.audit_id,
@@ -127,15 +150,56 @@ export async function submitAuditResponseAction(data: z.infer<typeof AuditRespon
             result: validation.data.result,
             evidence: validation.data.evidence,
             notes: validation.data.notes,
-            organization_id: profile.organization_id, // Added organization_id
+            attachments: validation.data.attachments,
+            organization_id: profile.organization_id,
             updated_at: new Date().toISOString(),
         }, {
             onConflict: "audit_id, question_id"
-        });
+        })
+        .select("id")
+        .single();
 
     if (error) return { success: false, message: error.message };
 
-    // If result is NC, we might want to flag it for finding creation later
+    // Sync Auto-Findings
+    // If result is NC/Observation/OFI, create or update finding
+    // If result is Compliant/NA, delete existing finding
+    const negativeResults = ["minor_nc", "major_nc", "observation", "ofi"];
+    const isNegative = negativeResults.includes(validation.data.result);
+
+    if (savedResponse) {
+        if (isNegative) {
+            const description = validation.data.evidence || validation.data.notes || "Sem descrição detalhada";
+
+            // Sync Finding
+            const { data: existingFinding } = await supabase
+                .from("audit_findings")
+                .select("id")
+                .eq("response_id", savedResponse.id)
+                .maybeSingle();
+
+            if (existingFinding) {
+                await supabase.from("audit_findings").update({
+                    classification: validation.data.result,
+                    description: description,
+                    organization_id: profile.organization_id,
+                    updated_at: new Date().toISOString()
+                }).eq("id", existingFinding.id);
+            } else {
+                await supabase.from("audit_findings").insert({
+                    audit_id: validation.data.audit_id,
+                    response_id: savedResponse.id,
+                    classification: validation.data.result,
+                    description: description,
+                    organization_id: profile.organization_id,
+                    status: "draft"
+                });
+            }
+        } else {
+            // Delete finding if it exists (now compliant or N/A)
+            await supabase.from("audit_findings").delete().eq("response_id", savedResponse.id);
+        }
+    }
 
     revalidatePath(`/quality/audits/${validation.data.audit_id}`);
     return { success: true, message: "Resposta guardada" };
@@ -252,4 +316,56 @@ export async function promoteFindingToNCAction(findingId: string) {
 
     return { success: true, message: `Não conformidade ${ncNumber} criada com sucesso`, nc_id: nc.id };
 }
+
+/**
+ * Update Audit General Evaluation
+ */
+export async function updateAuditEvaluationAction(data: z.infer<typeof UpdateAuditEvaluationSchema>) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Não autorizado");
+
+    const validation = UpdateAuditEvaluationSchema.safeParse(data);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
+    }
+
+    const { error } = await supabase
+        .from("audits")
+        .update({
+            strong_points: validation.data.strong_points,
+            improvement_areas: validation.data.improvement_areas,
+            conclusions: validation.data.conclusions,
+            audit_objective: validation.data.audit_objective,
+            executive_summary: validation.data.executive_summary,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", validation.data.id);
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath(`/quality/audits/${validation.data.id}`);
+    return { success: true, message: "Avaliação da auditoria atualizada" };
+}
+
+/**
+ * Call AI Edge function to generate report draft
+ */
+export async function generateAuditReportDraftAction(auditId: string, field?: string) {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.functions.invoke("ai-audit-report-suggest", {
+        body: { audit_id: auditId, field }
+    });
+
+    if (error) {
+        console.error("AI Insight Error:", error);
+        return { success: false, message: "Erro ao invocar IA" };
+    }
+
+    return { success: true, data };
+}
+
+
+
 

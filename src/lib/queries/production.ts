@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all production batches with metadata
@@ -260,3 +260,4 @@ export async function getEquipmentCIPStatus(equipmentId: string | UUID) {
 }
 
 import { UUID } from "crypto";
+

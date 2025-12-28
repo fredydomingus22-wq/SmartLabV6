@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { validateLabResult, ValidationResult } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 
@@ -103,3 +103,4 @@ export async function getAnalysisAIInsight(analysisId: string) {
         return { success: false, message: error.message };
     }
 }
+

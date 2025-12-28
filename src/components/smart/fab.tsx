@@ -9,7 +9,8 @@ import {
     TrendingUp,
     FileText,
     Settings,
-    X
+    X,
+    Microscope
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,11 +39,18 @@ interface FABAction {
 
 const actions: FABAction[] = [
     {
-        label: "Nova Amostra",
+        label: "Nova Amostra FQ",
         icon: FlaskConical,
-        href: "/lab",
-        description: "Registar nova amostra laboratorial",
-        allowedRoles: ["admin", "analyst", "operator"]
+        href: "/lab?create=true&labType=FQ",
+        description: "Registar nova amostra físico-química",
+        allowedRoles: ["lab_analyst", "admin", "analyst"]
+    },
+    {
+        label: "Nova Amostra Micro",
+        icon: Microscope,
+        href: "/micro/samples?create=true",
+        description: "Registar nova amostra microbiológica",
+        allowedRoles: ["micro_analyst", "admin", "analyst"]
     },
     {
         label: "Iniciar Lote",
@@ -56,12 +64,14 @@ const actions: FABAction[] = [
         icon: Package,
         href: "/raw-materials/lots",
         description: "Entrada de matéria-prima",
+        allowedRoles: ["admin", "warehouse", "operator"]
     },
     {
         label: "Análise SPC",
         icon: TrendingUp,
         href: "/quality/spc",
         description: "Ver tendências de processo",
+        allowedRoles: ["admin", "qa_manager", "lab_analyst", "quality"]
     },
 ];
 

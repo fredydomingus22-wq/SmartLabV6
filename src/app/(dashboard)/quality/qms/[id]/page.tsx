@@ -1,8 +1,22 @@
 import { getNonconformityById } from "@/lib/queries/qms";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle, User, Calendar, Plus, CheckCircle, Clock, FileText } from "lucide-react";
+import {
+    ArrowLeft,
+    AlertTriangle,
+    User,
+    Calendar,
+    Plus,
+    CheckCircle,
+    Clock,
+    FileText,
+    History,
+    ShieldAlert,
+    Target,
+    Activity,
+    Info
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NCStatusUpdate } from "./nc-status-update";
@@ -12,6 +26,8 @@ import { Create8DDialog } from "./create-8d-dialog";
 import { NCAttachments } from "./nc-attachments";
 import { CloseNCDialog } from "./close-nc-dialog";
 import { CAPAStatusUpdate } from "./capa-status-update";
+import { NCInsights } from "../nc-insights";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +54,9 @@ export default async function NCDetailPage({ params }: PageProps) {
     };
 
     const severityColors: Record<string, string> = {
-        minor: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+        minor: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
         major: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-        critical: "bg-red-500/10 text-red-400 border-red-500/20 animate-pulse",
+        critical: "bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse",
     };
 
     const statusLabels: Record<string, string> = {
@@ -53,197 +69,205 @@ export default async function NCDetailPage({ params }: PageProps) {
     };
 
     const statusColors: Record<string, string> = {
-        open: "bg-slate-500/10 text-slate-400 border-slate-500/20",
-        under_investigation: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-        containment: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+        open: "bg-slate-500/10 text-slate-400 border-border/50",
+        under_investigation: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+        containment: "bg-amber-500/10 text-amber-400 border-amber-500/20",
         corrective_action: "bg-purple-500/10 text-purple-400 border-purple-500/20",
         verification: "bg-orange-500/10 text-orange-400 border-orange-500/20",
         closed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     };
 
-    const capaStatusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-        planned: "secondary",
-        in_progress: "default",
-        completed: "outline",
-        verified: "default",
-        closed: "secondary",
+    const capaStatusColors: Record<string, string> = {
+        planned: "bg-slate-500/10 text-slate-400",
+        in_progress: "bg-indigo-500/10 text-indigo-400",
+        completed: "bg-amber-500/10 text-amber-400",
+        verified: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        closed: "bg-slate-800 text-slate-400",
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/quality/qms">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight font-mono">{nc.nc_number}</h1>
-                        <Badge className={severityColors[nc.severity]}>{severityLabels[nc.severity]}</Badge>
-                        <Badge className={statusColors[nc.status]}>{statusLabels[nc.status]}</Badge>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Header Section */}
+            <div className="glass p-6 rounded-3xl border-none shadow-xl bg-gradient-to-br from-indigo-500/5 to-transparent">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <Link href="/quality/qms">
+                            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/5">
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <span className="font-mono text-2xl font-bold text-indigo-400 tracking-tighter">{nc.nc_number}</span>
+                                <Badge className={cn("px-3 py-1 uppercase text-[10px] font-bold tracking-widest border-none rounded-full", severityColors[nc.severity])}>
+                                    {severityLabels[nc.severity]}
+                                </Badge>
+                                <Badge className={cn("px-3 py-1 uppercase text-[10px] font-bold tracking-widest border-none rounded-full", statusColors[nc.status])}>
+                                    {statusLabels[nc.status]}
+                                </Badge>
+                            </div>
+                            <h1 className="text-xl font-semibold text-foreground/90">{nc.title}</h1>
+                        </div>
                     </div>
-                    <p className="text-muted-foreground">{nc.title}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <EditNCDialog nc={nc} />
-                    {!eightD && <Create8DDialog ncId={nc.id} />}
-                    {nc.status !== "closed" && (
-                        <CloseNCDialog ncId={nc.id} ncNumber={nc.nc_number} />
-                    )}
-                    <NCStatusUpdate ncId={nc.id} currentStatus={nc.status} />
-                </div>
-            </div>
 
-            {/* Info Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <Card className="glass">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            Tipo
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xl font-bold capitalize">{nc.nc_type === 'internal' ? 'Interna' : nc.nc_type === 'supplier' ? 'Fornecedor' : nc.nc_type === 'customer' ? 'Cliente' : nc.nc_type}</p>
-                        <p className="text-xs text-muted-foreground">{nc.category || "Sem categoria"}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            Detetada Por
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-lg font-medium">{detectedBy?.full_name || "Desconhecido"}</p>
-                        <p className="text-xs text-muted-foreground">{nc.detected_date}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            Responsável
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-lg font-medium">{responsible?.full_name || "Não atribuído"}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            Data Limite
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {nc.due_date ? (
-                            <>
-                                <p className="text-xl font-bold">{nc.due_date}</p>
-                                {new Date(nc.due_date) < new Date() && nc.status !== "closed" && (
-                                    <p className="text-xs text-red-500 font-semibold">ATRASADA</p>
-                                )}
-                            </>
-                        ) : (
-                            <p className="text-muted-foreground">Não definida</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <EditNCDialog nc={nc} />
+                        {!eightD && <Create8DDialog ncId={nc.id} />}
+                        {nc.status !== "closed" && (
+                            <CloseNCDialog ncId={nc.id} ncNumber={nc.nc_number} />
                         )}
-                    </CardContent>
-                </Card>
+                        <NCStatusUpdate ncId={nc.id} currentStatus={nc.status} />
+                    </div>
+                </div>
             </div>
 
-            {/* Description */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Descrição</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="whitespace-pre-wrap">{nc.description}</p>
-                    {nc.source_reference && (
-                        <div className="mt-4 pt-4 border-t">
-                            <p className="text-sm text-muted-foreground">
-                                Origem: <span className="font-medium">{nc.source_reference}</span>
-                            </p>
-                        </div>
-                    )}
-                    {nc.notes && (
-                        <div className="mt-4 pt-4 border-t">
-                            <p className="text-sm text-muted-foreground">Notas:</p>
-                            <p className="text-sm">{nc.notes}</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Attachments */}
-            <NCAttachments ncId={nc.id} organizationId={nc.organization_id} />
-
-            {/* CAPA Actions */}
-            <Card className="glass">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <CheckCircle className="h-5 w-5" />
-                            Ações Corretivas e Preventivas
-                        </CardTitle>
-                        <CardDescription>{capas.length} ação(ões)</CardDescription>
+            <div className="grid gap-6 lg:grid-cols-3">
+                {/* Lateral Side - Info */}
+                <div className="space-y-6 lg:col-span-1">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                        <InfoCard
+                            title="Classificação"
+                            value={nc.nc_type === 'internal' ? 'Interna' : nc.nc_type === 'supplier' ? 'Fornecedor' : nc.nc_type === 'customer' ? 'Cliente' : nc.nc_type}
+                            icon={ShieldAlert}
+                            description={nc.category || "Geral"}
+                        />
+                        <InfoCard
+                            title="Detetada Por"
+                            value={detectedBy?.full_name || "Sistema"}
+                            icon={User}
+                            description={nc.detected_date}
+                        />
+                        <InfoCard
+                            title="Responsável"
+                            value={responsible?.full_name || "Aguardando Atribuição"}
+                            icon={Activity}
+                        />
+                        <InfoCard
+                            title="Data Limite"
+                            value={nc.due_date || "Não Definida"}
+                            icon={Calendar}
+                            isOverdue={nc.due_date && new Date(nc.due_date) < new Date() && nc.status !== "closed"}
+                        />
                     </div>
-                    <CreateCAPADialog ncId={nc.id} />
-                </CardHeader>
-                <CardContent>
-                    {capas.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>Nenhuma ação CAPA registada ainda.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {capas.map((capa: any) => {
-                                const capaResponsible = unwrap(capa.responsible_user);
-                                return (
-                                    <div
-                                        key={capa.id}
-                                        className="flex items-center justify-between p-4 border rounded-lg"
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono font-semibold">{capa.action_number}</span>
-                                                <Badge variant="outline" className="capitalize">
-                                                    {capa.action_type === 'corrective' ? 'Corretiva' : 'Preventiva'}
-                                                </Badge>
-                                                <Badge variant={capaStatusColors[capa.status] || "outline"}>
-                                                    {capa.status === 'planned' ? 'Planeada' :
-                                                        capa.status === 'in_progress' ? 'Em Progresso' :
-                                                            capa.status === 'completed' ? 'Concluída' :
-                                                                capa.status === 'verified' ? 'Verificada' :
-                                                                    capa.status === 'closed' ? 'Fechada' : capa.status}
-                                                </Badge>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                                                {capa.description}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="text-right text-sm text-muted-foreground mr-2">
-                                                <p>{capaResponsible?.full_name || "Não atribuído"}</p>
-                                                <p>{capa.planned_date || "-"}</p>
-                                            </div>
-                                            <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
 
+                    {/* Attachments Section */}
+                    <NCAttachments ncId={nc.id} organizationId={nc.organization_id} />
+                </div>
+
+                {/* Main Section - Description & CAPA */}
+                <div className="space-y-6 lg:col-span-2">
+                    {/* AI Insights - Automated RCA */}
+                    <NCInsights ncId={nc.id} />
+
+                    {/* Description Card */}
+                    <Card className="glass border-none shadow-xl bg-muted/20">
+                        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                            <FileText className="h-5 w-5 text-indigo-400" />
+                            <CardTitle className="text-lg">Investigação e Detalhes</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="p-4 rounded-2xl bg-muted/40 border border-border/50">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Problema Reportado</h4>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{nc.description}</p>
+                            </div>
+
+                            {nc.source_reference && (
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
+                                    <History className="h-4 w-4 text-indigo-400" />
+                                    <span className="text-xs text-muted-foreground">Origem Rastreável:</span>
+                                    <span className="text-xs font-mono font-bold text-indigo-300">{nc.source_reference}</span>
+                                </div>
+                            )}
+
+                            {nc.notes && (
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Notas Adicionais</h4>
+                                    <p className="text-sm p-4 rounded-xl bg-muted/20 italic">{nc.notes}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* CAPA Section */}
+                    <Card className="glass border-none shadow-xl">
+                        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-muted/50 to-transparent border-b border-border/50">
+                            <div className="flex items-center gap-3">
+                                <Target className="h-5 w-5 text-emerald-400" />
+                                <div>
+                                    <CardTitle className="text-lg uppercase tracking-tight">Plano de Ações CAPA</CardTitle>
+                                    <CardDescription>{capas.length} ações corretivas/preventivas</CardDescription>
+                                </div>
+                            </div>
+                            <CreateCAPADialog ncId={nc.id} />
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {capas.length === 0 ? (
+                                <div className="p-12 text-center">
+                                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-10 text-emerald-500" />
+                                    <p className="text-muted-foreground italic text-sm">Nenhuma ação CAPA definida para esta ocorrência.</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border/30">
+                                    {capas.map((capa: any) => {
+                                        const capaResponsible = unwrap(capa.responsible_user);
+                                        return (
+                                            <div key={capa.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
+                                                <div className="space-y-2 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-mono text-[11px] font-bold text-emerald-400">{capa.action_number}</span>
+                                                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-tighter border-emerald-500/20 text-emerald-300">
+                                                            {capa.action_type === 'corrective' ? 'Corretiva' : 'Preventiva'}
+                                                        </Badge>
+                                                        <Badge className={cn("text-[9px] uppercase font-bold border-none", capaStatusColors[capa.status])}>
+                                                            {capa.status === 'planned' ? 'Planeada' :
+                                                                capa.status === 'in_progress' ? 'Em Progresso' :
+                                                                    capa.status === 'completed' ? 'Concluída' :
+                                                                        capa.status === 'verified' ? 'Verificada' :
+                                                                            capa.status === 'closed' ? 'Fechada' : capa.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-sm font-medium leading-snug">{capa.description}</p>
+                                                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                                                        <div className="flex items-center gap-1">
+                                                            <User className="h-3 w-3" />
+                                                            {capaResponsible?.full_name || "Não atribuído"}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Calendar className="h-3 w-3" />
+                                                            {capa.planned_date || "S/ Data"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
+    );
+}
+
+function InfoCard({ title, value, icon: Icon, description, isOverdue }: any) {
+    return (
+        <Card className="glass border-none shadow-md overflow-hidden bg-background/40">
+            <CardHeader className="p-4 pb-1">
+                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Icon className="h-3 w-3" />
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+                <p className={cn("text-lg font-bold truncate", isOverdue ? "text-rose-500" : "text-foreground/80")}>
+                    {value}
+                </p>
+                {isOverdue && <p className="text-[9px] font-bold text-rose-500 animate-pulse">PRAZO ULTRAPASSADO</p>}
+                {description && <p className="text-[10px] text-muted-foreground mt-1">{description}</p>}
+            </CardContent>
+        </Card>
     );
 }

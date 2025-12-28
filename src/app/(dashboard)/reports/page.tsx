@@ -31,7 +31,7 @@ export default async function ReportsPage() {
                 </p>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions - Row 1: Core Reports */}
             <div className="grid gap-4 md:grid-cols-4">
                 <Link href="/reports/coa">
                     <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
@@ -96,6 +96,73 @@ export default async function ReportsPage() {
                         <CardContent>
                             <p className="text-sm text-muted-foreground">
                                 CSV / Excel export
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+            </div>
+
+            {/* Quick Actions - Row 2: Additional Reports */}
+            <div className="grid gap-4 md:grid-cols-4">
+                <Link href="/reports/shift">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer border-indigo-500/30">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Clock className="h-5 w-5 text-indigo-500" />
+                                Relatório Turno
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Resumo completo do turno
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/reports/trending">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FileText className="h-5 w-5 text-cyan-500" />
+                                Trending
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                SPC & Parameter trends
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/reports/cip">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FileText className="h-5 w-5 text-teal-500" />
+                                CIP Reports
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Clean-in-Place cycles
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/reports/audit">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FileText className="h-5 w-5 text-amber-500" />
+                                Audit Reports
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Audit summaries & findings
                             </p>
                         </CardContent>
                     </Card>

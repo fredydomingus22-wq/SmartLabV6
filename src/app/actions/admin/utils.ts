@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Ensures that the current user has the 'system_owner' role.
@@ -57,3 +57,4 @@ export async function logSystemAction({
         // but in a strict compliance env, we might want to.
     }
 }
+

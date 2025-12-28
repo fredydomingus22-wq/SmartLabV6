@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/smart/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Loader2, Trash2 } from "lucide-react";
+import { Plus, Pencil, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { createSpecificationAction, updateSpecificationAction, deleteSpecificationAction } from "@/app/actions/specifications";
 import { toast } from "sonner";
 
@@ -40,6 +40,12 @@ interface Specification {
     sample_type_id?: string;
     sampling_point_id?: string;
     parameter?: Parameter;
+    haccp_hazard_id?: string;
+    haccp_hazard?: {
+        is_pcc: boolean;
+        hazard_description: string;
+        hazard_category: string;
+    };
 }
 
 interface SpecDialogProps {
@@ -115,7 +121,7 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {mode === "create" ? "Add Specification" : "Edit Specification"}
@@ -144,9 +150,10 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                         </div>
                     )}
 
+                    {/* Main Settings */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="sample_type_id">Phase / Physical Stage</Label>
+                            <Label htmlFor="sample_type_id">Sample Type / Phase</Label>
                             <SearchableSelect
                                 name="sample_type_id"
                                 placeholder="Select stage..."
@@ -161,25 +168,26 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="sampling_point_id">Sampling Point</Label>
-                            <SearchableSelect
-                                name="sampling_point_id"
-                                placeholder="Select point..."
-                                defaultValue={specification?.sampling_point_id || "null"}
-                                options={[
-                                    { value: "null", label: "None / Not Applicable" },
-                                    ...samplingPoints.map(point => ({
-                                        value: point.id,
-                                        label: `${point.name} (${point.code})`
-                                    }))
-                                ]}
-                            />
-                        </div>
+                        {/* Hide Sampling Point for Products unless explicitly needed (e.g. hygiene monitoring on line) */}
+                        {/* Logic: Show if Global Mode (no product) OR if it already has a value OR if user toggles 'Show Advanced Location' */}
+                        {(!productId || specification?.sampling_point_id) && (
+                            <div className="space-y-2">
+                                <Label htmlFor="sampling_point_id">Sampling Point</Label>
+                                <SearchableSelect
+                                    name="sampling_point_id"
+                                    placeholder="Select point..."
+                                    defaultValue={specification?.sampling_point_id || "null"}
+                                    options={[
+                                        { value: "null", label: "None / Not Applicable" },
+                                        ...samplingPoints.map(point => ({
+                                            value: point.id,
+                                            label: `${point.name} (${point.code})`
+                                        }))
+                                    ]}
+                                />
+                            </div>
+                        )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground -mt-2">
-                        Specify a Phase for intermediate products (e.g. Syrup) or a Sampling Point for environmental monitoring.
-                    </p>
 
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
@@ -218,42 +226,56 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="text_value_expected">Text Value (for pass/fail)</Label>
+                        <Label htmlFor="sampling_frequency">Sampling Frequency</Label>
                         <Input
-                            id="text_value_expected"
-                            name="text_value_expected"
-                            placeholder="e.g., Negative, Absent"
-                            defaultValue={specification?.text_value_expected}
+                            id="sampling_frequency"
+                            name="sampling_frequency"
+                            placeholder="e.g. Per Batch, Hourly..."
+                            defaultValue={specification?.sampling_frequency || "Per Batch"}
+                            list="frequency-suggestions"
                         />
+                        <datalist id="frequency-suggestions">
+                            <option value="Per Batch" />
+                            <option value="Hourly" />
+                            <option value="Per Shift" />
+                            <option value="Daily" />
+                            <option value="Weekly" />
+                        </datalist>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="sampling_frequency">Sampling Frequency</Label>
-                            <Input
-                                id="sampling_frequency"
-                                name="sampling_frequency"
-                                placeholder="e.g. Per Batch, Hourly..."
-                                defaultValue={specification?.sampling_frequency || "Per Batch"}
-                                list="frequency-suggestions"
-                            />
-                            <datalist id="frequency-suggestions">
-                                <option value="Per Batch" />
-                                <option value="Hourly" />
-                                <option value="Per Shift" />
-                                <option value="Daily" />
-                                <option value="Weekly" />
-                            </datalist>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="test_method_override">Method Override</Label>
-                            <Input
-                                id="test_method_override"
-                                name="test_method_override"
-                                placeholder="Optional override"
-                                defaultValue={specification?.test_method_override}
-                            />
-                        </div>
+                    {/* Advanced Settings Checkbox/Toggle */}
+                    <div className="border rounded-md p-3 bg-muted/20">
+                        <details className="group">
+                            <summary className="flex items-center justify-between cursor-pointer list-none text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                                <span>Advanced Settings</span>
+                                <div className="p-1 rounded hover:bg-muted transition-colors">
+                                    <h4 className="text-xs underlinedecoration-dashed">Show Optional Fields</h4>
+                                </div>
+                            </summary>
+
+                            <div className="mt-4 space-y-4 pt-2 border-t">
+                                <div className="space-y-2">
+                                    <Label htmlFor="text_value_expected">Text Value (for pass/fail)</Label>
+                                    <Input
+                                        id="text_value_expected"
+                                        name="text_value_expected"
+                                        placeholder="e.g., Negative, Absent"
+                                        defaultValue={specification?.text_value_expected}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Used for qualitative tests (e.g. Microbiology).</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="test_method_override">Method Override</Label>
+                                    <Input
+                                        id="test_method_override"
+                                        name="test_method_override"
+                                        placeholder="Optional override"
+                                        defaultValue={specification?.test_method_override}
+                                    />
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -265,6 +287,77 @@ export function SpecDialog({ mode, productId, specification, availableParameters
                         <Label htmlFor="is_critical" className="text-sm">
                             Critical Parameter (auto-creates NC on failure)
                         </Label>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 rounded-xl border border-slate-800/60 shadow-inner">
+                        <div className="flex items-center space-x-2 mb-5">
+                            <Checkbox
+                                id="haccp_linked"
+                                name="haccp_linked"
+                                value="true"
+                                defaultChecked={!!specification?.haccp_hazard_id}
+                                onCheckedChange={(checked) => {
+                                    const fields = document.getElementById("haccp-fields");
+                                    if (fields) fields.style.display = checked ? "block" : "none";
+                                }}
+                                className="border-slate-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                            />
+                            <Label htmlFor="haccp_linked" className="font-bold flex items-center gap-2 text-slate-200 cursor-pointer">
+                                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                HACCP Integration (CCP / OPRP)
+                            </Label>
+                        </div>
+
+                        <div id="haccp-fields" style={{ display: !!specification?.haccp_hazard_id ? "block" : "none" }} className="space-y-5 animate-in fade-in slide-in-from-top-2">
+                            <input type="hidden" name="haccp_update_needed" value="true" />
+
+                            <div className="space-y-3">
+                                <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hazard Classification</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label htmlFor="type_oprp" className="relative flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all has-[:checked]:border-blue-500/50 has-[:checked]:bg-blue-500/10 group">
+                                        <input type="radio" id="type_oprp" name="haccp_is_pcc" value="false" defaultChecked={specification?.haccp_hazard?.is_pcc === false || !specification?.haccp_hazard} className="sr-only" />
+                                        <span className="text-xs font-medium text-slate-400 group-has-[:checked]:text-blue-400">OPRP</span>
+                                        <span className="text-[10px] text-slate-500 group-has-[:checked]:text-blue-500/70">Prerequisite</span>
+                                    </label>
+
+                                    <label htmlFor="type_ccp" className="relative flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all has-[:checked]:border-red-500/50 has-[:checked]:bg-red-500/10 group">
+                                        <input type="radio" id="type_ccp" name="haccp_is_pcc" value="true" defaultChecked={specification?.haccp_hazard?.is_pcc === true} className="sr-only" />
+                                        <span className="text-xs font-bold text-slate-400 group-has-[:checked]:text-red-400 uppercase">CCP</span>
+                                        <span className="text-[10px] text-slate-500 group-has-[:checked]:text-red-500/70 text-center leading-tight">Critical Control Point</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="haccp_description" className="text-slate-300">Hazard Description</Label>
+                                <Input
+                                    id="haccp_description"
+                                    name="haccp_description"
+                                    placeholder="e.g. Survival of Pathogens (Salmonella)"
+                                    defaultValue={specification?.haccp_hazard?.hazard_description}
+                                    className="bg-slate-950/50 border-slate-800 focus:border-orange-500/50 text-slate-200"
+                                />
+                                <p className="text-[10px] text-slate-500 italic">
+                                    This will create or link a Hazard in the HACCP plan for automated monitoring.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="haccp_category" className="text-slate-300">Hazard Category</Label>
+                                <select
+                                    name="haccp_category"
+                                    id="haccp_category"
+                                    className="flex h-10 w-full items-center justify-between rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    defaultValue={specification?.haccp_hazard?.hazard_category || "biological"}
+                                >
+                                    <option value="biological" className="bg-slate-900">Biological</option>
+                                    <option value="chemical" className="bg-slate-900">Chemical</option>
+                                    <option value="physical" className="bg-slate-900">Physical</option>
+                                    <option value="allergen" className="bg-slate-900">Allergen</option>
+                                    <option value="radiological" className="bg-slate-900">Radiological</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <DialogFooter className="gap-2">

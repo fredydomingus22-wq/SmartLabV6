@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { SPCClient } from "./spc-client";
 import { getActiveSPCAlerts } from "@/lib/queries/spc-alerts";
 
@@ -23,7 +23,13 @@ export default async function SPCPage() {
         .eq("organization_id", user.organization_id)
         .eq("plant_id", user.plant_id);
 
-    // 3. Fetch Active SPC Alerts
+    // 3. Fetch Sample Types
+    const { data: sampleTypes } = await supabase
+        .from("sample_types")
+        .select("id, name")
+        .eq("organization_id", user.organization_id);
+
+    // 4. Fetch Active SPC Alerts
     let activeAlerts: any[] = [];
     try {
         activeAlerts = await getActiveSPCAlerts(10);
@@ -31,63 +37,14 @@ export default async function SPCPage() {
         console.warn("Could not fetch SPC alerts:", err);
     }
 
-    // 4. Fetch Initial Data (last 20 analysis for the first parameter found)
-    let initialData: any[] = [];
-    let initialSpecs: any = null;
+    // 5. Fetch Initial Data (last 30 days for the first parameter found)
+    let initialSPCResult: any = null;
 
     if (parameters && parameters.length > 0) {
-        const paramId = parameters[0].id;
-
-        // Fetch last 20 numeric analyses
-        const { data: analyses } = await supabase
-            .from("lab_analysis")
-            .select(`
-                id,
-                value_numeric,
-                created_at,
-                samples (
-                    code,
-                    production_batches (
-                        code
-                    )
-                )
-            `)
-            .eq("qa_parameter_id", paramId)
-            .eq("organization_id", user.organization_id)
-            .eq("plant_id", user.plant_id)
-            .not("value_numeric", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(50);
-
-        if (analyses) {
-            initialData = analyses.map(a => ({
-                id: a.id,
-                value: a.value_numeric,
-                date: a.created_at,
-                sampleCode: (a.samples as any)?.code,
-                batchCode: (a.samples as any)?.production_batches?.code
-            }));
-        }
-
-        // Fetch Specs for the first product and first parameter
-        if (products && products.length > 0) {
-            const { data: specs, error: specsError } = await supabase
-                .from("product_specifications")
-                .select("min_value, max_value, target_value")
-                .eq("product_id", products[0].id)
-                .eq("qa_parameter_id", paramId)
-                .eq("organization_id", user.organization_id)
-                .eq("plant_id", user.plant_id)
-                .eq("is_current", true)
-                .single();
-
-            if (specsError && specsError.code !== 'PGRST116') {
-                console.error("Error fetching initial specs:", specsError);
-            }
-            initialSpecs = specs;
-        }
-    } else {
-        console.warn("No parameters found for tenant:", user.organization_id, user.plant_id);
+        const { getSPCData } = await import("@/lib/queries/spc");
+        initialSPCResult = await getSPCData(parameters[0].id, 30, {
+            productId: products && products.length > 0 ? products[0].id : undefined
+        });
     }
 
     return (
@@ -95,9 +52,10 @@ export default async function SPCPage() {
             user={user}
             parameters={parameters || []}
             products={products || []}
-            initialData={initialData}
-            initialSpecs={initialSpecs}
+            sampleTypes={sampleTypes || []}
+            initialSPCResult={initialSPCResult}
             alerts={activeAlerts}
         />
     );
 }
+

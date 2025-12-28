@@ -7,6 +7,8 @@ import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import { processApprovalAction } from "@/app/actions/dms";
 import { useState } from "react";
 import { ActionForm } from "@/components/smart/action-form";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface ApprovalWorkflowProps {
     version: any;
@@ -62,11 +64,13 @@ export function ApprovalWorkflow({ version, currentUserId }: ApprovalWorkflowPro
                     </h4>
 
                     <ActionForm
-                        action={(fd) => processApprovalAction(myApproval.id, fd.get('decision') as any, fd.get('comments') as string)}
+                        action={processApprovalAction}
                         submitText="Confirmar Decisão"
                     >
                         <div className="space-y-4">
+                            <input type="hidden" name="approvalId" value={myApproval.id} />
                             <input type="hidden" name="decision" id="decision_input" value="approved" />
+                            <input type="hidden" name="status" id="status_input" value="approved" />
 
                             <div className="grid grid-cols-2 gap-2">
                                 <Button
@@ -74,7 +78,7 @@ export function ApprovalWorkflow({ version, currentUserId }: ApprovalWorkflowPro
                                     variant="outline"
                                     className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                                     onClick={() => {
-                                        const input = document.getElementById('decision_input') as HTMLInputElement;
+                                        const input = document.getElementById('status_input') as HTMLInputElement;
                                         input.value = 'approved';
                                         toast.info("Selecionado: Aprovar");
                                     }}
@@ -86,7 +90,7 @@ export function ApprovalWorkflow({ version, currentUserId }: ApprovalWorkflowPro
                                     variant="outline"
                                     className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
                                     onClick={() => {
-                                        const input = document.getElementById('decision_input') as HTMLInputElement;
+                                        const input = document.getElementById('status_input') as HTMLInputElement;
                                         input.value = 'rejected';
                                         toast.info("Selecionado: Rejeitar");
                                     }}
@@ -100,6 +104,22 @@ export function ApprovalWorkflow({ version, currentUserId }: ApprovalWorkflowPro
                                 placeholder="Comentários ou observações (opcional)..."
                                 className="glass min-h-[80px]"
                             />
+
+                            <div className="space-y-2 pt-2 border-t border-slate-800">
+                                <Label htmlFor="password" title="21 CFR Part 11 Signature" className="text-[10px] uppercase text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                                    Assinatura Eletrónica Requerida
+                                </Label>
+                                <Input
+                                    type="password"
+                                    name="password"
+                                    placeholder="Re-introduza a sua password..."
+                                    className="glass text-center font-mono"
+                                    required
+                                />
+                                <p className="text-[10px] text-slate-500 italic">
+                                    Ao carregar em confirmar, declara que reviu o documento e a sua decisão constitui uma assinatura legalmente vinculativa.
+                                </p>
+                            </div>
                         </div>
                     </ActionForm>
                 </div>

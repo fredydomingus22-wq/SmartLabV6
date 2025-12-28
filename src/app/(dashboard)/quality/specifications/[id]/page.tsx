@@ -31,7 +31,9 @@ export default async function SpecificationDetailPage({ params }: PageProps) {
         .select(`
             *,
             product:products(id, name, sku),
-            parameter:qa_parameters(id, name, code, unit, category, method)
+            haccp_hazard_id,
+            haccp_hazard:haccp_hazards(id, is_pcc, hazard_description, hazard_category),
+            parameter:qa_parameters(id, name, code, unit, category)
         `)
         .eq("id", id)
         .single();

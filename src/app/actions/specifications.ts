@@ -87,6 +87,26 @@ export async function createSpecificationAction(formData: FormData) {
         return { success: false, message: "Specification already exists for this configuration" };
     }
 
+    // HACCP Logic: Create or Link Hazard
+    let haccpHazardId = null;
+    const isHaccpLinked = formData.get("haccp_linked") === "true";
+    if (isHaccpLinked) {
+        const hazardDesc = formData.get("haccp_description") as string;
+        const hazardCategory = formData.get("haccp_category") as any;
+        const isPcc = formData.get("haccp_is_pcc") === "true";
+
+        if (hazardDesc && hazardCategory) {
+            // Import dynamically to avoid circular dependency issues if any
+            const { createQuickHazardAction } = await import("./haccp");
+            const hazardResult = await createQuickHazardAction(hazardDesc, hazardCategory, isPcc);
+            if (hazardResult.success) {
+                haccpHazardId = hazardResult.hazardId;
+            } else {
+                return { success: false, message: "Failed to create HACCP Hazard: " + hazardResult.message };
+            }
+        }
+    }
+
     // Fetch category from parameter
     const { data: parameter } = await supabase
         .from("qa_parameters")
@@ -101,6 +121,8 @@ export async function createSpecificationAction(formData: FormData) {
         plant_id: profile.plant_id,
         ...validation.data,
         category: specCategory,
+        // Ensure haccp_hazard_id is added
+        haccp_hazard_id: haccpHazardId,
         status: "active",
         version: 1,
     });
@@ -194,10 +216,51 @@ export async function updateSpecificationAction(formData: FormData) {
     // Update with incremented version
     const newVersion = (currentSpec.version || 1) + 1;
 
+    // HACCP Logic: Create or Link Hazard (Update)
+    let haccpHazardId = currentSpec.haccp_hazard_id; // Default to existing
+    const isHaccpLinked = formData.get("haccp_linked") === "true";
+
+    if (isHaccpLinked) {
+        const hazardDesc = formData.get("haccp_description") as string;
+        const hazardCategory = formData.get("haccp_category") as any;
+        const isPcc = formData.get("haccp_is_pcc") === "true";
+
+        // Logic: If linked and we have a new/updated description, create a new one??
+        // Or if ID is missing but we want to link.
+        // Simple Logic: Always create new if description changes? No, duplicate.
+        // For "Quick mode", we just create a new one if it doesn't exist linked, or if user explicitly wants new.
+        // But here we might be editing properties.
+        // Let's assume for this iteration: If description provided, we create a NEW one (simplest crud) 
+        // OR reuse if user selects existing (not implemented in Quick Mode yet).
+        // Better: Check if `haccpHazardId` exists. Update it? Or Create New?
+        // Updating typical HACCP Hazard might affect other specs. Safest is create new if details change significantly.
+        // But for Quick Sync:
+        // Case 1: Was not linked, now linked -> Create New Hazard
+        // Case 2: Was linked, user changes desc -> Update existing Hazard? Or Create New?
+        // Let's create new for now to be safe, unless it matches exactly.
+
+        // Actually, if we just pass the ID, it's safer. But UI is "create quick".
+        // Let's create a new one if `haccp_new` flag is set or if no ID exists.
+
+        if (!haccpHazardId || formData.get("haccp_update_needed") === "true") {
+            if (hazardDesc && hazardCategory) {
+                const { createQuickHazardAction } = await import("./haccp");
+                const hazardResult = await createQuickHazardAction(hazardDesc, hazardCategory, isPcc);
+                if (hazardResult.success) {
+                    haccpHazardId = hazardResult.hazardId;
+                }
+            }
+        }
+    } else {
+        // User unchecked "Linked".
+        haccpHazardId = null;
+    }
+
     const { error } = await supabase
         .from("product_specifications")
         .update({
             ...validation.data,
+            haccp_hazard_id: haccpHazardId, // Update link
             version: newVersion,
             effective_date: new Date().toISOString().split('T')[0],
             updated_at: new Date().toISOString(),

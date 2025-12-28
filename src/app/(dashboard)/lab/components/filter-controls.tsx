@@ -42,10 +42,10 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
         return (
             <div className="flex items-center gap-2">
                 <div className="relative w-[200px] sm:w-[250px]">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
                     <Input
                         placeholder="Pesquisar..."
-                        className="h-8 pl-8 text-xs bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+                        className="h-8 pl-8 text-xs bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus-visible:ring-0 transition-all"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -57,20 +57,21 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                             variant="outline"
                             size="sm"
                             className={cn(
-                                "h-8 px-2 text-[10px] font-bold bg-muted/30 border-none hover:bg-muted/50",
-                                !date && "text-muted-foreground"
+                                "h-8 px-2 text-[10px] font-bold bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:text-white transition-all",
+                                !date && "text-slate-500"
                             )}
                         >
                             <Calendar className="mr-1.5 h-3.5 w-3.5" />
                             {date ? format(date, "dd/MM/yyyy") : "Data"}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
+                    <PopoverContent className="w-auto p-0 border-slate-800 bg-slate-950" align="end">
                         <CalendarComponent
                             mode="single"
                             selected={date}
                             onSelect={handleDateSelect}
                             initialFocus
+                            className="p-3 pointer-events-auto"
                         />
                     </PopoverContent>
                 </Popover>
@@ -83,7 +84,7 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                             setSearch("");
                             setDateParam(null);
                         }}
-                        className="h-8 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                        className="h-8 px-2 text-[10px] font-bold text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
                     >
                         Limpar
                     </Button>
@@ -93,12 +94,12 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
     }
 
     return (
-        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 glass rounded-xl border border-white/20 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 glass rounded-xl border-slate-800/50 shadow-sm">
             <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <Input
                     placeholder="Procurar por código de amostra..."
-                    className="pl-9 bg-background/50 border-input focus:bg-background transition-all"
+                    className="pl-9 bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:bg-slate-900 focus:border-blue-500/50 transition-all"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
@@ -106,11 +107,11 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
 
             <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
                 <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-[180px] bg-background/50 border-input">
-                        <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectTrigger className="w-[180px] bg-slate-900/50 border-slate-700 text-slate-300">
+                        <Filter className="h-4 w-4 mr-2 text-slate-500" />
                         <SelectValue placeholder="Estado" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-slate-300">
                         <SelectItem value="all">Todos os Estados</SelectItem>
                         <SelectItem value="pending">Pendente</SelectItem>
                         <SelectItem value="collected">Colhida</SelectItem>
@@ -125,15 +126,15 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                         <Button
                             variant="outline"
                             className={cn(
-                                "w-[180px] justify-start text-left font-normal bg-background/50 border-input",
-                                !date && "text-muted-foreground"
+                                "w-[180px] justify-start text-left font-normal bg-slate-900/50 border-slate-700 hover:bg-slate-800 hover:text-white transition-all",
+                                !date && "text-slate-500"
                             )}
                         >
                             <Calendar className="mr-2 h-4 w-4" />
                             {date ? format(date, "PPP", { locale: pt }) : "Data de Colheita"}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
+                    <PopoverContent className="w-auto p-0 border-slate-800 bg-slate-950" align="end">
                         <CalendarComponent
                             mode="single"
                             selected={date}
@@ -151,7 +152,7 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                             setStatus("all");
                             setDateParam(null);
                         }}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
                     >
                         Limpar
                     </Button>

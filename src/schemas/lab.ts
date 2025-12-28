@@ -8,6 +8,7 @@ export const CreateSampleSchema = z.object({
     sampling_point_id: z.string().uuid().optional(),
     plant_id: z.string().uuid().optional(), // Often injected by server action
     collected_at: z.string().optional(), // For datetime-local input
+    assignee_id: z.string().uuid().optional(),
 });
 
 export type CreateSampleFormValues = z.infer<typeof CreateSampleSchema>;

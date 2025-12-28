@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all packaging materials
@@ -90,3 +90,4 @@ export async function getPackagingLotDetails(lotId: string) {
     if (error) throw error;
     return lot;
 }
+

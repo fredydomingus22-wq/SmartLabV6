@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all suppliers
@@ -275,3 +275,4 @@ export async function searchLotsByCode(searchTerm: string) {
     if (error) throw error;
     return data;
 }
+

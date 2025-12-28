@@ -18,7 +18,7 @@ import { Plus } from "lucide-react";
 import { ActionForm } from "@/components/smart/action-form";
 import { createNCAction } from "@/app/actions/qms";
 
-export function CreateNCDialog() {
+export function CreateNCDialog({ users }: { users: { id: string, full_name: string | null, role: string }[] }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -149,6 +149,21 @@ export function CreateNCDialog() {
                                     className="glass text-white [color-scheme:dark]"
                                 />
                             </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="responsible_id">Responsável / Atribuição de Tarefa</Label>
+                            <SearchableSelect
+                                name="responsible_id"
+                                options={users.map(u => ({
+                                    value: u.id,
+                                    label: `${u.full_name || 'Sem Nome'} (${u.role})`
+                                }))}
+                                placeholder="Selecionar responsável..."
+                            />
+                            <p className="text-[10px] text-slate-500 italic">
+                                Ao selecionar um responsável, uma tarefa será automaticamente criada no seu Dashboard.
+                            </p>
                         </div>
 
                         <div className="grid gap-2">

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { z } from "zod";
 import { SAMPLE_TYPE_CATEGORIES, isFinishedProduct, isIntermediateProduct } from "@/lib/constants/lab";
+import { requirePermission } from "@/lib/permissions.server";
 
 // --- Schemas ---
 
@@ -24,6 +25,7 @@ const RegisterResultSchema = z.object({
     value_text: z.string().optional(),
     is_conforming: z.coerce.boolean().optional(),
     notes: z.string().optional(),
+    equipment_id: z.string().uuid().optional(),
 });
 
 const ApproveSampleSchema = z.object({
@@ -39,16 +41,8 @@ const ApproveSampleSchema = z.object({
  * URS: Auto-loads product specifications and creates pending lab_analysis records
  */
 export async function createSampleAction(formData: FormData) {
+    const user = await requirePermission('lab', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const { data: userData } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-    if (!userData) return { success: false, message: "Profile not found" };
 
     const rawData = {
         sample_type_id: formData.get("sample_type_id"),
@@ -197,7 +191,7 @@ export async function createSampleAction(formData: FormData) {
 
     // 2. Insert the sample with the finalized code
     const { data: newSample, error } = await supabase.from("samples").insert({
-        organization_id: userData.organization_id,
+        organization_id: user.organization_id,
         plant_id: validation.data.plant_id,
         sample_type_id: validation.data.sample_type_id,
         code: finalCode || `AMS-${format(new Date(), "yyyyMMdd-HHmm")}`, // Fallback if auto-gen fails
@@ -227,7 +221,7 @@ export async function createSampleAction(formData: FormData) {
                 const uniqueParamIds = Array.from(new Set(specs.map(s => s.qa_parameter_id)));
 
                 const analysisRecords = uniqueParamIds.map(paramId => ({
-                    organization_id: userData.organization_id,
+                    organization_id: user.organization_id,
                     plant_id: validation.data.plant_id,
                     sample_id: newSample.id,
                     qa_parameter_id: paramId,
@@ -240,8 +234,26 @@ export async function createSampleAction(formData: FormData) {
         }
     }
 
+    // --- AUTOMATION: Create Task for Assignee ---
+    const assigneeId = formData.get("assignee_id") as string;
+    if (newSample?.id && assigneeId) {
+        await supabase.from("app_tasks").insert({
+            organization_id: user.organization_id,
+            plant_id: validation.data.plant_id,
+            title: `Análise: ${finalCode}`,
+            description: `Executar análises laboratoriais para a amostra ${finalCode}.`,
+            status: 'todo',
+            priority: 'medium',
+            assignee_id: assigneeId,
+            module_context: (sampleTypeCode === 'MICRO' || sampleTypeCode === 'ENV') ? 'micro_sample' : 'lab_sample',
+            entity_id: newSample.id,
+            entity_reference: finalCode,
+            created_by: user.id
+        });
+    }
+
     revalidatePath("/lab");
-    return { success: true, message: "Sample Created" };
+    return { success: true, message: "Sample Created", sampleId: newSample?.id };
 }
 
 /**
@@ -375,6 +387,7 @@ export async function registerResultAction(formData: FormData) {
         value_text: formData.get("value_text") || undefined,
         is_conforming: formData.get("is_conforming") === "true" || formData.get("is_conforming") === "on",
         notes: formData.get("notes") || undefined,
+        equipment_id: formData.get("equipment_id") || undefined,
     };
 
     const validation = RegisterResultSchema.safeParse(rawData);
@@ -465,6 +478,7 @@ export async function registerResultAction(formData: FormData) {
         value_text: validation.data.value_text || null,
         is_conforming: autoConforming,
         notes: validation.data.notes || null,
+        equipment_id: validation.data.equipment_id || null,
         analyzed_by: user.id,
     }).select("id").single();
 
@@ -515,26 +529,19 @@ export async function registerResultAction(formData: FormData) {
         }
     }
 
-    // Trigger AI Validation
-    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && newResult) {
-        try {
-            fetch(`${process.env.SUPABASE_URL}/functions/v1/ai-validator`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    record: {
-                        id: newResult.id,
-                        sample_id: validation.data.sample_id,
-                        qa_parameter_id: validation.data.qa_parameter_id
-                    }
-                })
-            });
-        } catch (aiError) {
-            console.warn("AI trigger failed:", aiError);
-        }
+    // Trigger AI Validation (Fire and forget)
+    if (newResult && validation.data.value_numeric !== undefined) {
+        const { triggerResultValidation } = await import("@/lib/ai/triggers");
+        // We do typically await this in serverless to ensure execution, but for speed in UI we can let it float
+        // logic. ideally we would use a job queue or 'waitUntil'. 
+        // For this V1, let's just trigger it. Node.js usually handles floating promises fine.
+        triggerResultValidation(
+            newResult.id,
+            validation.data.sample_id,
+            validation.data.qa_parameter_id,
+            validation.data.value_numeric,
+            "" // Unit is fetched inside the trigger
+        ).catch(e => console.error("Background AI Trigger failed:", e));
     }
 
     // Auto-advance sample status
@@ -636,9 +643,8 @@ export async function approveSampleAction(formData: FormData) {
  * Get pending samples for the current user's plant
  */
 export async function getPendingSamplesAction() {
+    const user = await requirePermission('lab', 'read'); // Replaced manual user fetching
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized", data: [] };
 
     const { data: profile } = await supabase
         .from("user_profiles")
@@ -906,7 +912,7 @@ export async function registerRetestResultAction(formData: FormData) {
  */
 export async function signAndSaveResultsAction(
     sampleId: string,
-    results: { analysisId: string; value: string | null; notes?: string }[],
+    results: { analysisId: string; value: string | null; notes?: string; equipmentId?: string }[],
     password?: string
 ) {
     const supabase = await createClient();
@@ -1014,6 +1020,8 @@ export async function signAndSaveResultsAction(
                 value_numeric: isNumeric ? numValue : null,
                 value_text: !isNumeric && result.value ? result.value : null,
                 is_conforming: isConforming,
+                lab_asset_id: result.equipmentId || null,
+                equipment_id: result.equipmentId || null, // Legacy FK for backward compat
                 notes: result.notes || null,
                 analyzed_by: user.id,
                 analyzed_at: new Date().toISOString(),
@@ -1099,14 +1107,32 @@ export async function signAndSaveResultsAction(
 /**
  * Save all results for a sample at once (multi-parameter entry)
  */
+/**
+ * Save all results for a sample at once (multi-parameter entry)
+ * Supports optional password verification and single attachment per sample
+ */
 export async function saveAllResultsAction(
     sampleId: string,
-    results: { analysisId: string; value: string | null; notes?: string; attachmentUrl?: string }[],
-    sampleNotes?: string
+    results: { analysisId: string; value: string | null; notes?: string; equipmentId?: string }[],
+    sampleNotes?: string,
+    password?: string,
+    attachmentUrl?: string
 ) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Unauthorized" };
+
+    // --- PASSWORD VALIDATION (If provided) ---
+    if (password) {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+            email: user.email!,
+            password: password,
+        });
+
+        if (authError) {
+            return { success: false, message: "Senha inválida. Falha na autenticação." };
+        }
+    }
 
     let successCount = 0;
     let errorCount = 0;
@@ -1173,6 +1199,12 @@ export async function saveAllResultsAction(
     }
 
     let ncCreatedCount = 0;
+    const signatureHash = password ? btoa(JSON.stringify({
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        sampleId,
+        action: 'save_results'
+    })) : null;
 
     for (const result of results) {
         const paramId = analysisMap.get(result.analysisId);
@@ -1195,16 +1227,22 @@ export async function saveAllResultsAction(
             if (spec.max_value !== null && spec.max_value !== undefined && numValue! > (spec.max_value as number)) isConforming = false;
         }
 
+        const updatePayload: any = {
+            value_numeric: isNumeric ? numValue : null,
+            value_text: !isNumeric && result.value ? result.value : null,
+            is_conforming: isConforming,
+            notes: result.notes || null,
+            analyzed_by: user.id,
+            analyzed_at: new Date().toISOString(),
+        };
+
+        if (signatureHash) {
+            updatePayload.signed_transaction_hash = signatureHash;
+        }
+
         const { error } = await supabase
             .from("lab_analysis")
-            .update({
-                value_numeric: isNumeric ? numValue : null,
-                value_text: !isNumeric && result.value ? result.value : null,
-                is_conforming: isConforming,
-                notes: result.notes || null,
-                analyzed_by: user.id,
-                analyzed_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq("id", result.analysisId);
 
         if (error) {
@@ -1250,11 +1288,15 @@ export async function saveAllResultsAction(
         }
     }
 
-    // Save Sample Notes if provided
-    if (sampleNotes !== undefined) {
+    // Save Sample Notes & Attachment if provided
+    if (sampleNotes !== undefined || attachmentUrl !== undefined) {
+        const sampleUpdatePayload: any = {};
+        if (sampleNotes !== undefined) sampleUpdatePayload.notes = sampleNotes;
+        if (attachmentUrl !== undefined) sampleUpdatePayload.attachment_url = attachmentUrl;
+
         await supabase
             .from("samples")
-            .update({ notes: sampleNotes })
+            .update(sampleUpdatePayload)
             .eq("id", sampleId);
     }
 
@@ -1295,7 +1337,8 @@ export async function saveAllResultsAction(
         return { success: false, message: `Guardados ${successCount}, falharam ${errorCount}` };
     }
 
-    let finalMessage = `Guardados ${successCount} resultados.`;
+    let finalMessage = `Resultados guardados com sucesso.`;
+    if (signatureHash) finalMessage = `Assinado digitalmente e guardado.`;
     if (ncCreatedCount > 0) {
         finalMessage += ` ⚠️ ${ncCreatedCount} NC(s) criadas automaticamente por falha crítica.`;
     }

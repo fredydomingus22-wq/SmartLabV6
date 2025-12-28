@@ -35,7 +35,10 @@ export async function createGlobalUserAction(formData: FormData) {
         const fullName = formData.get('full_name') as string;
         const role = formData.get('role') as string;
         const organizationId = formData.get('organization_id') as string;
-        const plantId = formData.get('plant_id') as string || null;
+        let plantId = formData.get('plant_id') as string || null;
+
+        // Handle explicit "no_plant" value from UI
+        if (plantId === 'no_plant') plantId = null;
 
         if (!email || !password || !fullName || !organizationId || !role) {
             return { success: false, message: "Missing required fields" };
@@ -105,6 +108,62 @@ export async function deleteGlobalUserAction(userId: string) {
 
         revalidatePath('/saas/users');
         return { success: true, message: "Utilizador removido do sistema" };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+
+export async function updateGlobalUserAction(formData: FormData) {
+    try {
+        const user = await ensureSystemOwner();
+        const supabase = createAdminClient();
+
+        const userId = formData.get('user_id') as string;
+        const role = formData.get('role') as string;
+        const organizationId = formData.get('organization_id') as string;
+        let plantId = formData.get('plant_id') as string || null;
+
+        // Handle explicit "no_plant" value from UI
+        if (plantId === 'no_plant') plantId = null;
+        const fullName = formData.get('full_name') as string;
+
+        if (!userId || !role || !fullName) {
+            return { success: false, message: "Missing required fields" };
+        }
+
+        // 1. Update User Profile
+        const { error: profileError } = await supabase
+            .from('user_profiles')
+            .update({
+                role,
+                organization_id: organizationId || null,
+                plant_id: plantId,
+                full_name: fullName
+            })
+            .eq('id', userId);
+
+        if (profileError) throw profileError;
+
+        // 2. Update Auth Metadata (for consistent full_name)
+        const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+            user_metadata: { full_name: fullName }
+        });
+
+        if (authError) throw authError;
+
+        // Log SaaS Action
+        await logSystemAction({
+            actorId: user.id,
+            action: 'UPDATE_GLOBAL_USER',
+            entityType: 'user',
+            entityId: userId,
+            newData: { fullName, role, plantId }
+        });
+
+        revalidatePath('/saas/users');
+        revalidatePath(`/saas/users/${userId}`);
+        return { success: true, message: "Utilizador atualizado com sucesso" };
     } catch (e: any) {
         return { success: false, message: e.message };
     }

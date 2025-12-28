@@ -1,85 +1,58 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
+import { getSPCData, SPCFilterOptions } from "@/lib/queries/spc";
 
 export async function getSPCDataAction(filters: {
     productId: string;
     parameterId: string;
     batchId?: string;
+    sampleTypeId?: string;
     startDate?: string;
     endDate?: string;
+    subgroupSize?: number;
 }) {
-    const supabase = await createClient();
-    const user = await getSafeUser();
+    const spcFilters: SPCFilterOptions = {
+        productId: filters.productId,
+        batchId: filters.batchId === "all" ? undefined : filters.batchId,
+        sampleTypeId: filters.sampleTypeId === "all" ? undefined : filters.sampleTypeId,
+        dateFrom: filters.startDate,
+        dateTo: filters.endDate,
+        subgroupSize: filters.subgroupSize
+    };
 
-    // 1. Fetch Specs
-    const { data: specs } = await supabase
-        .from("product_specifications")
-        .select("min_value, max_value, target_value")
-        .eq("product_id", filters.productId)
-        .eq("qa_parameter_id", filters.parameterId)
-        .eq("organization_id", user.organization_id)
-        .eq("plant_id", user.plant_id)
-        .eq("is_current", true)
-        .single();
+    const spcResult = await getSPCData(filters.parameterId, 30, spcFilters);
 
-    // 2. Fetch Batches for the product (for the filter dropdown if needed, though usually passed from props)
-    // Actually, we'll just use the provided filters for the data query.
-
-    let query = supabase
-        .from("lab_analysis")
-        .select(`
-            id,
-            value_numeric,
-            created_at,
-            samples!inner (
-                code,
-                production_batches!inner (
-                    id,
-                    code,
-                    product_id
-                )
-            )
-        `)
-        .eq("qa_parameter_id", filters.parameterId)
-        .eq("organization_id", user.organization_id)
-        .eq("plant_id", user.plant_id)
-        .eq("samples.production_batches.product_id", filters.productId)
-        .not("value_numeric", "is", null);
-
-    if (filters.batchId && filters.batchId !== "all") {
-        query = query.eq("samples.production_batches.id", filters.batchId);
+    if (!spcResult) {
+        return { data: [], subgroups: [], specs: null, error: "Falha ao carregar dados SPC" };
     }
-
-    if (filters.startDate) {
-        query = query.gte("created_at", filters.startDate);
-    }
-
-    if (filters.endDate) {
-        query = query.lte("created_at", filters.endDate);
-    }
-
-    const { data: analyses, error } = await query
-        .order("created_at", { ascending: false })
-        .limit(200); // Increased limit for better analysis
-
-    if (error) {
-        console.error("Error fetching SPC data:", error);
-        return { data: [], specs: null, error: error.message };
-    }
-
-    const formattedData = analyses?.map(a => ({
-        id: a.id,
-        value: a.value_numeric,
-        date: a.created_at,
-        sampleCode: (a.samples as any)?.code,
-        batchCode: (a.samples as any)?.production_batches?.code
-    })) || [];
 
     return {
-        data: formattedData,
-        specs: specs || { min_value: null, max_value: null, target_value: null }
+        data: spcResult.data,
+        subgroups: spcResult.subgroups || [],
+        specs: {
+            min_value: spcResult.specLimits?.lsl,
+            max_value: spcResult.specLimits?.usl,
+            target_value: spcResult.specLimits?.target
+        },
+        statistics: {
+            mean: spcResult.mean,
+            sigmaShort: spcResult.sigmaShort,
+            sigmaLong: spcResult.sigmaLong,
+            ucl: spcResult.ucl,
+            lcl: spcResult.lcl,
+            uclR: spcResult.uclR,
+            lclR: spcResult.lclR,
+            uclS: spcResult.uclS,
+            lclS: spcResult.lclS,
+            avgRange: spcResult.avgRange,
+            avgStdDev: spcResult.avgStdDev,
+            cpk: spcResult.processCapability?.cpk,
+            cp: spcResult.processCapability?.cp,
+            ppk: spcResult.processCapability?.ppk,
+            violations: spcResult.violations
+        }
     };
 }
 
@@ -98,3 +71,98 @@ export async function getProductBatchesAction(productId: string) {
 
     return batches || [];
 }
+
+export async function getParetoDataAction(dimension: "category" | "nc_type" | "severity" = "category") {
+    const { getParetoData } = await import("@/lib/queries/qms");
+    return getParetoData(dimension);
+}
+
+export async function getCorrelationDataAction(
+    param1Id: string,
+    param2Id: string,
+    filters: {
+        productId: string;
+        batchId?: string;
+        sampleTypeId?: string;
+        startDate?: string;
+        endDate?: string;
+    }
+) {
+    const { getCorrelationData } = await import("@/lib/queries/spc");
+    return getCorrelationData(param1Id, param2Id, {
+        productId: filters.productId,
+        batchId: filters.batchId === "all" ? undefined : filters.batchId,
+        sampleTypeId: filters.sampleTypeId === "all" ? undefined : filters.sampleTypeId,
+        dateFrom: filters.startDate,
+        dateTo: filters.endDate
+    });
+}
+
+export async function analyzeSPCTrendsAction(params: {
+    parameterName: string;
+    unit: string;
+    data: any[];
+    statistics: any;
+    specLimits?: any;
+}) {
+    const { analyzeSPCTrends } = await import("@/lib/openai");
+    return analyzeSPCTrends(params);
+}
+
+export async function saveQualityAnalysisAction(params: {
+    productId?: string;
+    parameterId?: string;
+    batchId?: string;
+    analysisType: 'ishikawa' | '5why' | 'check_sheet' | 'flowchart';
+    data: any;
+}) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data, error } = await supabase
+        .from("quality_analysis")
+        .upsert({
+            organization_id: user.organization_id,
+            plant_id: user.plant_id,
+            product_id: params.productId,
+            parameter_id: params.parameterId,
+            batch_id: params.batchId === "all" ? undefined : params.batchId,
+            analysis_type: params.analysisType,
+            data: params.data,
+            created_by: user.id,
+            updated_at: new Date().toISOString()
+        }, {
+            onConflict: 'organization_id, plant_id, product_id, parameter_id, batch_id, analysis_type'
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function getQualityAnalysisAction(params: {
+    productId?: string;
+    parameterId?: string;
+    batchId?: string;
+    analysisType: 'ishikawa' | '5why' | 'check_sheet' | 'flowchart';
+}) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const query = supabase
+        .from("quality_analysis")
+        .select("*")
+        .eq("organization_id", user.organization_id)
+        .eq("analysis_type", params.analysisType);
+
+    if (params.productId) query.eq("product_id", params.productId);
+    if (params.parameterId) query.eq("parameter_id", params.parameterId);
+    if (params.batchId && params.batchId !== "all") query.eq("batch_id", params.batchId);
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+}
+

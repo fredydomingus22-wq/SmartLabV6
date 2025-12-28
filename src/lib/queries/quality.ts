@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get Quality KPIs for dashboard
@@ -140,3 +140,4 @@ export async function getTopDefects(limit: number = 5) {
         error: null,
     };
 }
+

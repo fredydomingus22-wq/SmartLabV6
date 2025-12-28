@@ -11,21 +11,38 @@ import {
     ShieldAlert,
     Globe,
     FileText,
+    ClipboardList,
 } from "lucide-react";
+import { Module } from "@/lib/permissions";
 
-export const menuItems = [
+export interface MenuItem {
+    href?: string;
+    icon: any;
+    label: string;
+    module: Module;
+    children?: { href: string; label: string }[];
+}
+
+export const menuItems: MenuItem[] = [
     {
         href: "/dashboard",
         icon: LayoutDashboard,
         label: "Painel Principal",
-        allowedRoles: ["admin", "system_owner", "analyst", "micro_analyst", "lab_analyst"]
+        module: "dashboard"
+    },
+    {
+        href: "/tasks",
+        icon: ClipboardList,
+        label: "Gestão de Tarefas",
+        module: "tasks"
     },
     {
         label: "Laboratório (LIMS)",
         icon: FlaskConical,
-        allowedRoles: ["admin", "analyst", "lab_analyst"],
+        module: "lab",
         children: [
             { href: "/lab", label: "Amostras" },
+            { href: "/lab/equipment/routine-checks", label: "Verificações" },
             { href: "/lab/history", label: "Histórico" },
             { href: "/lab/sample-types", label: "Configuração" },
         ]
@@ -33,7 +50,7 @@ export const menuItems = [
     {
         label: "Microbiologia",
         icon: Microscope,
-        allowedRoles: ["admin", "analyst", "micro_analyst"],
+        module: "micro",
         children: [
             { href: "/micro/samples", label: "Amostras" },
             { href: "/micro/incubators", label: "Incubadoras" },
@@ -43,19 +60,28 @@ export const menuItems = [
         ]
     },
     {
+        label: "Ativos & Equipamento",
+        icon: Factory,
+        module: "production",
+        children: [
+            { href: "/production/tanks", label: "Tanques" },
+            { href: "/production/equipment", label: "Equipamentos de Processo" },
+            { href: "/lab/assets", label: "Instrumentos de Lab" },
+            { href: "/production/lines", label: "Linhas de Produção" },
+        ]
+    },
+    {
         label: "Produção",
         icon: Factory,
-        allowedRoles: ["admin", "operator"],
+        module: "production",
         children: [
             { href: "/production", label: "Lotes Ativos" },
-            { href: "/production/lines", label: "Linhas & Tanques" },
-            { href: "/production/equipment", label: "Equipamento" },
         ]
     },
     {
         label: "CIP & Higiene",
         icon: RefreshCw,
-        allowedRoles: ["admin", "operator", "quality"],
+        module: "cip",
         children: [
             { href: "/cip/register", label: "Registar CIP" },
             { href: "/cip/history", label: "Histórico" },
@@ -65,28 +91,21 @@ export const menuItems = [
     {
         label: "Qualidade (QMS)",
         icon: ShieldCheck,
-        allowedRoles: ["admin", "quality"],
+        module: "qms",
         children: [
-            { href: "/quality/qms", label: "Desvios (NC)" },
-            { href: "/quality/qms/capa", label: "CAPA" },
-            { href: "/quality/qms/8d", label: "Relatórios 8D" },
+            { href: "/quality/qms?tab=dashboard", label: "Dashboard de Qualidade" },
+            { href: "/quality/qms", label: "Ocorrências & CAPA" },
             { href: "/quality/audits", label: "Auditorias Internas" },
-            { href: "/quality/objectives", label: "Objetivos da Qualidade" },
-            { href: "/quality/manuals", label: "Gestão Documental (DMS)" },
-            { href: "/quality/training", label: "Formação & Competências" },
-            { href: "/quality/spc", label: "Controlo (SPC)" },
-            { href: "/reports/coa", label: "Certificados (COA)" },
-            { href: "/quality/parameters", label: "Parâmetros" },
-            { href: "/quality/specifications", label: "Especificações" },
-            { href: "/quality/products", label: "Produtos" },
-            { href: "/quality/sampling-points", label: "Pontos de Recolha" },
+            { href: "/quality/objectives", label: "Objetivos & KPIs" },
+            { href: "/quality/parameters", label: "Engenharia de Qualidade" },
+            { href: "/quality/manuals", label: "Conformidade & DMS" },
+            { href: "/quality/spc", label: "Controlo & Performance" },
         ]
     },
-
     {
         label: "Segurança Alimentar",
         icon: ShieldAlert,
-        allowedRoles: ["admin", "haccp"],
+        module: "haccp",
         children: [
             { href: "/haccp/prp", label: "Prerrequisitos (PRP)" },
             { href: "/haccp/hazards", label: "Perigos" },
@@ -99,26 +118,25 @@ export const menuItems = [
     {
         label: "Gestão de Materiais",
         icon: Warehouse,
-        allowedRoles: ["admin", "warehouse"],
+        module: "materials",
         children: [
-            { href: "/raw-materials/catalog", label: "Matérias-Primas" },
-            { href: "/raw-materials/lots", label: "Lotes M.P." },
-            { href: "/materials/packaging", label: "Mat. de Embalagem" },
-            { href: "/materials/packaging/lots", label: "Lotes Embalagem" },
-            { href: "/inventory/stock", label: "Reagentes (Lab)" },
-            { href: "/raw-materials/suppliers", label: "Fornecedores" },
+            { href: "/materials", label: "Dashboard" },
+            { href: "/materials/raw", label: "Matérias-Primas" },
+            { href: "/materials/packaging", label: "Embalagem" },
+            { href: "/materials/reagents", label: "Reagentes" },
+            { href: "/materials/suppliers", label: "Fornecedores" },
         ]
     },
     {
         href: "/reports",
         icon: FileText,
         label: "Relatórios & Analytics",
-        allowedRoles: ["admin", "quality"]
+        module: "reports"
     },
     {
         label: "Administração",
         icon: Settings,
-        allowedRoles: ["admin", "system_owner"],
+        module: "settings",
         children: [
             { href: "/settings", label: "Configurações" },
             { href: "/admin/users", label: "Utilizadores" },
@@ -128,7 +146,6 @@ export const menuItems = [
         label: "Sistema (SaaS)",
         icon: Globe,
         href: "/saas",
-        role: "system_owner",
-        allowedRoles: ["system_owner"]
+        module: "saas"
     }
 ];

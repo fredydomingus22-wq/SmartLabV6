@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all document categories
@@ -10,7 +10,7 @@ export async function getDocCategories() {
 
     const { data, error } = await supabase
         .from("doc_categories")
-        .select("*")
+        .select("*, parent_id")
         .eq("organization_id", user.organization_id)
         .order("name", { ascending: true });
 
@@ -64,7 +64,8 @@ export async function getDocumentById(id: string) {
         .select(`
       *,
       category:doc_categories(*),
-      versions:document_versions(*, approvals:document_approvals(*, approver:user_profiles!approver_id(full_name)))
+      versions:document_versions(*, approvals:document_approvals(*, approver:user_profiles!approver_id(full_name))),
+      periodic_reviews:doc_periodic_reviews(*)
     `)
         .eq("organization_id", user.organization_id)
         .eq("id", id)
@@ -129,4 +130,44 @@ export async function getDocumentVersion(versionId: string) {
         .single();
 
     return { version, error: versionError };
+}
+
+/**
+ * Get reading logs for a specific document version
+ */
+export async function getReadingLogs(versionId: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data, error } = await supabase
+        .from("doc_reading_logs")
+        .select(`
+            *,
+            user:user_profiles!user_id(full_name, role)
+        `)
+        .eq("organization_id", user.organization_id)
+        .eq("version_id", versionId)
+        .order("read_at", { ascending: false });
+
+    return { data: data || [], error };
+}
+
+/**
+ * Get pending periodic reviews for the organization/plant
+ */
+export async function getPendingPeriodicReviews() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data, error } = await supabase
+        .from("doc_periodic_reviews")
+        .select(`
+            *,
+            document:documents(title, doc_number)
+        `)
+        .eq("organization_id", user.organization_id)
+        .eq("result", "pending")
+        .order("scheduled_date", { ascending: true });
+
+    return { data: data || [], error };
 }

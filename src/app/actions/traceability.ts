@@ -75,7 +75,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
     // Discovery 2: Direct Intermediates (Linked via production_batch_id)
     const { data: directIntermediates } = await supabase
         .from("intermediate_products")
-        .select("id")
+        .select("id, equipment:equipments(id)")
         .eq("production_batch_id", batchId);
 
     const directIntermediateIds = directIntermediates?.map(i => i.id) || [];
@@ -84,6 +84,10 @@ export async function getBatchTraceabilityAction(batchId: string) {
 
     const lotIds = [...new Set(allLinks.filter(l => l.source_type === 'raw_material_lot' || l.source_type === 'raw_material').map(l => l.source_id))];
 
+    // Discovery 3: Equipment Assets (From Traceability Chain)
+    const equipmentIds = [...new Set(allLinks.filter(l => l.source_type === 'equipment').map(l => l.source_id))];
+    const cipIds = [...new Set(allLinks.filter(l => l.source_type === 'cip_execution').map(l => l.source_id))];
+
     // --- PHASE 3: Context & Details (Separated for Resilience) ---
     const [
         reportsResult,
@@ -91,7 +95,9 @@ export async function getBatchTraceabilityAction(batchId: string) {
         intermediatesResult,
         supervisorResult,
         qaResult,
-        specsResult
+        specsResult,
+        equipmentResult,
+        cipResult
     ] = await Promise.all([
         supabase
             .from("generated_reports")
@@ -109,7 +115,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
             .from("intermediate_products")
             .select(`
                 id, code, status,
-                equipment:equipments(name, code)
+                equipment:equipments(id, name, code)
             `).in("id", finalIntermediateIds),
         batch.supervisor_approved_by ? supabase
             .from("user_profiles")
@@ -127,7 +133,18 @@ export async function getBatchTraceabilityAction(batchId: string) {
                 *,
                 parameter:qa_parameters(id, name, unit, code)
             `)
-            .eq("product_id", batch.product_id)
+            .eq("product_id", batch.product_id),
+        equipmentIds.length > 0 ? supabase
+            .from("equipments")
+            .select("id, name, code, equipment_type, status")
+            .in("id", equipmentIds) : { data: [] },
+        cipIds.length > 0 ? supabase
+            .from("cip_executions")
+            .select(`
+                id, equipment_uid, start_time, validation_status,
+                program:cip_programs(name)
+            `)
+            .in("id", cipIds) : { data: [] }
     ]);
 
     // FETCH SAMPLES (Explicitly separated to avoid .or() bugs)
@@ -137,7 +154,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
             id, code, status, collected_at,
             sample_type:sample_types(name, test_category, code),
             analysis:lab_analysis(
-                id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id,
+                id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id, equipment_id,
                 parameter:qa_parameters(name, unit, code)
             )
         `)
@@ -151,7 +168,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
                 id, code, status, collected_at,
                 sample_type:sample_types(name, test_category, code),
                 analysis:lab_analysis(
-                    id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id,
+                    id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id, equipment_id,
                     parameter:qa_parameters(name, unit, code)
                 )
             `)
@@ -180,18 +197,34 @@ export async function getBatchTraceabilityAction(batchId: string) {
 
     // Merge analyst info (Manual fetch to avoid PostgREST joins issues for ambiguous FKs)
     const analystsIds = [...new Set(samples.flatMap(s => (s.analysis as any[])?.map(a => a.analyzed_by) || []))].filter(Boolean);
+    const usedEquipmentIdsInLab = [...new Set(samples.flatMap(s => (s.analysis as any[])?.map(a => a.equipment_id) || []))].filter(Boolean);
+
+    let analystsProfiles: any[] = [];
+    let labEquipments: any[] = [];
+
+    const enrichmentTasks = [];
     if (analystsIds.length > 0) {
-        const { data: analystsProfiles } = await supabase
+        enrichmentTasks.push(supabase
             .from("user_profiles")
             .select("id, full_name, role")
-            .in("id", analystsIds);
-
-        samples.forEach(s => {
-            (s.analysis as any[])?.forEach(ans => {
-                ans.analyst = analystsProfiles?.find(p => p.id === ans.analyzed_by) || null;
-            });
-        });
+            .in("id", analystsIds)
+            .then(res => analystsProfiles = res.data || []));
     }
+    if (usedEquipmentIdsInLab.length > 0) {
+        enrichmentTasks.push(supabase
+            .from("equipments")
+            .select("id, name, code")
+            .in("id", usedEquipmentIdsInLab)
+            .then(res => labEquipments = res.data || []));
+    }
+    await Promise.all(enrichmentTasks);
+
+    samples.forEach(s => {
+        (s.analysis as any[])?.forEach(ans => {
+            ans.analyst = analystsProfiles?.find(p => p.id === ans.analyzed_by) || null;
+            ans.equipment = labEquipments?.find(e => e.id === ans.equipment_id) || null;
+        });
+    });
 
     // --- PHASE 5: Mapping ---
     const reports = reportsResult.data || [];
@@ -200,6 +233,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
     const supervisor = supervisorResult.data;
     const qa = qaResult.data;
     const specifications = specsResult.data || [];
+    const cips = (cipResult as any).data || [];
 
     const batchWithProfiles = { ...batch, supervisor, qa, specifications };
 
@@ -220,10 +254,20 @@ export async function getBatchTraceabilityAction(batchId: string) {
 
     const tanks = finalIntermediateIds.map(id => {
         const ip = processIntermediates?.find(p => p.id === id);
+        const tankAsset = ip?.equipment;
+        // Find last CIP for this tank
+        const lastCip = tankAsset ? cips.filter((c: any) => c.equipment_uid === (tankAsset as any).id).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())[0] : null;
+
         return {
             tank: ip ? {
                 tank_number: (Array.isArray(ip.equipment) ? (ip.equipment as any)[0]?.code : (ip.equipment as any)?.code) || ip.code,
-                status: ip.status
+                name: (Array.isArray(ip.equipment) ? (ip.equipment as any)[0]?.name : (ip.equipment as any)?.name),
+                status: ip.status,
+                last_cip: lastCip ? {
+                    program: (lastCip as any).program?.name,
+                    date: (lastCip as any).start_time,
+                    status: (lastCip as any).validation_status
+                } : null
             } : null
         };
     }) || [];

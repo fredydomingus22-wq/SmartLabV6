@@ -21,11 +21,13 @@ import { getApprovers, getPlants } from "@/lib/queries/dms";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { ActionForm } from "@/components/smart/action-form";
 import { CreateEmployeeDialog } from "./_components/create-employee-dialog";
 import { CreateTeamDialog } from "./_components/create-team-dialog";
 import { CreateShiftDialog } from "./_components/create-shift-dialog";
 import { SkillMatrix } from "./_components/skill-matrix";
-import { Plus } from "lucide-react";
+import { Plus, CheckSquare } from "lucide-react";
+import { AttendanceHub } from "./_components/attendance-hub";
 
 export default async function TrainingDashboardPage() {
     const { data: employees } = await getEmployees();
@@ -113,6 +115,10 @@ export default async function TrainingDashboardPage() {
                     <TabsTrigger value="structure" className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         Estrutura & Turnos
+                    </TabsTrigger>
+                    <TabsTrigger value="attendance" className="flex items-center gap-2">
+                        <CheckSquare className="h-4 w-4" />
+                        Assiduidade (Diário)
                     </TabsTrigger>
                 </TabsList>
 
@@ -211,6 +217,10 @@ export default async function TrainingDashboardPage() {
                             ))}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="attendance" className="mt-6">
+                    <AttendanceHub employees={employees} teams={teams} shifts={shifts} />
                 </TabsContent>
             </Tabs>
         </div>

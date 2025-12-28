@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all nonconformities with optional filters
@@ -28,13 +28,33 @@ export async function getNonconformities(filters?: {
         query = query.eq("nc_type", filters.ncType);
     }
 
-    const { data, error } = await query;
+    const { data: ncs, error } = await query;
 
     if (error) {
         console.error("getNonconformities error:", error);
+        return { data: [], error };
     }
 
-    return { data: data || [], error };
+    if (!ncs || ncs.length === 0) {
+        return { data: [], error: null };
+    }
+
+    // Fetch AI insights for these NCs
+    const ncIds = ncs.map(n => n.id);
+    const { data: insights } = await supabase
+        .from("ai_insights")
+        .select("entity_id, status, message, raw_response, confidence")
+        .eq("entity_type", "non_conformity")
+        .in("entity_id", ncIds);
+
+    const insightsMap = new Map(insights?.map(i => [i.entity_id, i]) || []);
+
+    const enrichedData = ncs.map(nc => ({
+        ...nc,
+        ai_insight: insightsMap.get(nc.id) || null
+    }));
+
+    return { data: enrichedData, error: null };
 }
 
 /**
@@ -154,5 +174,92 @@ export async function getCAPAActions(filters?: {
     }
 
     const { data, error } = await query;
+    return { data: data || [], error };
+}
+
+/**
+ * Get all 8D reports with optional filters
+ */
+export async function getEightDReports(filters?: {
+    status?: string;
+    ncId?: string;
+}) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    let query = supabase
+        .from("eight_d_reports")
+        .select(`
+            *,
+            nonconformity:nonconformities(nc_number, title)
+        `)
+        .eq("organization_id", user.organization_id)
+        .order("created_at", { ascending: false });
+
+    if (filters?.status) {
+        query = query.eq("status", filters.status);
+    }
+    if (filters?.ncId) {
+        query = query.eq("nonconformity_id", filters.ncId);
+    }
+
+    const { data, error } = await query;
+    return { data: data || [], error };
+}
+
+/**
+ * Get Pareto data for Non-Conformities
+ */
+export async function getParetoData(dimension: "category" | "nc_type" | "severity" = "category") {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data: ncs, error } = await supabase
+        .from("nonconformities")
+        .select(dimension)
+        .eq("organization_id", user.organization_id);
+
+    if (error || !ncs) return [];
+
+    const counts: Record<string, number> = {};
+    ncs.forEach(nc => {
+        const key = (nc as any)[dimension] || "Indefinido";
+        counts[key] = (counts[key] || 0) + 1;
+    });
+
+    const sortedData = Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    const total = sortedData.reduce((sum, item) => sum + item.count, 0);
+    let cumulativeSum = 0;
+
+    return sortedData.map(item => {
+        cumulativeSum += item.count;
+        return {
+            ...item,
+            percentage: (item.count / total) * 100,
+            cumulativePercentage: (cumulativeSum / total) * 100
+        };
+    });
+}
+
+/**
+ * Get all users in the organization for assignment
+ */
+export async function getOrganizationUsers() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data, error } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, role")
+        .eq("organization_id", user.organization_id)
+        .order("full_name", { ascending: true });
+
+    if (error) {
+        console.error("getOrganizationUsers error:", error);
+    }
+
     return { data: data || [], error };
 }

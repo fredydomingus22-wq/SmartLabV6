@@ -36,7 +36,7 @@ const ConsumeStockSchema = z.object({
 });
 
 import { ActionState } from "@/lib/types";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 // ... schemas
 
@@ -67,7 +67,7 @@ export async function createReagentAction(formData: FormData): Promise<ActionSta
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/inventory/stock");
+    revalidatePath("/materials/reagents");
     return { success: true, message: "Reagent Created" };
 }
 
@@ -136,8 +136,7 @@ export async function receiveStockAction(formData: FormData): Promise<ActionStat
 
     if (movementError) return { success: false, message: movementError.message };
 
-    revalidatePath("/inventory/stock");
-    revalidatePath("/inventory/movements");
+    revalidatePath("/materials/reagents");
     return { success: true, message: `Stock Received - Batch ${batchNumber}` };
 }
 
@@ -237,7 +236,7 @@ export async function consumeStockAction(formData: FormData): Promise<ActionStat
 
     if (movementError) return { success: false, message: movementError.message };
 
-    revalidatePath("/inventory/stock");
-    revalidatePath("/inventory/movements");
+    revalidatePath("/materials/reagents");
     return { success: true, message: `Stock Consumed from ${consumedBatches.length} batch(es)` };
 }
+

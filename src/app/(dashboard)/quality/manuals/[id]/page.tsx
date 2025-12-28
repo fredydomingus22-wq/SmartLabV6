@@ -1,8 +1,8 @@
-import { getDocumentById, getApprovers } from "@/lib/queries/dms";
-import { getSafeUser } from "@/lib/auth";
+import { getDocumentById, getApprovers, getReadingLogs } from "@/lib/queries/dms";
+import { getSafeUser } from "@/lib/auth.server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, History, CheckCircle2, Clock, AlertCircle, Upload, Send } from "lucide-react";
+import { FileText, History, CheckCircle2, Clock, AlertCircle, Upload, Send, User, BookOpen, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadVersionDialog } from "../_components/upload-version-dialog";
 import { SubmitReviewDialog } from "../_components/submit-review-dialog";
 import { ApprovalWorkflow } from "../_components/approval-workflow";
-import { publishDocumentVersionAction } from "@/app/actions/dms";
+import { ReadingAcknowledgment } from "../_components/reading-acknowledgment";
 import { PublishButton } from "../_components/publish-button";
+import { cn } from "@/lib/utils";
 
 interface DocumentVersion {
     id: string;
@@ -30,6 +31,8 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
     if (!document) return <div className="p-10">Documento não encontrado.</div>;
 
     const currentVersion = versions.find((v: DocumentVersion) => v.id === document.current_version_id) || versions[0];
+    const { data: readingLogs } = await getReadingLogs(currentVersion?.id || "");
+    const hasRead = readingLogs?.some((log: any) => log.user_id === user.id);
 
     return (
         <div className="p-6 space-y-6">
@@ -62,12 +65,18 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-3 space-y-6">
+                    {currentVersion?.status === 'published' && (
+                        <ReadingAcknowledgment versionId={currentVersion.id} hasRead={!!hasRead} />
+                    )}
+
                     <Tabs defaultValue="current" className="w-full">
                         <TabsList className="bg-slate-900/50 border-slate-800">
                             <TabsTrigger value="current">Versão Atual</TabsTrigger>
+                            <TabsTrigger value="logs">Registo de Leitura</TabsTrigger>
                             <TabsTrigger value="history">Histórico de Revisões</TabsTrigger>
+                            <TabsTrigger value="reviews">Revisões Periódicas</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="current" className="mt-4">
@@ -86,25 +95,36 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
                                     </CardHeader>
                                     <CardContent className="space-y-6">
                                         <div className="bg-slate-950/50 rounded-lg p-4 border border-slate-800">
-                                            <h4 className="text-sm font-medium text-slate-400 mb-2 uppercase tracking-tight">Alterações nesta versão:</h4>
-                                            <p className="text-slate-300 text-sm whitespace-pre-wrap">
+                                            <h4 className="text-sm font-medium text-slate-400 mb-2 uppercase tracking-tight text-[10px] font-bold">Resumo das Alterações:</h4>
+                                            <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
                                                 {currentVersion.change_description || "Sem descrição de alterações."}
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800 group hover:border-emerald-500/30 transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                                                    <FileText className="h-5 w-5" />
+                                        {/* Industrial Document Preview Placeholder */}
+                                        <div className="relative aspect-[16/10] bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden group">
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-sm z-10">
+                                                <div className="p-4 rounded-full bg-slate-800/50 mb-3">
+                                                    <FileText className="h-10 w-10 text-slate-500" />
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-slate-200">Ficheiro do Documento</p>
-                                                    <p className="text-xs text-slate-500">Documento PDF / Word</p>
-                                                </div>
+                                                <p className="text-slate-400 font-medium tracking-tight">Visualizador de Documento Seguro</p>
+                                                <p className="text-[10px] text-slate-600 uppercase mt-1 tracking-widest font-bold">Apenas para Visualização Interna</p>
+                                                <Button variant="outline" className="mt-6 border-slate-700 bg-slate-900/50 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/30 transition-all">
+                                                    Abrir em Tela Cheia
+                                                </Button>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10">
-                                                Visualizar
-                                            </Button>
+
+                                            {/* Industrial Watermark Overlay */}
+                                            {currentVersion.status === 'published' && (
+                                                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] rotate-[-35deg] select-none z-20">
+                                                    <span className="text-[120px] font-black tracking-[30px] text-emerald-500">CONTROLADO</span>
+                                                </div>
+                                            )}
+                                            {currentVersion.status === 'superseded' && (
+                                                <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.05] rotate-[-35deg] select-none z-20">
+                                                    <span className="text-[120px] font-black tracking-[30px] text-rose-500">OBSOLETO</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -115,6 +135,47 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
                                     <UploadVersionDialog documentId={document.id} variant="link" />
                                 </div>
                             )}
+                        </TabsContent>
+
+                        <TabsContent value="logs">
+                            <Card className="glass border-slate-800/50">
+                                <CardHeader>
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4" />
+                                        Logs de Treinamento e Leitura
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-slate-800/50">
+                                        {readingLogs?.length === 0 ? (
+                                            <div className="p-8 text-center text-slate-500 text-sm italic">
+                                                Nenhum registo de leitura encontrado para esta versão.
+                                            </div>
+                                        ) : (
+                                            readingLogs?.map((log: any) => (
+                                                <div key={log.id} className="p-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-400">
+                                                            <User className="h-4 w-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-200">{log.user?.full_name}</p>
+                                                            <p className="text-[10px] text-slate-500 font-mono">ID: {log.user_id.slice(0, 8)}...</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs text-slate-300">{format(new Date(log.read_at), "dd/MM/yyyy HH:mm")}</p>
+                                                        <div className="flex items-center gap-1 justify-end mt-1">
+                                                            <ShieldCheck className="h-3 w-3 text-emerald-500" />
+                                                            <span className="text-[9px] text-emerald-500 font-bold uppercase">Assinado Digitalmente</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </TabsContent>
 
                         <TabsContent value="history">
@@ -146,6 +207,37 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        <TabsContent value="reviews">
+                            <Card className="glass border-slate-800/50">
+                                <CardHeader>
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-400">Estado de Revisão Periódica</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {document.periodic_reviews?.length === 0 ? (
+                                        <div className="p-8 text-center text-slate-500 text-sm">
+                                            Próxima revisão pendente de agendamento automático.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {document.periodic_reviews.map((rev: any) => (
+                                                <div key={rev.id} className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl flex justify-between items-center text-sm">
+                                                    <div>
+                                                        <p className="text-slate-200 font-medium">Agendada para: {format(new Date(rev.scheduled_date), "dd/MM/yyyy")}</p>
+                                                        <p className="text-xs text-slate-500 mt-1">Estado: {rev.result}</p>
+                                                    </div>
+                                                    {rev.performed_at ? (
+                                                        <Badge className="bg-emerald-500/10 text-emerald-400">Concluída</Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="border-amber-500/30 text-amber-500">Pendente</Badge>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
                     </Tabs>
                 </div>
 
@@ -166,9 +258,6 @@ export default async function DocumentDetailsPage({ params }: { params: Promise<
         </div>
     );
 }
-
-import { cn } from "@/lib/utils";
-import { ShieldCheck } from "lucide-react";
 
 function getStatusColor(status?: string) {
     switch (status) {

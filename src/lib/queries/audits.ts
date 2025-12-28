@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all audits in the organization
@@ -114,3 +114,4 @@ export async function getAuditFindings(auditId: string) {
 
     return { data: data || [], error };
 }
+

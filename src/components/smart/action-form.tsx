@@ -20,6 +20,7 @@ interface ActionFormProps {
     submitText?: string;
     onSuccess?: (data: any) => void;
     className?: string;
+    showFooter?: boolean;
 }
 
 export function ActionForm({
@@ -28,6 +29,7 @@ export function ActionForm({
     submitText = "Save",
     onSuccess,
     className,
+    showFooter = true,
 }: ActionFormProps) {
     const [state, formAction, isPending] = useActionState(async (_prev: any, formData: FormData) => {
         const result = await action(formData);
@@ -46,12 +48,14 @@ export function ActionForm({
                 {children}
             </div>
 
-            <div className="mt-6 flex justify-end">
-                <Button type="submit" disabled={isPending}>
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {submitText}
-                </Button>
-            </div>
+            {showFooter && (
+                <div className="mt-6 flex justify-end">
+                    <Button type="submit" disabled={isPending}>
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {submitText}
+                    </Button>
+                </div>
+            )}
         </form>
     );
 }

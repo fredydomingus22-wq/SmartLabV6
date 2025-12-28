@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { EnvironmentalZoneSchema, SamplingPointSchema } from "@/schemas/compliance";
 
@@ -84,6 +84,7 @@ export async function createSamplingPoint(values: any) {
         .from("sampling_points")
         .insert({
             ...validated,
+            code: `SP-${Date.now().toString().slice(-6)}`,
             organization_id: user.organization_id,
             plant_id: validated.plant_id || user.plant_id || null,
         })
@@ -142,3 +143,4 @@ export async function deleteSamplingPoint(id: string) {
 
     revalidatePath("/quality/environmental");
 }
+

@@ -1,29 +1,27 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-// Validation schema
 const TankSchema = z.object({
-    code: z.string().min(1, "Code is required").toUpperCase(),
-    status: z.enum(["empty", "filling", "in_process", "ready", "cleaning"]).default("empty"),
-    volume: z.coerce.number().optional(),
-    unit: z.string().default("L"),
+    name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+    code: z.string().min(1, "Código é obrigatório").toUpperCase(),
+    capacity: z.coerce.number().optional().nullable(),
+    capacity_unit: z.string().default("L"),
+    status: z.enum(["active", "maintenance", "decommissioned", "cleaning"]).default("active"),
+    description: z.string().optional().nullable(),
 });
 
 /**
- * Get all tanks (intermediate products) for the current tenant
+ * Get all tanks for the current tenant
  */
 export async function getTanksAction() {
     const supabase = await createClient();
-
     const { data, error } = await supabase
-        .from("intermediate_products")
-        .select(`
-            *,
-            batch:production_batches(id, code, product:products(name))
-        `)
+        .from("tanks")
+        .select("*")
         .order("code");
 
     if (error) return { success: false, message: error.message, data: [] };
@@ -31,141 +29,122 @@ export async function getTanksAction() {
 }
 
 /**
- * Create a new Tank
+ * Get a single tank with its current content (intermediate product)
  */
-export async function createTankAction(formData: FormData) {
+export async function getTankWithContentAction(id: string) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
-    const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id")
-        .eq("id", user.id)
+    const { data: tank, error } = await supabase
+        .from("tanks")
+        .select("*")
+        .eq("id", id)
         .single();
 
-    if (!profile) return { success: false, message: "Profile not found" };
+    if (error) return { success: false, message: error.message, data: null };
 
-    const rawData = {
-        code: formData.get("code"),
-        status: formData.get("status") || "empty",
-        volume: formData.get("volume") || undefined,
-        unit: formData.get("unit") || "L",
-    };
+    // Get current content
+    const { data: content } = await supabase
+        .from("intermediate_products")
+        .select(`
+            id, code, status, volume, unit,
+            batch:production_batches(id, code, product:products(id, name))
+        `)
+        .eq("equipment_id", id)
+        .in("status", ["pending", "approved", "in_use"])
+        .single();
 
-    const validation = TankSchema.safeParse(rawData);
-    if (!validation.success) {
-        return { success: false, message: validation.error.issues[0].message };
-    }
-
-    const { error } = await supabase.from("intermediate_products").insert({
-        organization_id: profile.organization_id,
-        plant_id: profile.plant_id,
-        code: validation.data.code,
-        status: validation.data.status,
-        volume: validation.data.volume || null,
-        unit: validation.data.unit,
-    });
-
-    if (error) return { success: false, message: error.message };
-
-    revalidatePath("/production/tanks");
-    return { success: true, message: "Tank created" };
+    return { success: true, data: { ...tank, currentContent: content } };
 }
 
 /**
- * Update an existing Tank
+ * Create a new tank
+ */
+export async function createTankAction(formData: FormData) {
+    try {
+        const user = await getSafeUser();
+        const supabase = await createClient();
+
+        const rawData = {
+            name: formData.get("name"),
+            code: formData.get("code"),
+            capacity: formData.get("capacity") || null,
+            capacity_unit: formData.get("capacity_unit") || "L",
+            status: formData.get("status") || "active",
+            description: formData.get("description") || null,
+        };
+
+        const validation = TankSchema.safeParse(rawData);
+        if (!validation.success) {
+            return { success: false, message: validation.error.issues[0].message };
+        }
+
+        const { error } = await supabase.from("tanks").insert({
+            organization_id: user.organization_id,
+            plant_id: user.plant_id,
+            ...validation.data
+        });
+
+        if (error) throw error;
+
+        revalidatePath("/production/tanks");
+        return { success: true, message: "Tanque criado com sucesso" };
+    } catch (error: any) {
+        return { success: false, message: error.message || "Erro ao criar tanque" };
+    }
+}
+
+/**
+ * Update a tank
  */
 export async function updateTankAction(formData: FormData) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
+    try {
+        const supabase = await createClient();
+        const id = formData.get("id") as string;
+        if (!id) return { success: false, message: "ID obrigatório" };
 
-    const id = formData.get("id") as string;
-    if (!id) return { success: false, message: "ID required" };
+        const rawData = {
+            name: formData.get("name"),
+            code: formData.get("code"),
+            capacity: formData.get("capacity") || null,
+            capacity_unit: formData.get("capacity_unit") || "L",
+            status: formData.get("status") || "active",
+            description: formData.get("description") || null,
+        };
 
-    const rawData = {
-        code: formData.get("code"),
-        status: formData.get("status") || "empty",
-        volume: formData.get("volume") || undefined,
-        unit: formData.get("unit") || "L",
-    };
+        const validation = TankSchema.safeParse(rawData);
+        if (!validation.success) {
+            return { success: false, message: validation.error.issues[0].message };
+        }
 
-    const validation = TankSchema.safeParse(rawData);
-    if (!validation.success) {
-        return { success: false, message: validation.error.issues[0].message };
+        const { error } = await supabase
+            .from("tanks")
+            .update({ ...validation.data, updated_at: new Date().toISOString() })
+            .eq("id", id);
+
+        if (error) throw error;
+
+        revalidatePath("/production/tanks");
+        return { success: true, message: "Tanque atualizado" };
+    } catch (error: any) {
+        return { success: false, message: error.message || "Erro ao atualizar" };
     }
-
-    const { error } = await supabase
-        .from("intermediate_products")
-        .update({
-            code: validation.data.code,
-            status: validation.data.status,
-            volume: validation.data.volume || null,
-            unit: validation.data.unit,
-        })
-        .eq("id", id);
-
-    if (error) return { success: false, message: error.message };
-
-    revalidatePath("/production/tanks");
-    return { success: true, message: "Tank updated" };
 }
 
 /**
- * Delete a Tank
- */
-export async function deleteTankAction(formData: FormData) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const id = formData.get("id") as string;
-    if (!id) return { success: false, message: "ID required" };
-
-    // Check if used by any samples
-    const { data: usedBySamples } = await supabase
-        .from("samples")
-        .select("id")
-        .eq("intermediate_product_id", id)
-        .limit(1);
-
-    if (usedBySamples && usedBySamples.length > 0) {
-        return { success: false, message: "Tank in use by samples, cannot be deleted" };
-    }
-
-    const { error } = await supabase
-        .from("intermediate_products")
-        .delete()
-        .eq("id", id);
-
-    if (error) return { success: false, message: error.message };
-
-    revalidatePath("/production/tanks");
-    return { success: true, message: "Tank deleted" };
-}
-
-/**
- * Quick status update for a Tank
+ * Update tank status
  */
 export async function updateTankStatusAction(id: string, status: string) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
-    const validStatuses = ["empty", "filling", "in_process", "ready", "cleaning"];
+    const validStatuses = ["active", "maintenance", "decommissioned", "cleaning"];
     if (!validStatuses.includes(status)) {
-        return { success: false, message: "Invalid status" };
+        return { success: false, message: "Status inválido" };
     }
 
-    const { error } = await supabase
-        .from("intermediate_products")
-        .update({ status })
-        .eq("id", id);
+    const { error } = await supabase.from("tanks").update({ status }).eq("id", id);
 
     if (error) return { success: false, message: error.message };
 
     revalidatePath("/production/tanks");
-    revalidatePath("/lab");
-    return { success: true, message: `Status updated to ${status}` };
+    return { success: true, message: `Status atualizado para ${status}` };
 }

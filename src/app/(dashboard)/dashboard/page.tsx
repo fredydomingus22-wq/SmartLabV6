@@ -27,7 +27,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { DashboardTrendsClient } from "@/components/dashboard/dashboard-trends-client";
-import { getSafeUser, SafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server"; import { SafeUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -333,3 +333,4 @@ export default async function DashboardPage() {
         </div>
     );
 }
+

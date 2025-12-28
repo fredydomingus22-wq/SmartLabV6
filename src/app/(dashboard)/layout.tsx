@@ -1,13 +1,14 @@
 import { AppSidebar } from "@/components/smart/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { FAB } from "@/components/smart/fab";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { MobileNav } from "@/components/smart/mobile-nav";
 import { menuItems } from "@/config/navigation";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { CommandMenu } from "@/components/smart/command-menu";
 import { PageTransition } from "@/components/layout/page-transition";
+import { hasAccess } from "@/lib/permissions";
 
 export default async function DashboardLayout({
     children,
@@ -27,7 +28,7 @@ export default async function DashboardLayout({
         return isMainHrefMatched || isChildMatched;
     });
 
-    if (currentMenuItem && currentMenuItem.allowedRoles && !currentMenuItem.allowedRoles.includes(user.role)) {
+    if (currentMenuItem && !hasAccess(user.role, currentMenuItem.module)) {
         redirect("/dashboard");
     }
 
@@ -65,3 +66,4 @@ export default async function DashboardLayout({
         </div>
     );
 }
+

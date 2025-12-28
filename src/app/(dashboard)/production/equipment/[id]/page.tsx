@@ -1,5 +1,5 @@
 import { getEquipmentWithMetrology } from "@/lib/queries/metrology";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,9 @@ import {
     Wrench,
     AlertTriangle,
     Clock,
-    Plus
+    Plus,
+    FlaskConical,
+    History
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -86,7 +88,8 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                     <TabsTrigger value="history">Histórico Metrológico</TabsTrigger>
                     <TabsTrigger value="plans">Planos de Manutenção</TabsTrigger>
                     <TabsTrigger value="certificates">Certificados</TabsTrigger>
-                    <TabsTrigger value="specs">Especificações Técnicas</TabsTrigger>
+                    <TabsTrigger value="usage">Rastreabilidade (Uso)</TabsTrigger>
+                    <TabsTrigger value="specs">Especificações</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="history" className="mt-4">
@@ -151,23 +154,16 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                             <MaintenancePlanDialog equipmentId={equipment.id} />
                         </CardHeader>
                         <CardContent className="p-6">
-                            {/* Implementation of Plans List */}
                             {equipment.maintenance_plans?.map((plan: any) => (
                                 <div key={plan.id} className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 mb-4 flex items-center justify-between">
                                     <div>
-                                        <h4 className="font-semibold text-slate-100">{plan.title}</h4>
+                                        <h4 className="font-semibold text-slate-100">{plan.task_name}</h4>
                                         <p className="text-sm text-slate-500">{plan.description}</p>
                                         <div className="flex gap-4 mt-2">
                                             <Badge variant="secondary" className="bg-slate-800 text-slate-400">
-                                                Frequência: {plan.frequency_value} {plan.frequency_unit}
+                                                Frequência: {plan.frequency_days} dias
                                             </Badge>
                                         </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] uppercase text-slate-500 font-bold">Próxima Data</p>
-                                        <p className="text-sm font-medium text-emerald-400">
-                                            {plan.last_performed_at ? "Calculando..." : "Pendente"}
-                                        </p>
                                     </div>
                                 </div>
                             ))}
@@ -185,7 +181,7 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                                 {equipment.calibration_certificates?.length > 0 ? (
                                     equipment.calibration_certificates.map((cert: any) => (
                                         <div key={cert.id} className="p-5 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
-                                            <div className="flex gap-4">
+                                            <div className="flex gap-4 text-left">
                                                 <div className={cn(
                                                     "p-2 rounded-lg",
                                                     cert.status === 'valid' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
@@ -194,11 +190,11 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-slate-100">{cert.certificate_number}</p>
-                                                    <p className="text-sm text-slate-400">{cert.issuer}</p>
+                                                    <p className="text-sm text-slate-400">{cert.issued_by}</p>
                                                     <div className="flex gap-4 mt-1 text-xs text-slate-500">
                                                         <span>Emitido em: {format(new Date(cert.issued_at), "dd/MM/yyyy")}</span>
                                                         <span className={cert.status === 'valid' ? "text-emerald-500" : "text-rose-500"}>
-                                                            Válido até: {format(new Date(cert.valid_until), "dd/MM/yyyy")}
+                                                            Válido até: {format(new Date(cert.expires_at), "dd/MM/yyyy")}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -210,7 +206,7 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                                                     {cert.status === 'valid' ? 'VÁLIDO' : cert.status.toUpperCase()}
                                                 </Badge>
                                                 <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white" asChild>
-                                                    <a href={cert.file_url} target="_blank" rel="noopener noreferrer">Ver PDF</a>
+                                                    <a href={cert.file_path} target="_blank" rel="noopener noreferrer">Ver PDF</a>
                                                 </Button>
                                             </div>
                                         </div>
@@ -219,6 +215,53 @@ export default async function EquipmentDetailsPage({ params }: { params: Promise
                                     <div className="p-12 text-center">
                                         <FileCheck className="h-12 w-12 text-slate-700 mx-auto mb-4 opacity-20" />
                                         <p className="text-slate-500 italic">Nenhum certificado registado.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="usage">
+                    <Card className="glass border-slate-800/50">
+                        <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 py-4">
+                            <CardTitle className="text-lg">Rastreabilidade: Uso em Análises</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-slate-800/50">
+                                {equipment.lab_analysis?.length > 0 ? (
+                                    equipment.lab_analysis.map((analysis: any) => (
+                                        <div key={analysis.id} className="p-4 flex items-center justify-between hover:bg-slate-900/40 transition-colors">
+                                            <div className="flex gap-4 items-center">
+                                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                                                    <FlaskConical className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-slate-100">{analysis.qa_parameters?.name}</p>
+                                                    <div className="flex gap-2 text-xs text-slate-500 text-left">
+                                                        <span>Amostra: {analysis.samples?.sample_number}</span>
+                                                        <span>•</span>
+                                                        <span>{format(new Date(analysis.created_at), "dd/MM/yyyy HH:mm")}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold text-slate-200">
+                                                    {analysis.value_numeric || analysis.value_text} {analysis.qa_parameters?.unit}
+                                                </p>
+                                                <Badge className={cn(
+                                                    "text-[10px] h-4",
+                                                    analysis.is_conforming ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                                                )}>
+                                                    {analysis.is_conforming ? "CONFORME" : "NÃO CONFORME"}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-12 text-center">
+                                        <History className="h-12 w-12 text-slate-700 mx-auto mb-4 opacity-20" />
+                                        <p className="text-slate-500 italic">Nenhuma análise associada a este equipamento.</p>
                                     </div>
                                 )}
                             </div>

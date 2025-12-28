@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { SAMPLE_TYPE_CATEGORIES } from "@/lib/constants/lab";
 
 /**
@@ -84,7 +84,8 @@ export async function getDashboardSamples(options?: {
 
     if (options?.search) {
         // Search by sample code or batch code
-        query = query.or(`code.ilike.%${options.search}%,batch.code.ilike.%${options.search}%`);
+        // Search by sample code only for now (cross-table OR filters are complex in Supabase)
+        query = query.ilike("code", `%${options.search}%`);
     }
 
     if (options?.from) {
@@ -596,3 +597,4 @@ export async function getLabAdvancedMetrics() {
         analystRanking
     };
 }
+

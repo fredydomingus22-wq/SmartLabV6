@@ -4,7 +4,7 @@ import { getDashboardSamples, getLabStats, getSampleTypes, getActiveTanks } from
 import { DashboardClient } from "./dashboard-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Metadata } from 'next';
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ export default async function LabPage(props: {
     }
 
     // Fetch data in parallel
-    const [samples, stats, sampleTypes, tanks, samplingPoints] = await Promise.all([
+    const [samples, stats, sampleTypes, tanks, samplingPoints, users] = await Promise.all([
         getDashboardSamples({
             search,
             status,
@@ -56,20 +56,39 @@ export default async function LabPage(props: {
         getLabStats(),
         getSampleTypes(),
         getActiveTanks(),
-        getSamplingPoints(user.organization_id)
+        getSamplingPoints(user.organization_id),
+        (async () => {
+            try {
+                const supabase = await createClient();
+                const { data, error } = await supabase
+                    .from("user_profiles")
+                    .select("id, full_name, role")
+                    .eq("organization_id", user.organization_id)
+                    .order("full_name");
+                if (error) console.error("LabPage users fetch error:", error);
+                return data || [];
+            } catch (err) {
+                console.error("LabPage users async error:", err);
+                return [];
+            }
+        })()
     ]);
 
     return (
         <div className="h-full flex-1 flex-col p-3 sm:p-4 md:p-8 space-y-4 md:space-y-8 md:flex">
-            <DashboardClient
-                samples={samples || []}
-                stats={stats}
-                sampleTypes={sampleTypes || []}
-                tanks={tanks as any[] || []}
-                samplingPoints={samplingPoints || []}
-                plantId={user.plant_id}
-                initialLabType={labType}
-            />
+            <Suspense fallback={<div className="p-8"><Skeleton className="h-96 w-full rounded-xl" /></div>}>
+                <DashboardClient
+                    samples={samples || []}
+                    stats={stats}
+                    sampleTypes={sampleTypes || []}
+                    tanks={tanks as any[] || []}
+                    samplingPoints={samplingPoints || []}
+                    plantId={user.plant_id}
+                    initialLabType={labType}
+                    users={users as any[] || []}
+                />
+            </Suspense>
         </div>
     );
 }
+

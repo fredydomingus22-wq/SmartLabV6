@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all teams in the organization
@@ -68,7 +68,7 @@ export async function getEmployeeById(id: string) {
         .from("employees")
         .select(`
             *,
-            team:teams(name),
+            team:teams(name, supervisor:user_profiles!supervisor_id(full_name)),
             user:user_profiles!user_id(full_name, role),
             qualifications:analyst_qualifications(*, parameter:qa_parameters(name, code)),
             training:training_records(*),
@@ -77,6 +77,18 @@ export async function getEmployeeById(id: string) {
         .eq("organization_id", user.organization_id)
         .eq("id", id)
         .single();
+
+    if (employee) {
+        // Calculate real stats
+        const attendance = employee.attendance || [];
+        const stats = {
+            present: attendance.filter((a: any) => a.status === 'present').length,
+            late: attendance.filter((a: any) => a.status === 'late').length,
+            absent: attendance.filter((a: any) => a.status === 'absent').length,
+            totalDays: new Set(attendance.map((a: any) => new Date(a.check_in).toDateString())).size
+        };
+        (employee as any).attendanceStats = stats;
+    }
 
     return { employee, error: empError };
 }
@@ -184,3 +196,4 @@ export async function getExpiringQualifications() {
 
     return { data: data || [], error };
 }
+

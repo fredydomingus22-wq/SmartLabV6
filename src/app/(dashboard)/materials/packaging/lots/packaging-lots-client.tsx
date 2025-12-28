@@ -70,7 +70,13 @@ export function PackagingLotsClient({ lots }: PackagingLotsClientProps) {
                     expired: "destructive",
                     quarantine: "outline"
                 };
-                return <Badge variant={variants[row.status] || "secondary"}>{row.status}</Badge>;
+                const labels: Record<string, string> = {
+                    active: "Ativo",
+                    depleted: "Esgotado",
+                    expired: "Expirado",
+                    quarantine: "Quarentena"
+                };
+                return <Badge variant={variants[row.status] || "secondary"}>{labels[row.status] || row.status}</Badge>;
             }
         },
     ];

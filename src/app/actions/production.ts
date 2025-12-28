@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getBatchTraceabilityAction } from "./traceability";
 import { mapToEnterpriseReport } from "@/lib/reports/report-dtos";
+import { requirePermission } from "@/lib/permissions.server";
 
 // --- Schemas ---
 
@@ -42,9 +43,8 @@ const LinkIngredientSchema = z.object({
  * Create Golden Batch from Form (used by CreateBatchDialog)
  */
 export async function createGoldenBatchFromFormAction(formData: FormData): Promise<void> {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
 
     const rawData = {
         product_id: formData.get("product_id"),
@@ -101,9 +101,8 @@ export async function createGoldenBatchFromFormAction(formData: FormData): Promi
  * Create Intermediate Product (Tank/Silo Mapping)
  */
 export async function createIntermediateProductAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const rawData = {
         production_batch_id: formData.get("production_batch_id"),
@@ -166,9 +165,8 @@ export async function createIntermediateProductAction(formData: FormData) {
  * Also debits quantity from the source lot
  */
 export async function linkIngredientAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const rawData = {
         intermediate_product_id: formData.get("intermediate_product_id"),
@@ -250,9 +248,8 @@ export async function linkIngredientAction(formData: FormData) {
  * Update Intermediate Product Status (Approve/Reject)
  */
 export async function updateIntermediateStatusAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const { data: profile } = await supabase
         .from("user_profiles")
@@ -291,9 +288,8 @@ export async function updateIntermediateStatusAction(formData: FormData) {
  * Approve Intermediate Product (QA Manager)
  */
 export async function approveIntermediateAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const intermediate_id = formData.get("intermediate_id") as string;
 
@@ -323,9 +319,8 @@ export async function approveIntermediateAction(formData: FormData) {
  * Used by technicians when physical production is done.
  */
 export async function finalizeBatchAction(batch_id: string) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const { data: profile } = await supabase
         .from("user_profiles")
@@ -353,9 +348,8 @@ export async function finalizeBatchAction(batch_id: string) {
  * Release Production Batch (QA Review)
  */
 export async function releaseBatchAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     const batch_id = formData.get("batch_id") as string;
     const action = formData.get("action") as "release" | "reject";

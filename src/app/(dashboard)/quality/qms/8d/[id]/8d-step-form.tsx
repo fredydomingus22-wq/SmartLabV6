@@ -11,13 +11,16 @@ import { update8DStepAction } from "@/app/actions/qms";
 import { toast } from "sonner";
 import { SignatureDialog } from "@/components/smart/signature-dialog";
 
+import { SearchableSelect } from "@/components/smart/searchable-select";
+
 interface EightDStepFormProps {
     reportId: string;
     step: number;
     currentData: any;
+    users: { id: string, full_name: string | null, role: string }[];
 }
 
-export function EightDStepForm({ reportId, step, currentData }: EightDStepFormProps) {
+export function EightDStepForm({ reportId, step, currentData, users }: EightDStepFormProps) {
     const [isPending, startTransition] = useTransition();
     const [showSignature, setShowSignature] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
@@ -64,24 +67,34 @@ export function EightDStepForm({ reportId, step, currentData }: EightDStepFormPr
                 {step === 1 && (
                     <>
                         <div className="grid gap-2">
-                            <Label htmlFor="champion">Líder (Champion)</Label>
-                            <Input
-                                id="champion"
+                            <Label htmlFor="champion">Líder (Champion) *</Label>
+                            <SearchableSelect
                                 name="champion"
-                                placeholder="Nome do líder da equipa"
+                                options={users.map(u => ({
+                                    value: u.id,
+                                    label: `${u.full_name || 'Sem Nome'} (${u.role})`
+                                }))}
                                 defaultValue={currentData.champion || ""}
-                                className="glass"
+                                placeholder="Selecionar líder da equipa..."
+                                required
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="team_members">Membros da Equipa (separados por vírgula)</Label>
-                            <Input
-                                id="team_members"
-                                name="team_members"
+                            <Label htmlFor="team_members">Membros da Equipa</Label>
+                            <p className="text-[10px] text-slate-500 italic mb-1">
+                                Nota: Por agora, selecione o líder e documente os membros abaixo.
+                                Tarefas serão criadas para o Líder. (Multisseleção em desenvolvimento)
+                            </p>
+                            <Textarea
+                                id="team_members_text"
+                                name="team_members_text"
                                 placeholder="João, Maria, Pedro..."
                                 defaultValue={currentData.team_members?.join(", ") || ""}
                                 className="glass"
+                                rows={2}
                             />
+                            {/* Hidden field to maintain compatibility with existing array structure if needed */}
+                            <input type="hidden" name="team_members" value={currentData.team_members?.join(",") || ""} />
                         </div>
                     </>
                 )}

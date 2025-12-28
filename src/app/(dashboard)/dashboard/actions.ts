@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 export async function getTrendDataAction(productId: string, parameterId: string) {
     const supabase = await createClient();
@@ -60,3 +60,4 @@ export async function getTrendDataAction(productId: string, parameterId: string)
         specs: specs || { min_value: null, max_value: null, target_value: null }
     };
 }
+

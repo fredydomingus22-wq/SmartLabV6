@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get approved samples for CoA generation
@@ -51,7 +51,8 @@ export async function getSampleForCoA(sampleId: string) {
         .from("lab_analysis")
         .select(`
             *,
-            parameter:qa_parameters(id, name, code, unit, category)
+            parameter:qa_parameters(id, name, code, unit, category),
+            equipment:equipments(name)
         `)
         .eq("organization_id", user.organization_id)
         .eq("sample_id", sampleId)
@@ -276,3 +277,4 @@ export async function getBatchesForReport() {
 
     return { data: data || [], error };
 }
+

@@ -8,7 +8,13 @@ import {
     AlertTriangle,
     Target,
     Beaker,
-    Microscope
+    Microscope,
+    ShieldAlert,
+    FileText,
+    Activity,
+    FlaskConical,
+    Settings2,
+    Globe
 } from "lucide-react";
 import Link from "next/link";
 import { ProductSelector } from "./product-selector";
@@ -40,11 +46,12 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
         .order("name");
 
     const selectedProductId = params.product;
+    const isGlobalMode = selectedProductId === "global";
 
-    // Fetch specifications for selected product
+    // Fetch specifications for selected product OR global (non-product) specs
     let specifications: any[] = [];
     if (selectedProductId) {
-        const { data } = await supabase
+        let query = supabase
             .from("product_specifications")
             .select(`
                 id,
@@ -59,12 +66,20 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                 sample_type_id,
                 created_at,
                 updated_at,
-                parameter:qa_parameters(id, name, code, unit, category, method),
+                haccp_hazard_id,
+                haccp_hazard:haccp_hazards(id, is_pcc, hazard_description, hazard_category),
+                parameter:qa_parameters(id, name, code, unit, category),
                 sample_type:sample_types(id, name, code)
             `)
-            .eq("product_id", selectedProductId)
             .order("created_at");
 
+        if (isGlobalMode) {
+            query = query.is("product_id", null);
+        } else {
+            query = query.eq("product_id", selectedProductId);
+        }
+
+        const { data } = await query;
         specifications = data || [];
     }
 
@@ -80,8 +95,8 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
         availableParameters = params || [];
     }
 
-    // Get selected product info
-    const selectedProduct = products?.find(p => p.id === selectedProductId);
+    // Get selected product info (null for global mode)
+    const selectedProduct = isGlobalMode ? null : products?.find(p => p.id === selectedProductId);
 
     const getCategoryColor = (cat: string) => {
         const colors: Record<string, string> = {
@@ -123,23 +138,32 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                     </Link>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <ClipboardList className="h-8 w-8 text-purple-500" />
-                            Especificações de Produto
+                            {isGlobalMode ? (
+                                <Globe className="h-8 w-8 text-emerald-500" />
+                            ) : (
+                                <FlaskConical className="h-8 w-8 text-purple-500" />
+                            )}
+                            {isGlobalMode ? "Especificações Globais" : "Especificações de Produto"}
                         </h1>
                         <p className="text-muted-foreground">
-                            Defina os limites de qualidade para cada produto
+                            {isGlobalMode
+                                ? "Especificações para CIP, Água, Monitoramento Ambiental, etc."
+                                : "Defina os limites de qualidade para cada produto"
+                            }
                         </p>
                     </div>
                 </div>
                 {selectedProductId && (
                     <div className="flex gap-2">
-                        <CopySpecsDialog
-                            products={products || []}
-                            currentProductId={selectedProductId}
-                        />
+                        {!isGlobalMode && (
+                            <CopySpecsDialog
+                                products={products || []}
+                                currentProductId={selectedProductId}
+                            />
+                        )}
                         <SpecDialog
                             mode="create"
-                            productId={selectedProductId}
+                            productId={isGlobalMode ? undefined : selectedProductId}
                             availableParameters={availableParameters}
                             sampleTypes={sampleTypes || []}
                             samplingPoints={samplingPoints || []}
@@ -149,7 +173,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
             </div>
 
             {/* Product Selector */}
-            <Card className="glass">
+            <Card className="glass border-l-4 border-l-primary/50">
                 <CardContent className="pt-6">
                     <ProductSelector
                         products={products || []}
@@ -159,15 +183,61 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
             </Card>
 
             {!selectedProductId ? (
-                <Card className="glass">
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                        <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Selecione um produto para ver e gerir as especificações.</p>
+                <Card className="glass border-2 border-dashed">
+                    <CardContent className="py-16 text-center text-muted-foreground flex flex-col items-center">
+                        <div className="h-20 w-20 rounded-full bg-muted/30 flex items-center justify-center mb-6">
+                            <ClipboardList className="h-10 w-10 opacity-40" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">Selecione um Produto ou Modo Global</h3>
+                        <p className="max-w-md mx-auto">
+                            Utilize o seletor acima para visualizar as especificações de um produto específico ou para gerenciar especificações globais.
+                        </p>
                     </CardContent>
                 </Card>
             ) : (
                 <>
+                    {/* Stats Cards */}
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <Card className="glass border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Parâmetros</CardTitle>
+                                <FileText className="h-4 w-4 text-blue-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold">{specifications.length}</div>
+                                <p className="text-xs text-muted-foreground mt-1">Especificações cadastradas</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Parâmetros Críticos</CardTitle>
+                                <ShieldAlert className="h-4 w-4 text-red-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold">
+                                    {specifications.filter(s => s.is_critical).length}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">Requerem atenção especial</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">Tipos de Análise</CardTitle>
+                                <Activity className="h-4 w-4 text-purple-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold">
+                                    {new Set(specifications.map(s => s.parameter?.category)).size}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">Categorias distintas</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     {/* Specifications Content */}
+
                     <div className="space-y-6">
                         <div className="flex items-center gap-2">
                             <h2 className="text-xl font-semibold">Specifications</h2>
@@ -225,7 +295,10 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
                                     {(() => {
                                         const otherSpecsGrouped = specifications.filter(s =>
                                             s.sample_type_id &&
-                                            (s.sample_type?.code ? (!isFinishedProduct(s.sample_type.code) && !isIntermediateProduct(s.sample_type.code)) : false)
+                                            (
+                                                !s.sample_type?.code || // Include if code is missing/lookup failed
+                                                (!isFinishedProduct(s.sample_type.code) && !isIntermediateProduct(s.sample_type.code))
+                                            )
                                         );
                                         if (otherSpecsGrouped.length === 0) {
                                             return (
@@ -355,76 +428,87 @@ function SpecsTable({ specs, productId, sampleTypes, samplingPoints, getCategory
     }
 
     return (
-        <Card className="glass">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b bg-muted/30">
-                            <th className="text-left py-3 px-4">Parameter</th>
-                            <th className="text-left py-3 px-2">Category</th>
-                            <th className="text-right py-3 px-2">Min</th>
-                            <th className="text-right py-3 px-2">Target</th>
-                            <th className="text-right py-3 px-2">Max</th>
-                            <th className="text-left py-3 px-2">Unit</th>
-                            <th className="text-center py-3 px-2">Critical</th>
-                            <th className="text-left py-3 px-2">Frequency</th>
-                            <th className="text-right py-3 px-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {specs.map((spec: any) => (
-                            <tr key={spec.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                                <td className="py-3 px-4">
-                                    <div className="font-medium">{spec.parameter?.name}</div>
-                                    <div className="text-xs text-muted-foreground font-mono">
-                                        {spec.parameter?.code}
+        <div className="rounded-md border bg-background/50 overflow-hidden">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="border-b bg-muted/40 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Parameter</th>
+                        <th className="h-12 px-2 text-left align-middle font-medium text-muted-foreground">Category</th>
+                        <th className="h-12 px-2 text-right align-middle font-medium text-muted-foreground">Min</th>
+                        <th className="h-12 px-2 text-right align-middle font-medium text-muted-foreground">Target</th>
+                        <th className="h-12 px-2 text-right align-middle font-medium text-muted-foreground">Max</th>
+                        <th className="h-12 px-2 text-left align-middle font-medium text-muted-foreground">Unit</th>
+                        <th className="h-12 px-2 text-center align-middle font-medium text-muted-foreground">Critical</th>
+                        <th className="h-12 px-2 text-left align-middle font-medium text-muted-foreground">Frequency</th>
+                        <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {specs.map((spec: any) => (
+                        <tr key={spec.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted last:border-0 group">
+                            <td className="p-4 align-middle">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                        <Settings2 className="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                </td>
-                                <td className="py-3 px-2">
-                                    <Badge variant="secondary" className={getCategoryColor(spec.parameter?.category)}>
-                                        {spec.parameter?.category?.replace("_", "-")}
-                                    </Badge>
-                                </td>
-                                <td className="py-3 px-2 text-right font-mono text-muted-foreground">
-                                    {spec.min_value ?? "-"}
-                                </td>
-                                <td className="py-3 px-2 text-right font-mono font-bold">
-                                    {spec.target_value ?? "-"}
-                                </td>
-                                <td className="py-3 px-2 text-right font-mono text-muted-foreground">
-                                    {spec.max_value ?? "-"}
-                                </td>
-                                <td className="py-3 px-2 text-muted-foreground">
-                                    {spec.parameter?.unit || "-"}
-                                </td>
-                                <td className="py-3 px-2 text-center">
-                                    {spec.is_critical ? (
-                                        <AlertTriangle className="h-4 w-4 text-red-500 mx-auto" />
-                                    ) : (
-                                        <span className="text-muted-foreground opacity-30">—</span>
-                                    )}
-                                </td>
-                                <td className="py-3 px-2">
-                                    <div className="text-xs border px-2 py-0.5 rounded bg-background inline-block">
-                                        {getFrequencyLabel(spec.sampling_frequency)}
+                                    <div>
+                                        <div className="font-medium text-foreground">{spec.parameter?.name}</div>
+                                        <div className="text-xs text-muted-foreground font-mono">
+                                            {spec.parameter?.code}
+                                        </div>
                                     </div>
-                                </td>
-                                <td className="py-3 px-4 text-right">
+                                </div>
+                            </td>
+                            <td className="p-2 align-middle">
+                                <Badge variant="outline" className={`${getCategoryColor(spec.parameter?.category)} bg-opacity-10 border-opacity-20`}>
+                                    {spec.parameter?.category?.replace("_", "-")}
+                                </Badge>
+                            </td>
+                            <td className="p-2 align-middle text-right font-mono text-muted-foreground">
+                                {spec.min_value ?? "-"}
+                            </td>
+                            <td className="p-2 align-middle text-right font-mono font-bold text-foreground">
+                                {spec.target_value ?? "-"}
+                            </td>
+                            <td className="p-2 align-middle text-right font-mono text-muted-foreground">
+                                {spec.max_value ?? "-"}
+                            </td>
+                            <td className="p-2 align-middle text-muted-foreground text-xs">
+                                {spec.parameter?.unit || "-"}
+                            </td>
+                            <td className="p-2 align-middle text-center">
+                                {spec.is_critical ? (
+                                    <div className="flex justify-center">
+                                        <div className="bg-red-100 dark:bg-red-900/30 p-1.5 rounded-full">
+                                            <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <span className="text-muted-foreground opacity-30">—</span>
+                                )}
+                            </td>
+                            <td className="p-2 align-middle">
+                                <Badge variant="outline" className="font-normal text-muted-foreground">
+                                    {getFrequencyLabel(spec.sampling_frequency)}
+                                </Badge>
+                            </td>
+                            <td className="p-4 align-middle text-right">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                     <SpecDialog
                                         mode="edit"
                                         productId={productId}
                                         specification={spec}
-                                        availableParameters={[]}
+                                        availableParameters={[]} // Not needed for edit
                                         sampleTypes={sampleTypes}
                                         samplingPoints={samplingPoints}
                                     />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
 

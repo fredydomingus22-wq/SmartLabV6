@@ -1,17 +1,41 @@
-import { Suspense } from "react";
-import { getDocuments, getDocCategories, getPlants } from "@/lib/queries/dms";
-import { Button } from "@/components/ui/button";
-import { Plus, FileText, Search, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, GraduationCap } from "lucide-react";
 import { CreateDocumentDialog } from "./_components/create-document-dialog";
+import { ManualsClient } from "./_components/manuals-client";
+import { getDocuments, getDocCategories, getPlants } from "@/lib/queries/dms";
+import { createClient } from "@/lib/supabase/server";
+import { getSafeUser } from "@/lib/auth.server";
 
 export default async function ManualsPage() {
     const { data: documents } = await getDocuments();
-    const { data: categories } = await getDocCategories();
+    let { data: categories } = await getDocCategories();
     const { data: plants } = await getPlants();
+
+    // Auto-seed if empty (Rescue logic for new organizations)
+    if (categories.length === 0) {
+        const supabase = await createClient();
+        const user = await getSafeUser();
+
+        const defaultCategories = [
+            { name: 'Standard Operating Procedure', code: 'SOP', description: 'Procedimentos Operacionais Normatizados' },
+            { name: 'Analytical Method', code: 'MTD', description: 'Métodos Analíticos de Laboratório' },
+            { name: 'Product Specification', code: 'SPC', description: 'Especificações de Matéria-Prima e Produto Final' },
+            { name: 'Quality Form', code: 'FRM', description: 'Formulários e Registos de Qualidade' }
+        ];
+
+        const { error: seedError } = await supabase.from("doc_categories").insert(
+            defaultCategories.map(c => ({ ...c, organization_id: user.organization_id }))
+        );
+
+        if (seedError) {
+            console.error("DMS Seed failure for org", user.organization_id, seedError);
+        } else {
+            // Fetch again after seeding
+            const secondFetch = await getDocCategories();
+            categories = secondFetch.data;
+        }
+    }
 
     return (
         <div className="p-6 space-y-6">
@@ -27,67 +51,43 @@ export default async function ManualsPage() {
                 <CreateDocumentDialog categories={categories} plants={plants} />
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input
-                        placeholder="Pesquisar documentos por título ou código..."
-                        className="pl-10 bg-slate-900/50 border-slate-800 text-slate-200"
+            <Tabs defaultValue="documents" className="space-y-6">
+                <TabsList className="glass border-slate-800 p-1">
+                    <TabsTrigger value="documents" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 gap-2">
+                        <FileText className="h-4 w-4" />
+                        Documentação (DMS)
+                    </TabsTrigger>
+                    <TabsTrigger value="training" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 gap-2">
+                        <GraduationCap className="h-4 w-4" />
+                        Formação & Competências
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="documents" className="animate-in fade-in duration-500 border-none p-0 outline-none">
+                    <ManualsClient
+                        documents={documents}
+                        categories={categories}
+                        plants={plants}
                     />
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="border-slate-800 text-slate-300">
-                        <Filter className="mr-2 h-4 w-4" />
-                        Prioridade
-                    </Button>
-                    <Button variant="outline" className="border-slate-800 text-slate-300">
-                        Todas as Categorias
-                    </Button>
-                </div>
-            </div>
+                </TabsContent>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {documents.map((doc) => (
-                    <Link key={doc.id} href={`/quality/manuals/${doc.id}`}>
-                        <Card className="glass border-slate-800/50 hover:border-emerald-500/50 transition-all group overflow-hidden">
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-                                        <FileText className="h-6 w-6" />
-                                    </div>
-                                    <Badge variant="outline" className="border-slate-700 text-slate-400">
-                                        {doc.category?.code || "DOC"}
-                                    </Badge>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <h3 className="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors line-clamp-1">
-                                        {doc.title}
-                                    </h3>
-                                    <p className="text-sm text-slate-500">
-                                        {doc.doc_number}
-                                    </p>
-                                </div>
-
-                                <div className="mt-6 pt-6 border-t border-slate-800/50 flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase tracking-wider text-slate-500">Versão Atual</span>
-                                        <span className="text-xs font-medium text-slate-300">
-                                            {doc.current_version?.version_number || "Sem Versão"}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[10px] uppercase tracking-wider text-slate-500">Estado</span>
-                                        <Badge className={getStatusColor(doc.current_version?.status)}>
-                                            {getStatusLabel(doc.current_version?.status)}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
-            </div>
+                <TabsContent value="training" className="animate-in fade-in duration-500 border-none p-0 outline-none">
+                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
+                        <div className="h-20 w-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto">
+                            <GraduationCap className="h-10 w-10 text-indigo-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold">Formação & Matriz de Competências</h2>
+                        <p className="text-muted-foreground max-w-md mx-auto">
+                            Registe treinamentos, avalie a eficácia da formação e controle a aptidão dos colaboradores para tarefas críticas.
+                        </p>
+                        <Link href="/quality/training">
+                            <Button className="bg-indigo-600 hover:bg-indigo-500 mt-4">
+                                Abrir Módulo de Formação
+                            </Button>
+                        </Link>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

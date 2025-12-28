@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -132,3 +132,4 @@ export async function deleteObjectiveAction(id: string) {
         return { success: false, error: error.message };
     }
 }
+

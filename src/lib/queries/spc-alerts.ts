@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 import { getSPCDataWithRules } from "./spc";
 
 export interface SPCAlert {
@@ -300,3 +300,4 @@ export async function getSPCAlertStats() {
         total: data.length,
     };
 }
+

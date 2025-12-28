@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 export async function getMicroKPIs() {
     const supabase = await createClient();
@@ -97,3 +97,4 @@ export async function getRecentMicroActivities() {
 
     return data || [];
 }
+

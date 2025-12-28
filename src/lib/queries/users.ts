@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSafeUser } from "@/lib/auth";
+import { getSafeUser } from "@/lib/auth.server";
 
 /**
  * Get all users in the organization for select dropdowns
@@ -16,3 +16,4 @@ export async function getUsers() {
 
     return { data: data || [], error };
 }
+

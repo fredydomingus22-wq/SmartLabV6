@@ -19,6 +19,7 @@ import { AuditStatusToggle } from "./_components/audit-status-toggle";
 import { AuditFindingsList } from "./_components/audit-findings-list";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { AuditGeneralEvaluation } from "./_components/audit-general-evaluation";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -122,12 +123,20 @@ export default async function AuditIdPage({ params }: PageProps) {
                 </div>
             </div>
 
+
+
+
+
             {/* Main Content Sections */}
             <Tabs defaultValue="checklist" className="space-y-6">
                 <TabsList className="bg-slate-900/50 border-slate-800">
                     <TabsTrigger value="checklist" className="flex items-center gap-2">
                         <ClipboardCheck className="h-4 w-4" />
                         Checklist
+                    </TabsTrigger>
+                    <TabsTrigger value="report" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Relatório
                     </TabsTrigger>
                     <TabsTrigger value="findings" className="flex items-center gap-2">
                         <AlertCircle className="h-4 w-4" />
@@ -164,6 +173,10 @@ export default async function AuditIdPage({ params }: PageProps) {
                             <AuditStatusToggle auditId={audit.id} currentStatus={audit.status} isLarge />
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="report" className="space-y-6">
+                    <AuditGeneralEvaluation audit={audit} />
                 </TabsContent>
 
                 <TabsContent value="findings" className="space-y-6">

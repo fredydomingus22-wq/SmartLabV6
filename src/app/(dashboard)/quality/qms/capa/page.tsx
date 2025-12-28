@@ -1,12 +1,23 @@
 import { getCAPAActions } from "@/lib/queries/qms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import {
+    ArrowLeft,
+    CheckCircle,
+    Clock,
+    AlertTriangle,
+    Target,
+    ShieldCheck,
+    Calendar,
+    Search,
+    Filter
+} from "lucide-react";
 import Link from "next/link";
 import { CAPAListClient } from "./capa-list-client";
 import { CAPAFilters } from "./capa-filters";
 import { CreateCAPADialog } from "./create-capa-standalone-dialog";
 import { Suspense } from "react";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,87 +42,99 @@ export default async function CAPAPage({ searchParams }: PageProps) {
     const completedCapas = capas.filter((c: any) => ["completed", "verified", "closed"].includes(c.status)).length;
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/quality/qms">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
+        <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Header Section */}
+            <div className="glass p-6 rounded-3xl border-none shadow-xl bg-gradient-to-br from-emerald-500/5 to-transparent">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <Link href="/quality/qms">
+                            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/5">
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-emerald-400">
+                                <Target className="h-7 w-7" />
+                                Gestão de CAPA
+                            </h1>
+                            <p className="text-sm text-muted-foreground">
+                                Plano de Ações Corretivas e Preventivas para melhoria contínua
+                            </p>
+                        </div>
+                    </div>
+                    <CreateCAPADialog />
+                </div>
+            </div>
+
+            {/* Stats Dashboard */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <StatCard
+                    title="Ações Abertas"
+                    value={openCapas}
+                    icon={Clock}
+                    color="text-indigo-400"
+                    bgColor="bg-indigo-500/10"
+                />
+                <StatCard
+                    title="Prazo Crítico"
+                    value={overdueCapas}
+                    icon={AlertTriangle}
+                    color="text-rose-400"
+                    bgColor="bg-rose-500/10"
+                    isCritical={overdueCapas > 0}
+                />
+                <StatCard
+                    title="Concluídas"
+                    value={completedCapas}
+                    icon={ShieldCheck}
+                    color="text-emerald-400"
+                    bgColor="bg-emerald-500/10"
+                />
+            </div>
+
+            {/* Filters Section */}
+            <div className="glass p-4 rounded-2xl border-none shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground min-w-fit">
+                    <Filter className="h-3.5 w-3.5" />
+                    Filtrar Por:
+                </div>
+                <Suspense fallback={<div className="h-10 w-full bg-muted/20 animate-pulse rounded-xl" />}>
+                    <CAPAFilters />
+                </Suspense>
+            </div>
+
+            {/* Main List */}
+            <div className="glass border-none shadow-xl rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-border/50 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <CheckCircle className="h-8 w-8 text-blue-500" />
-                            Gestão de CAPA
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Ações Corretivas e Preventivas
+                        <h3 className="text-lg font-bold">Plano de Atividades CAPA</h3>
+                        <p className="text-sm text-muted-foreground">
+                            {capas.length} ações registadas no sistema
+                            {(params.status || params.type) && " (com filtros aplicados)"}
                         </p>
                     </div>
                 </div>
-                <CreateCAPADialog />
-            </div>
-
-            {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="glass">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500" />
-                            Ações Abertas
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{openCapas}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass border-red-500/30">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                            Atrasadas
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-500">{overdueCapas}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass border-green-500/30">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            Concluídas
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-500">{completedCapas}</div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filters */}
-            <Suspense fallback={<div className="h-16 bg-muted/30 rounded-lg animate-pulse" />}>
-                <CAPAFilters />
-            </Suspense>
-
-            {/* CAPA List */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Todas as Ações CAPA</CardTitle>
-                    <CardDescription>
-                        {capas.length} resultado(s)
-                        {(params.status || params.type || params.priority) && " (filtrado)"}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+                <div className="p-0">
                     <CAPAListClient capas={capas} />
-                </CardContent>
-            </Card>
-
+                </div>
+            </div>
         </div>
+    );
+}
+
+function StatCard({ title, value, icon: Icon, color, bgColor, isCritical }: any) {
+    return (
+        <Card className={cn("glass border-none shadow-md transition-all", isCritical && "ring-1 ring-rose-500/30 shadow-rose-500/5")}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</CardTitle>
+                <div className={cn("p-2 rounded-lg", bgColor)}>
+                    <Icon className={cn("h-4 w-4", color)} />
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className={cn("text-3xl font-bold", isCritical && "text-rose-500")}>{value}</div>
+            </CardContent>
+        </Card>
     );
 }
 
