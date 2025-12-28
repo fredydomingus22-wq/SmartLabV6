@@ -207,7 +207,7 @@ export function AuditDashboardCharts({
                                         boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.5)",
                                     }}
                                     labelStyle={{ color: "#e2e8f0", fontWeight: "bold" }}
-                                    formatter={(value: number) => [`${value}%`, "Conformidade"]}
+                                    formatter={(value) => [`${value ?? 0}%`, "Conformidade"]}
                                 />
                                 <Area
                                     type="monotone"
@@ -326,7 +326,7 @@ export function AuditDashboardCharts({
                                         borderRadius: "12px",
                                     }}
                                     labelStyle={{ color: "#e2e8f0" }}
-                                    formatter={(value: number) => [`${value}%`, "Conformidade"]}
+                                    formatter={(value) => [`${value ?? 0}%`, "Conformidade"]}
                                 />
                                 <Bar dataKey="complianceRate" fill="#f59e0b" radius={[6, 6, 0, 0]} />
                             </BarChart>
