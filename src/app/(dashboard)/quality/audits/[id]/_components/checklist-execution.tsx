@@ -163,7 +163,7 @@ export function ChecklistExecution({ auditId, checklist, responses, readOnly }: 
                             question={activeQuestion}
                             response={activeResponse}
                             auditId={auditId}
-                            onSave={(result, evidence, notes, attachments) =>
+                            onSave={(result: string, evidence: string, notes: string, attachments: string[]) =>
                                 handleSaveResponse(activeQuestion.id, result, evidence, notes, attachments)
                             }
                             isSaving={savingId === activeQuestion.id}
