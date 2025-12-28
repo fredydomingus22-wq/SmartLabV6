@@ -6,7 +6,7 @@ import { loginAction } from "@/app/actions/auth";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Loader2, FlaskConical } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 
 import { TechGlassCard } from "@/components/auth/tech-glass-card";
 import { GlowInput } from "@/components/auth/glow-input";
@@ -53,11 +53,11 @@ function LoginForm() {
                     whileHover={{ rotate: 5, scale: 1.05 }}
                     transition={{ type: "spring", stiffness: 300 }}
                 >
-                    <FlaskConical className="h-7 w-7 sm:h-8 sm:w-8 text-cyan-400" />
+                    <LogIn className="h-7 w-7 sm:h-8 sm:w-8 text-cyan-400" />
                 </motion.div>
 
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                    SmartLab
+                    Acessar Plataforma
                 </h1>
                 <p className="text-xs text-slate-500 mt-1 font-mono tracking-wider">
                     Secure Access Portal

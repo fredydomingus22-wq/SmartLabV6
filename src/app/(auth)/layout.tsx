@@ -16,14 +16,14 @@ export default function AuthLayout({
                     {/* System Logo */}
                     <div className="mb-8">
                         <h1 className="text-3xl xl:text-4xl font-bold text-white mb-2">
-                            SmartLab
+                            SmartLab Enterprise
                         </h1>
                         <div className="h-1 w-16 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full" />
                     </div>
 
                     {/* Brief System Description */}
                     <p className="text-lg text-slate-300 mb-6 leading-relaxed">
-                        Sistema integrado de gestão laboratorial e controlo de qualidade para indústrias alimentares e farmacêuticas.
+                        Sistema integrado de gestão laboratorial e controlo de qualidade para a indústria de alimentos e bebidas.
                     </p>
 
                     {/* Core Capabilities */}
@@ -65,7 +65,7 @@ export default function AuthLayout({
                             Powered by <span className="text-cyan-500/80 font-semibold">Zimbotechia</span>
                         </p>
                         <p className="text-[10px] text-slate-700 mt-1">
-                            © 2024 Todos os direitos reservados
+                            © 2025 Todos os direitos reservados
                         </p>
                     </div>
                 </div>

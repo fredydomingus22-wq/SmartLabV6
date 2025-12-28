@@ -140,6 +140,7 @@ export async function getSampleWithResults(sampleId: string) {
             collected_at,
             collected_by,
             notes,
+            attachment_url,
             type:sample_types(id, name),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
