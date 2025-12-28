@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { FileText, GraduationCap } from "lucide-react";
 import { CreateDocumentDialog } from "./_components/create-document-dialog";
 import { ManualsClient } from "./_components/manuals-client";
