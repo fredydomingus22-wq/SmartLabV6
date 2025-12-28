@@ -6,7 +6,7 @@ import { loginAction } from "@/app/actions/auth";
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Loader2, FlaskConical, Shield, Zap } from "lucide-react";
+import { Loader2, FlaskConical } from "lucide-react";
 
 import { TechGlassCard } from "@/components/auth/tech-glass-card";
 import { GlowInput } from "@/components/auth/glow-input";
@@ -20,7 +20,6 @@ function LoginForm() {
     const next = searchParams.get("next") || "/dashboard";
     const message = searchParams.get("message");
 
-    // Show message from URL (e.g., password reset success)
     if (message) {
         toast.success(message);
     }
@@ -44,31 +43,31 @@ function LoginForm() {
         <TechGlassCard>
             {/* Logo & Branding */}
             <motion.div
-                className="text-center mb-6 sm:mb-8"
+                className="text-center mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
             >
                 <motion.div
-                    className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 mb-4"
+                    className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 mb-4"
                     whileHover={{ rotate: 5, scale: 1.05 }}
                     transition={{ type: "spring", stiffness: 300 }}
                 >
-                    <FlaskConical className="h-8 w-8 sm:h-10 sm:w-10 text-cyan-400" />
+                    <FlaskConical className="h-7 w-7 sm:h-8 sm:w-8 text-cyan-400" />
                 </motion.div>
 
-                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
                     SmartLab
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 font-mono tracking-wider">
-                    Enterprise LIMS & Quality Management
+                <p className="text-xs text-slate-500 mt-1 font-mono tracking-wider">
+                    Secure Access Portal
                 </p>
             </motion.div>
 
             {/* Login Form */}
             <motion.form
                 onSubmit={handleSubmit}
-                className="space-y-4 sm:space-y-5"
+                className="space-y-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -112,21 +111,16 @@ function LoginForm() {
                 </HologramButton>
             </motion.form>
 
-            {/* Feature Badges */}
+            {/* Mobile-only system info */}
             <motion.div
-                className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-3 sm:gap-4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 pt-4 border-t border-slate-800/50 text-center lg:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
             >
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500">
-                    <Shield className="h-3 w-3 text-emerald-500" />
-                    <span>Secure Auth</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500">
-                    <Zap className="h-3 w-3 text-amber-500" />
-                    <span>AI Powered</span>
-                </div>
+                <p className="text-xs text-slate-500">
+                    Enterprise LIMS & Quality Management
+                </p>
             </motion.div>
         </TechGlassCard>
     );
