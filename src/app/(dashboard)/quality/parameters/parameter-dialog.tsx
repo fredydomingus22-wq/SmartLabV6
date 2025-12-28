@@ -187,151 +187,153 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="max-h-[65vh] overflow-y-auto pr-4 -mr-4 space-y-4 px-1">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Name *</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => updateField("name", e.target.value)}
+                                    placeholder="e.g., pH"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="code">Code *</Label>
+                                <Input
+                                    id="code"
+                                    value={formData.code}
+                                    onChange={(e) => updateField("code", e.target.value.toUpperCase())}
+                                    placeholder="e.g., PH"
+                                    className="uppercase"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="unit">Unit</Label>
+                                <Input
+                                    id="unit"
+                                    value={formData.unit}
+                                    onChange={(e) => updateField("unit", e.target.value)}
+                                    placeholder="e.g., pH, °Bx, mg/L"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="category">Category</Label>
+                                <Select
+                                    value={formData.category}
+                                    onValueChange={(v) => updateField("category", v)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="physico_chemical">Físico-Químico</SelectItem>
+                                        <SelectItem value="microbiological">Microbiológico</SelectItem>
+                                        <SelectItem value="sensory">Sensorial</SelectItem>
+                                        <SelectItem value="other">Outro</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="name">Name *</Label>
+                            <Label htmlFor="method">Analysis Method</Label>
                             <Input
-                                id="name"
-                                value={formData.name}
-                                onChange={(e) => updateField("name", e.target.value)}
-                                placeholder="e.g., pH"
-                                required
+                                id="method"
+                                value={formData.method}
+                                onChange={(e) => updateField("method", e.target.value)}
+                                placeholder="e.g., ISO 4833, AOAC 981.12, Internal"
                             />
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="precision">Decimal Precision</Label>
+                                <Input
+                                    id="precision"
+                                    type="number"
+                                    min="0"
+                                    max="6"
+                                    value={formData.precision}
+                                    onChange={(e) => updateField("precision", e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="analysis_time_minutes">Time (minutes)</Label>
+                                <Input
+                                    id="analysis_time_minutes"
+                                    type="number"
+                                    min="1"
+                                    value={formData.analysis_time_minutes}
+                                    onChange={(e) => updateField("analysis_time_minutes", e.target.value)}
+                                    placeholder="e.g., 30"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Conditional: Incubation Temperature for Microbiological */}
+                        {formData.category === "microbiological" && (
+                            <div className="space-y-2 p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg">
+                                <Label htmlFor="incubation_temp_c" className="text-orange-400">Incubation Temperature (°C)</Label>
+                                <Input
+                                    id="incubation_temp_c"
+                                    type="number"
+                                    min="0"
+                                    max="60"
+                                    value={formData.incubation_temp_c}
+                                    onChange={(e) => updateField("incubation_temp_c", e.target.value)}
+                                    placeholder="e.g., 35, 25"
+                                />
+                                <p className="text-xs text-muted-foreground">Used for incubator compatibility matching</p>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
-                            <Label htmlFor="code">Code *</Label>
+                            <Label htmlFor="equipment_required">Equipment Required</Label>
                             <Input
-                                id="code"
-                                value={formData.code}
-                                onChange={(e) => updateField("code", e.target.value.toUpperCase())}
-                                placeholder="e.g., PH"
-                                className="uppercase"
-                                required
+                                id="equipment_required"
+                                value={formData.equipment_required}
+                                onChange={(e) => updateField("equipment_required", e.target.value)}
+                                placeholder="e.g., pH meter, refractometer"
                             />
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="unit">Unit</Label>
-                            <Input
-                                id="unit"
-                                value={formData.unit}
-                                onChange={(e) => updateField("unit", e.target.value)}
-                                placeholder="e.g., pH, °Bx, mg/L"
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea
+                                id="description"
+                                value={formData.description}
+                                onChange={(e) => updateField("description", e.target.value)}
+                                placeholder="Optional description or notes..."
+                                rows={2}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="category">Category</Label>
-                            <Select
-                                value={formData.category}
-                                onValueChange={(v) => updateField("category", v)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="physico_chemical">Físico-Químico</SelectItem>
-                                    <SelectItem value="microbiological">Microbiológico</SelectItem>
-                                    <SelectItem value="sensory">Sensorial</SelectItem>
-                                    <SelectItem value="other">Outro</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+
+                        {mode === "edit" && (
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select
+                                    value={formData.status}
+                                    onValueChange={(v) => updateField("status", v)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="method">Analysis Method</Label>
-                        <Input
-                            id="method"
-                            value={formData.method}
-                            onChange={(e) => updateField("method", e.target.value)}
-                            placeholder="e.g., ISO 4833, AOAC 981.12, Internal"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="precision">Decimal Precision</Label>
-                            <Input
-                                id="precision"
-                                type="number"
-                                min="0"
-                                max="6"
-                                value={formData.precision}
-                                onChange={(e) => updateField("precision", e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="analysis_time_minutes">Time (minutes)</Label>
-                            <Input
-                                id="analysis_time_minutes"
-                                type="number"
-                                min="1"
-                                value={formData.analysis_time_minutes}
-                                onChange={(e) => updateField("analysis_time_minutes", e.target.value)}
-                                placeholder="e.g., 30"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Conditional: Incubation Temperature for Microbiological */}
-                    {formData.category === "microbiological" && (
-                        <div className="space-y-2 p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg">
-                            <Label htmlFor="incubation_temp_c" className="text-orange-400">Incubation Temperature (°C)</Label>
-                            <Input
-                                id="incubation_temp_c"
-                                type="number"
-                                min="0"
-                                max="60"
-                                value={formData.incubation_temp_c}
-                                onChange={(e) => updateField("incubation_temp_c", e.target.value)}
-                                placeholder="e.g., 35, 25"
-                            />
-                            <p className="text-xs text-muted-foreground">Used for incubator compatibility matching</p>
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <Label htmlFor="equipment_required">Equipment Required</Label>
-                        <Input
-                            id="equipment_required"
-                            value={formData.equipment_required}
-                            onChange={(e) => updateField("equipment_required", e.target.value)}
-                            placeholder="e.g., pH meter, refractometer"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                            id="description"
-                            value={formData.description}
-                            onChange={(e) => updateField("description", e.target.value)}
-                            placeholder="Optional description or notes..."
-                            rows={2}
-                        />
-                    </div>
-
-                    {mode === "edit" && (
-                        <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
-                            <Select
-                                value={formData.status}
-                                onValueChange={(v) => updateField("status", v)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 pt-2 border-t border-slate-800">
                         {mode === "edit" && (
                             <Button
                                 type="button"
