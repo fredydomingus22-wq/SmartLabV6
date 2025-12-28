@@ -30,12 +30,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        const params = results?.map(r => ({
-            resultId: r.id,
-            parameterId: r.qa_parameter?.id || '',
-            parameterName: r.qa_parameter?.name || 'Unknown',
-            incubationTempC: r.qa_parameter?.incubation_temp_c || null
-        })) || [];
+        const params = results?.map(r => {
+            const param = Array.isArray(r.qa_parameter) ? r.qa_parameter[0] : r.qa_parameter;
+            return {
+                resultId: r.id,
+                parameterId: param?.id || '',
+                parameterName: param?.name || 'Unknown',
+                incubationTempC: param?.incubation_temp_c || null
+            };
+        }) || [];
 
         return NextResponse.json({ params });
     } catch (error: any) {

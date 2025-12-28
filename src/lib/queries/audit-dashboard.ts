@@ -130,7 +130,9 @@ export async function getNCsByProcess() {
     // Group by section name
     const grouped: Record<string, number> = {};
     data?.forEach(r => {
-        const sectionName = r.question?.section?.name || "Sem Secção";
+        const question = Array.isArray(r.question) ? r.question[0] : r.question;
+        const section = question && (Array.isArray(question.section) ? question.section[0] : question.section);
+        const sectionName = section?.name || "Sem Secção";
         grouped[sectionName] = (grouped[sectionName] || 0) + 1;
     });
 

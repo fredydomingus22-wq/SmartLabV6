@@ -1,14 +1,14 @@
 "use client";
 
 import { forwardRef } from "react";
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-interface HologramButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface HologramButtonProps extends Omit<HTMLMotionProps<"button">, 'children'> {
     loading?: boolean;
     variant?: "primary" | "secondary" | "ghost";
-    children: React.ReactNode;
+    children?: React.ReactNode;
 }
 
 /**

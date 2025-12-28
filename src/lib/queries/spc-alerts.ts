@@ -167,8 +167,8 @@ export async function checkAndCreateSPCAlerts(
     let alertsCreated = 0;
 
     // Check for run rule violations on the latest point
-    if (spcData.hasViolations) {
-        const latestViolations = spcData.runRuleViolations.filter(v =>
+    if (spcData.violations && spcData.violations.length > 0) {
+        const latestViolations = spcData.violations.filter(v =>
             v.pointIndexes.includes(spcData.data.length - 1)
         );
 
