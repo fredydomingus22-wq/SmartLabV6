@@ -43,9 +43,9 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             animate="show"
             className="space-y-10 pb-20 relative"
         >
-            {/* Ambient Background Glows */}
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute top-1/2 -right-24 w-80 h-80 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none" />
+            {/* Ambient Background Glows (hidden on mobile for performance) */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none hidden md:block" />
+            <div className="absolute top-1/2 -right-24 w-80 h-80 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none hidden md:block" />
 
             {!isServiceRoleConfigured && (
                 <motion.div variants={item} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-sm flex items-center gap-3 animate-pulse relative z-10">
@@ -55,36 +55,36 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             )}
 
             {/* Futuristic Header */}
-            <motion.div variants={item} className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/5 pb-8 relative z-10">
+            <motion.div variants={item} className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 lg:gap-6 border-b border-white/5 pb-6 lg:pb-8 relative z-10">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 text-[10px] font-mono tracking-tighter uppercase font-bold">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-mono tracking-tighter uppercase font-bold">
                             Live Infrastructure
                         </Badge>
-                        <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase opacity-50">Production Ready</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-widest uppercase opacity-50 hidden sm:inline">Production Ready</span>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
-                        <Cpu className="h-8 w-8 text-blue-500" />
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2 sm:gap-3">
+                        <Cpu className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                         Consola <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">SaaS</span>
                     </h1>
-                    <p className="text-slate-400 text-sm font-medium italic opacity-80 leading-relaxed">
+                    <p className="text-slate-400 text-xs sm:text-sm font-medium italic opacity-80 leading-relaxed">
                         Orquestração global em tempo real do ecossistema industrial SmartLab.
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-all duration-300" />
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                    <div className="relative group w-full sm:w-auto">
+                        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-all duration-300" />
                         <Input
                             placeholder="Procurar instância..."
-                            className="pl-11 pr-4 py-6 w-72 bg-white/5 border-white/10 focus:border-blue-500/30 transition-all rounded-2xl backdrop-blur-md shadow-2xl text-sm"
+                            className="pl-10 sm:pl-11 pr-4 py-5 sm:py-6 w-full sm:w-72 bg-white/5 border-white/10 focus:border-blue-500/30 transition-all rounded-xl sm:rounded-2xl backdrop-blur-md shadow-2xl text-sm"
                         />
                     </div>
                 </div>
             </motion.div>
 
             {/* High-Tech Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 relative z-10">
                 {[
                     { label: "Organizações", value: stats.totalOrganizations, icon: Building2, color: "blue", desc: "Instâncias Provisionadas" },
                     { label: "Utilizadores", value: stats.totalUsers, icon: Users, color: "indigo", desc: "Contas Auth Ativas" },
@@ -101,10 +101,10 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-black text-white tracking-tighter mb-1 font-mono">
+                                <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tighter mb-1 font-mono">
                                     {stat.value}
                                 </div>
-                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">{stat.desc}</p>
+                                <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-tight">{stat.desc}</p>
                             </CardContent>
                         </Card>
                     </motion.div>
