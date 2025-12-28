@@ -45,6 +45,7 @@ export async function createTenantAction(formData: FormData): Promise<AdminTenan
         const name = formData.get('name') as string;
         const slug = formData.get('slug') as string;
         const plan = formData.get('plan') as string || 'trial';
+        const logoUrl = formData.get('logo_url') as string || null;
 
         if (!name || !slug) {
             return { success: false, message: "Name and Slug are required" };
@@ -58,7 +59,11 @@ export async function createTenantAction(formData: FormData): Promise<AdminTenan
                 slug,
                 plan,
                 status: 'active',
-                config: {}
+                logo_url: logoUrl,
+                settings: {
+                    primaryColor: formData.get('primary_color') || '#4F46E5',
+                    allowPublicAccess: formData.get('allow_public') === 'true'
+                }
             })
             .select()
             .single();
@@ -111,6 +116,62 @@ export async function updateTenantStatusAction(id: string, status: string): Prom
     }
 }
 
+export async function updateTenantBrandingAction(formData: FormData): Promise<AdminTenantActionState> {
+    try {
+        const user = await ensureSystemOwner();
+        const supabase = createAdminClient();
+
+        const id = formData.get('id') as string;
+        const name = formData.get('name') as string;
+        const logoUrl = formData.get('logo_url') as string;
+        const primaryColor = formData.get('primary_color') as string;
+
+        if (!id) return { success: false, message: "ID is required" };
+
+        // Get existing settings first to merge
+        const { data: current, error: getError } = await supabase
+            .from('organizations')
+            .select('settings')
+            .eq('id', id)
+            .single();
+
+        if (getError) throw getError;
+
+        const newSettings = {
+            ...(current?.settings || {}),
+            primaryColor,
+            updatedAt: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from('organizations')
+            .update({
+                name,
+                logo_url: logoUrl,
+                settings: newSettings
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        await logSystemAction({
+            actorId: user.id,
+            action: 'UPDATE_TENANT_BRANDING',
+            entityType: 'organization',
+            entityId: id,
+            newData: data
+        });
+
+        revalidatePath('/saas/tenants');
+        revalidatePath(`/saas/tenants/${id}`);
+        return { success: true, message: "Branding atualizado com sucesso" };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
 export async function getOrganizationDetails(id: string) {
     try {
         await ensureSystemOwner();
@@ -156,6 +217,8 @@ export async function createPlantAction(formData: FormData): Promise<AdminTenant
             line1: formData.get('address_line1') as string || ''
         };
 
+        const logoUrl = formData.get('logo_url') as string || null;
+
         const { data: plant, error } = await supabase
             .from('plants')
             .insert({
@@ -163,7 +226,11 @@ export async function createPlantAction(formData: FormData): Promise<AdminTenant
                 code,
                 organization_id: organizationId,
                 timezone,
-                address
+                address,
+                logo_url: logoUrl,
+                settings: {
+                    isActive: true
+                }
             })
             .select()
             .single();

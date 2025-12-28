@@ -27,7 +27,12 @@ interface DashboardClientProps {
         totalOrganizations: number;
         totalUsers: number;
         totalPlants: number;
+        totalSamples?: number;
+        totalNCs?: number;
+        totalInventory?: number;
         systemStatus: string;
+        healthScore?: number;
+        resourceUsage?: any[];
         recentLogs?: any[];
     };
     isServiceRoleConfigured: boolean;
@@ -35,6 +40,9 @@ interface DashboardClientProps {
 
 export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardClientProps) {
     const recentLogs = stats.recentLogs || [];
+    const resourceUsage = stats.resourceUsage || [];
+
+    const isStable = stats.systemStatus === 'Stable';
 
     return (
         <motion.div
@@ -43,7 +51,7 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             animate="show"
             className="space-y-10 pb-20 relative"
         >
-            {/* Ambient Background Glows (hidden on mobile for performance) */}
+            {/* Ambient Background Glows */}
             <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none hidden md:block" />
             <div className="absolute top-1/2 -right-24 w-80 h-80 bg-indigo-600/10 blur-[100px] rounded-full pointer-events-none hidden md:block" />
 
@@ -58,10 +66,10 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             <motion.div variants={item} className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 lg:gap-6 border-b border-white/5 pb-6 lg:pb-8 relative z-10">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-mono tracking-tighter uppercase font-bold">
-                            Live Infrastructure
+                        <Badge variant="outline" className={`${isStable ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'} px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-mono tracking-tighter uppercase font-bold`}>
+                            System Status: {stats.systemStatus}
                         </Badge>
-                        <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-widest uppercase opacity-50 hidden sm:inline">Production Ready</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-widest uppercase opacity-50 hidden sm:inline">Infrastructure Score: {stats.healthScore || 100}%</span>
                     </div>
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2 sm:gap-3">
                         <Cpu className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
@@ -87,17 +95,17 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 relative z-10">
                 {[
                     { label: "Organizações", value: stats.totalOrganizations, icon: Building2, color: "blue", desc: "Instâncias Provisionadas" },
-                    { label: "Utilizadores", value: stats.totalUsers, icon: Users, color: "indigo", desc: "Contas Auth Ativas" },
-                    { label: "Unidades", value: stats.totalPlants, icon: Layers, color: "purple", desc: "Plantas em Operação" },
-                    { label: "Uptime Mensal", value: "99.98%", icon: Activity, color: "emerald", desc: "Estado: Operacional" },
+                    { label: "Carga de Dados", value: (stats.totalSamples || 0) + (stats.totalNCs || 0) + (stats.totalInventory || 0), icon: Layers, color: "indigo", desc: "Total de Registos Raw" },
+                    { label: "Utilizadores", value: stats.totalUsers, icon: Users, color: "purple", desc: "Contas Auth Ativas" },
+                    { label: "Health Score", value: `${stats.healthScore || 100}%`, icon: Activity, color: isStable ? "emerald" : "amber", desc: `Status: ${stats.systemStatus}` },
                 ].map((stat, i) => (
                     <motion.div key={i} variants={item}>
                         <Card className="glass group overflow-hidden border-white/5 hover:border-white/10 transition-all duration-500 hover:shadow-[0_0_30px_rgba(59,130,246,0.05)]">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/40 group-hover:w-1.5 transition-all" />
+                            <div className={`absolute top-0 left-0 w-1 h-full bg-${stat.color}-500/40 group-hover:w-1.5 transition-all`} />
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-widest text-slate-500 flex items-center justify-between">
                                     {stat.label}
-                                    <stat.icon className="h-4 w-4 text-blue-400 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                    <stat.icon className={`h-4 w-4 text-${stat.color}-400 opacity-60 group-hover:opacity-100 transition-opacity`} />
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -111,52 +119,100 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
                 ))}
             </div>
 
-            {/* Central Navigation Hub */}
+            {/* Central Navigation Hub & Resource Allocation */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 relative z-10">
-                <motion.div variants={item} className="xl:col-span-2">
-                    <Card className="glass border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
-                        <CardHeader className="border-b border-white/5 pb-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-                                        <Globe className="h-5 w-5 text-blue-400" />
-                                        Navegação de Sistema
-                                    </CardTitle>
-                                    <CardDescription>Gestão centralizada de ativos e identidades.</CardDescription>
-                                </div>
-                                <Link href="/saas/audit" className="text-[10px] font-mono p-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors uppercase tracking-widest text-slate-400 font-bold">
-                                    Audit Trail Completo
-                                </Link>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="grid grid-cols-1 md:grid-cols-2 divide-x divide-y divide-white/5">
-                                {[
-                                    { label: "Organizações", path: "/saas/tenants", icon: Building2, sub: "Registar novas empresas e plantas", color: "blue" },
-                                    { label: "Identidade & Acessos", path: "/saas/users", icon: ShieldCheck, sub: "Gerir contas Auth e perfis globais", color: "purple" },
-                                    { label: "Planos & Tiers", path: "/saas/plans", icon: Layers, sub: "Definir limites e funcionalidades", color: "emerald" },
-                                    { label: "Infraestrutura", path: "/saas/settings", icon: Cpu, sub: "Configurações de rede e segurança", color: "amber" }
-                                ].map((action, i) => (
-                                    <Link key={i} href={action.path} className="group/btn p-8 hover:bg-white/[0.02] transition-all relative overflow-hidden">
-                                        <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover/btn:w-full bg-blue-500/50 transition-all duration-700" />
-                                        <div className="flex items-start gap-4">
-                                            <div className="p-4 rounded-2xl bg-slate-900/50 text-blue-400 group-hover/btn:scale-110 transition-transform duration-500 border border-white/5">
-                                                <action.icon className="h-6 w-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="text-white font-bold mb-1 flex items-center gap-2 group-hover/btn:text-blue-400 transition-colors">
-                                                    {action.label}
-                                                    <ArrowUpRight className="h-3 w-3 opacity-0 group-hover/btn:opacity-50 transition-all translate-y-1 group-hover/btn:translate-y-0" />
-                                                </h4>
-                                                <p className="text-xs text-slate-500 leading-relaxed">{action.sub}</p>
-                                            </div>
-                                        </div>
+                <div className="xl:col-span-2 space-y-8">
+                    <motion.div variants={item}>
+                        <Card className="glass border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+                            <CardHeader className="border-b border-white/5 pb-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+                                            <Globe className="h-5 w-5 text-blue-400" />
+                                            Navegação de Sistema
+                                        </CardTitle>
+                                        <CardDescription>Gestão centralizada de ativos e identidades.</CardDescription>
+                                    </div>
+                                    <Link href="/saas/audit" className="text-[10px] font-mono p-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors uppercase tracking-widest text-slate-400 font-bold">
+                                        Audit Trail Completo
                                     </Link>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </motion.div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="grid grid-cols-1 md:grid-cols-2 divide-x divide-y divide-white/5">
+                                    {[
+                                        { label: "Organizações", path: "/saas/tenants", icon: Building2, sub: "Registar novas empresas e plantas", color: "blue" },
+                                        { label: "Identidade & Acessos", path: "/saas/users", icon: ShieldCheck, sub: "Gerir contas Auth e perfis globais", color: "purple" },
+                                        { label: "Planos & Tiers", path: "/saas/plans", icon: Layers, sub: "Definir limites e funcionalidades", color: "emerald" },
+                                        { label: "Infraestrutura", path: "/saas/settings", icon: Cpu, sub: "Configurações de rede e segurança", color: "amber" }
+                                    ].map((action, i) => (
+                                        <Link key={i} href={action.path} className="group/btn p-8 hover:bg-white/[0.02] transition-all relative overflow-hidden">
+                                            <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover/btn:w-full bg-blue-500/50 transition-all duration-700" />
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-4 rounded-2xl bg-slate-900/50 text-blue-400 group-hover/btn:scale-110 transition-transform duration-500 border border-white/5">
+                                                    <action.icon className="h-6 w-6" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-white font-bold mb-1 flex items-center gap-2 group-hover/btn:text-blue-400 transition-colors">
+                                                        {action.label}
+                                                        <ArrowUpRight className="h-3 w-3 opacity-0 group-hover/btn:opacity-50 transition-all translate-y-1 group-hover/btn:translate-y-0" />
+                                                    </h4>
+                                                    <p className="text-xs text-slate-500 leading-relaxed">{action.sub}</p>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+
+                    {/* Resource Allocation View */}
+                    <motion.div variants={item}>
+                        <Card className="glass border-white/5 overflow-hidden">
+                            <CardHeader>
+                                <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Activity className="h-5 w-5 text-indigo-400" />
+                                    Alocação de Recursos por Organização
+                                </CardTitle>
+                                <CardDescription>Consumo relativo de infraestrutura baseado em densidade de dados.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="space-y-0 divide-y divide-white/5">
+                                    {resourceUsage.slice(0, 5).map((org: any, i: number) => {
+                                        const totalWeight = resourceUsage.reduce((acc, curr) => acc + curr.weight, 0);
+                                        const percentage = totalWeight > 0 ? (org.weight / totalWeight) * 100 : 0;
+
+                                        return (
+                                            <div key={i} className="p-4 hover:bg-white/[0.01] transition-colors">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-mono text-slate-500">{(i + 1).toString().padStart(2, '0')}</span>
+                                                        <span className="font-bold text-sm text-slate-200">{org.name}</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-mono text-indigo-400 font-bold">{percentage.toFixed(1)}% Usage</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${percentage}%` }}
+                                                        transition={{ duration: 1, delay: i * 0.1 }}
+                                                        className="h-full bg-gradient-to-r from-blue-600 to-indigo-500"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Users: <strong>{org.users}</strong></span>
+                                                    <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Plants: <strong>{org.plants}</strong></span>
+                                                    <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Samples: <strong>{org.samples}</strong></span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                </div>
 
                 {/* Real-time System Logs */}
                 <motion.div variants={item} className="space-y-6">
@@ -165,7 +221,7 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
                             <CardTitle className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold flex items-center justify-between">
                                 Eventos Recentes
                                 <span className="flex items-center gap-1.5">
-                                    <div className="h-1 w-1 rounded-full bg-emerald-500 animate-ping" />
+                                    <div className={`h-1 w-1 rounded-full ${isStable ? 'bg-emerald-500 animate-ping' : 'bg-amber-500 animate-pulse'}`} />
                                     Live
                                 </span>
                             </CardTitle>
@@ -200,21 +256,21 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
                         </CardContent>
                     </Card>
 
-                    <Card className="glass border-emerald-500/20 bg-emerald-500/[0.02]">
+                    <Card className={`glass ${isStable ? 'border-emerald-500/20 bg-emerald-500/[0.02]' : 'border-amber-500/20 bg-amber-500/[0.02]'}`}>
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-200 uppercase tracking-widest">
-                                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                            <CardTitle className={`text-sm font-bold flex items-center gap-2 ${isStable ? 'text-emerald-200' : 'text-amber-200'} uppercase tracking-widest`}>
+                                <ShieldCheck className={`h-4 w-4 ${isStable ? 'text-emerald-400' : 'text-amber-400'}`} />
                                 Integridade
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 flex items-center justify-center text-[10px] font-black text-emerald-400">
-                                    100%
+                                <div className={`h-12 w-12 rounded-full border-4 ${isStable ? 'border-emerald-500/20 border-t-emerald-500 text-emerald-400' : 'border-amber-500/20 border-t-amber-500 text-amber-400'} flex items-center justify-center text-[10px] font-black`}>
+                                    {stats.healthScore || 100}%
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-emerald-100">Criptografia Base-Layer</p>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter mt-0.5">All protocols are secure</p>
+                                    <p className={`text-xs font-bold ${isStable ? 'text-emerald-100' : 'text-amber-100'}`}>Infraestrutura {stats.systemStatus}</p>
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter mt-0.5">Automated protocols are monitoring</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -225,7 +281,7 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             {/* Terminal Style Footer */}
             <motion.div variants={item} className="pt-10 flex items-center justify-between border-t border-white/5 opacity-40 relative z-10">
                 <div className="flex items-center gap-4 text-[10px] font-mono text-slate-500 tracking-tighter uppercase font-bold">
-                    <span>SmartLab OS v6.2.0-LTS</span>
+                    <span>SmartLab OS v6.3.0-PREMIUM</span>
                     <span className="h-3 w-[1px] bg-white/10" />
                     <span>User: System_Owner</span>
                 </div>
