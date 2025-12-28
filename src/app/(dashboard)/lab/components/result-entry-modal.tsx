@@ -157,6 +157,8 @@ export function ResultEntryModal({ open, onOpenChange, sampleId, onSuccess }: Re
         const resultsToSave = parameters.map(p => ({
             analysisId: p.id,
             value: formValues[p.id] || null,
+            notes: undefined, // Per-parameter notes not yet in UI, but supported by action
+            equipmentId: undefined, // Per-parameter equipment not yet in UI
         }));
 
         const res = await saveAllResultsAction(

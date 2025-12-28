@@ -1118,9 +1118,9 @@ export async function saveAllResultsAction(
     password?: string,
     attachmentUrl?: string
 ) {
+    const { getSafeUser } = await import("@/lib/auth.server");
+    const user = await getSafeUser();
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
     // --- PASSWORD VALIDATION (If provided) ---
     if (password) {
@@ -1150,6 +1150,7 @@ export async function saveAllResultsAction(
             intermediate:intermediate_products(batch:production_batches(product_id))
         `)
         .eq("id", sampleId)
+        .eq("organization_id", user.organization_id)
         .single();
 
     if (!sample) return { success: false, message: "Amostra não encontrada" };
@@ -1163,7 +1164,8 @@ export async function saveAllResultsAction(
     const { data: currentAnalyses } = await supabase
         .from("lab_analysis")
         .select("id, qa_parameter_id")
-        .eq("sample_id", sampleId);
+        .eq("sample_id", sampleId)
+        .eq("organization_id", user.organization_id);
 
     const analysisMap = new Map(currentAnalyses?.map(a => [a.id, a.qa_parameter_id]));
 
@@ -1184,7 +1186,8 @@ export async function saveAllResultsAction(
         const { data: specData } = await supabase
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical, qa_parameters(name)")
-            .eq("product_id", productId);
+            .eq("product_id", productId)
+            .eq("organization_id", user.organization_id);
 
         specData?.forEach(s => {
             const paramName = Array.isArray(s.qa_parameters)
@@ -1234,6 +1237,8 @@ export async function saveAllResultsAction(
             notes: result.notes || null,
             analyzed_by: user.id,
             analyzed_at: new Date().toISOString(),
+            lab_asset_id: result.equipmentId || null,
+            equipment_id: result.equipmentId || null,
         };
 
         if (signatureHash) {
@@ -1243,9 +1248,11 @@ export async function saveAllResultsAction(
         const { error } = await supabase
             .from("lab_analysis")
             .update(updatePayload)
-            .eq("id", result.analysisId);
+            .eq("id", result.analysisId)
+            .eq("organization_id", user.organization_id);
 
         if (error) {
+            console.error(`Error updating analysis ${result.analysisId}:`, error);
             errorCount++;
         } else {
             successCount++;
