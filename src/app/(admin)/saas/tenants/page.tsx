@@ -1,10 +1,10 @@
-import { PageHeader } from "@/components/smart/page-header";
 import { getAllTenantsAction } from "@/app/actions/admin/tenants";
 import { Button } from "@/components/ui/button";
 import { Plus, Building2, Search, Filter } from "lucide-react";
 import { CreateTenantDialog } from "./create-tenant-dialog";
 import { TenantCard, Tenant } from "./tenant-card";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 export default async function TenantsPage() {
     const res = await getAllTenantsAction();
@@ -12,31 +12,36 @@ export default async function TenantsPage() {
 
     return (
         <div className="space-y-10 pb-10">
-            {/* Header with High-Tech Actions */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            {/* Futuristic Header */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/5 pb-8 relative z-10">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 text-[10px] font-mono tracking-tighter uppercase font-bold">
+                            Instance Manager
+                        </Badge>
+                    </div>
+                    <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
                         <Building2 className="h-8 w-8 text-blue-500" />
                         Organizações
                     </h1>
-                    <p className="text-slate-400 text-sm italic opacity-80">
-                        Gestão centralizada de instâncias e parcerias corporativas.
+                    <p className="text-slate-400 text-sm italic opacity-80 leading-relaxed max-w-2xl">
+                        Gestão centralizada de instâncias, parcerias corporativas e isolamento de dados multitenant.
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative group">
+                    <div className="relative group w-full sm:w-auto">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                         <Input
                             placeholder="Procurar empresa..."
-                            className="pl-9 w-64 bg-white/5 border-white/10 focus:border-blue-500/30 transition-all rounded-xl backdrop-blur-md"
+                            className="pl-9 w-full sm:w-64 bg-white/5 border-white/10 focus:border-blue-500/30 transition-all rounded-xl backdrop-blur-md"
                         />
                     </div>
-                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl">
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl h-11 px-5">
                         <Filter className="mr-2 h-4 w-4 text-slate-400" /> Filtros
                     </Button>
                     <CreateTenantDialog>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] rounded-xl border-none">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] rounded-xl border-none font-bold h-11 px-6">
                             <Plus className="mr-2 h-4 w-4" /> Nova Organização
                         </Button>
                     </CreateTenantDialog>

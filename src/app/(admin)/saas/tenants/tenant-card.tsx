@@ -60,7 +60,8 @@ export function TenantCard({ tenant }: TenantCardProps) {
             whileHover={{ y: -5 }}
             transition={{ duration: 0.3 }}
         >
-            <Card className="glass group relative overflow-hidden border-white/5 hover:border-blue-500/20 transition-all duration-500 shadow-2xl">
+            <Card className="glass group relative overflow-hidden border-white/5 hover:border-blue-500/20 transition-all duration-500 shadow-2xl bg-gradient-to-br from-white/[0.03] to-transparent">
+                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
                 {/* Status Indicator Glow */}
                 <div className={cn(
                     "absolute top-0 right-0 w-24 h-24 blur-[60px] rounded-full -mr-12 -mt-12 transition-all duration-500",

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const container = {
     hidden: { opacity: 0 },
@@ -142,18 +143,44 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
                                 <div className="grid grid-cols-1 md:grid-cols-2 divide-x divide-y divide-white/5">
                                     {[
                                         { label: "Organizações", path: "/saas/tenants", icon: Building2, sub: "Registar novas empresas e plantas", color: "blue" },
-                                        { label: "Identidade & Acessos", path: "/saas/users", icon: ShieldCheck, sub: "Gerir contas Auth e perfis globais", color: "purple" },
+                                        { label: "Utilizadores", path: "/saas/users", icon: Users, sub: "Gerir contas Auth e perfis", color: "purple" },
+                                        { label: "Permissões & RBAC", path: "/saas/roles", icon: ShieldCheck, sub: "Configurar matriz de acessos global", color: "indigo" },
                                         { label: "Planos & Tiers", path: "/saas/plans", icon: Layers, sub: "Definir limites e funcionalidades", color: "emerald" },
-                                        { label: "Infraestrutura", path: "/saas/settings", icon: Cpu, sub: "Configurações de rede e segurança", color: "amber" }
+                                        { label: "Saúde do Sistema", path: "/saas/health", icon: Activity, sub: "Telemetria técnica e diagnósticos", color: "rose" },
+                                        { label: "Orquestração", path: "/saas/settings", icon: Cpu, sub: "Configurações de infraestrutura", color: "amber" }
                                     ].map((action, i) => (
                                         <Link key={i} href={action.path} className="group/btn p-8 hover:bg-white/[0.02] transition-all relative overflow-hidden">
-                                            <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover/btn:w-full bg-blue-500/50 transition-all duration-700" />
+                                            <div className={cn(
+                                                "absolute bottom-0 left-0 h-0.5 w-0 group-hover/btn:w-full transition-all duration-700",
+                                                action.color === 'blue' && "bg-blue-500/50",
+                                                action.color === 'purple' && "bg-purple-500/50",
+                                                action.color === 'indigo' && "bg-indigo-500/50",
+                                                action.color === 'emerald' && "bg-emerald-500/50",
+                                                action.color === 'rose' && "bg-rose-500/50",
+                                                action.color === 'amber' && "bg-amber-500/50"
+                                            )} />
                                             <div className="flex items-start gap-4">
-                                                <div className="p-4 rounded-2xl bg-slate-900/50 text-blue-400 group-hover/btn:scale-110 transition-transform duration-500 border border-white/5">
+                                                <div className={cn(
+                                                    "p-4 rounded-2xl bg-slate-900/50 group-hover/btn:scale-110 transition-transform duration-500 border border-white/5",
+                                                    action.color === 'blue' && "text-blue-400 group-hover/btn:bg-blue-500/10",
+                                                    action.color === 'purple' && "text-purple-400 group-hover/btn:bg-purple-500/10",
+                                                    action.color === 'indigo' && "text-indigo-400 group-hover/btn:bg-indigo-500/10",
+                                                    action.color === 'emerald' && "text-emerald-400 group-hover/btn:bg-emerald-500/10",
+                                                    action.color === 'rose' && "text-rose-400 group-hover/btn:bg-rose-500/10",
+                                                    action.color === 'amber' && "text-amber-400 group-hover/btn:bg-amber-500/10"
+                                                )}>
                                                     <action.icon className="h-6 w-6" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <h4 className="text-white font-bold mb-1 flex items-center gap-2 group-hover/btn:text-blue-400 transition-colors">
+                                                    <h4 className={cn(
+                                                        "text-white font-bold mb-1 flex items-center gap-2 transition-colors",
+                                                        action.color === 'blue' && "group-hover/btn:text-blue-400",
+                                                        action.color === 'purple' && "group-hover/btn:text-purple-400",
+                                                        action.color === 'indigo' && "group-hover/btn:text-indigo-400",
+                                                        action.color === 'emerald' && "group-hover/btn:text-emerald-400",
+                                                        action.color === 'rose' && "group-hover/btn:text-rose-400",
+                                                        action.color === 'amber' && "group-hover/btn:text-amber-400"
+                                                    )}>
                                                         {action.label}
                                                         <ArrowUpRight className="h-3 w-3 opacity-0 group-hover/btn:opacity-50 transition-all translate-y-1 group-hover/btn:translate-y-0" />
                                                     </h4>
@@ -281,7 +308,7 @@ export function DashboardClient({ stats, isServiceRoleConfigured }: DashboardCli
             {/* Terminal Style Footer */}
             <motion.div variants={item} className="pt-10 flex items-center justify-between border-t border-white/5 opacity-40 relative z-10">
                 <div className="flex items-center gap-4 text-[10px] font-mono text-slate-500 tracking-tighter uppercase font-bold">
-                    <span>SmartLab OS v6.3.0-PREMIUM</span>
+                    <span>SmartLab OS v6.4.0-PREMIUM</span>
                     <span className="h-3 w-[1px] bg-white/10" />
                     <span>User: System_Owner</span>
                 </div>

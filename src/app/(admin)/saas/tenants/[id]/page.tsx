@@ -41,30 +41,40 @@ export default async function OrgDetailPage({ params }: OrgDetailPageProps) {
 
     return (
         <div className="space-y-8 pb-10">
-            {/* Minimal Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild className="hover:bg-slate-900 rounded-full">
-                    <Link href="/saas/tenants">
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold text-slate-100">{org.name}</h1>
-                        <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 capitalize">
-                            {org.plan}
+            {/* Futuristic Header */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/5 pb-8 relative z-10">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 text-[10px] font-mono tracking-tighter uppercase font-bold">
+                            Instance Detail
+                        </Badge>
+                        <Badge variant="outline" className={org.status === 'active' ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/5 px-2 py-0.5 text-[9px]' : 'border-red-500/50 text-red-400 bg-red-500/5 px-2 py-0.5 text-[9px]'}>
+                            {org.status === 'active' ? 'Operational' : 'Suspended'}
                         </Badge>
                     </div>
-                    <p className="text-slate-400 text-sm flex items-center gap-4 mt-1">
-                        <span className="flex items-center gap-1.5 font-mono">
+                    <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        <Building2 className="h-8 w-8 text-blue-500" />
+                        {org.name}
+                    </h1>
+                    <div className="flex items-center gap-4 text-slate-400 text-sm italic mt-1">
+                        <span className="flex items-center gap-1.5 font-mono text-xs opacity-70">
                             <Globe className="h-3.5 w-3.5" /> {org.slug}
                         </span>
-                    </p>
+                        <span className="h-4 w-[1px] bg-white/10" />
+                        <span className="flex items-center gap-1.5 font-mono text-xs opacity-70">
+                            <Badge className="bg-blue-500/10 text-blue-400 border-none capitalize h-5 text-[9px] font-bold">
+                                {org.plan}
+                            </Badge>
+                        </span>
+                    </div>
                 </div>
+
                 <div className="flex items-center gap-3">
-                    <Badge variant="outline" className={org.status === 'active' ? 'border-emerald-500/50 text-emerald-400' : 'border-red-500/50 text-red-100'}>
-                        {org.status === 'active' ? 'Ativo' : 'Suspenso'}
-                    </Badge>
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl h-11 px-5" asChild>
+                        <Link href="/saas/tenants">
+                            <ChevronLeft className="mr-2 h-4 w-4 text-slate-400" /> Voltar à Gestão
+                        </Link>
+                    </Button>
                 </div>
             </div>
 

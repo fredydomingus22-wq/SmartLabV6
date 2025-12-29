@@ -8,37 +8,37 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
     Menu, ChevronDown, ChevronRight, LayoutDashboard, Users, Building2,
-    ShieldCheck, Settings, Globe, Activity
+    ShieldCheck, Settings, Globe, Activity, Cpu
 } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 
 const adminMenuItems = [
-    { href: "/saas", icon: LayoutDashboard, label: "Painel Global" },
+    { href: "/saas", icon: LayoutDashboard, label: "Consola SaaS" },
     {
-        label: "Gestão SaaS",
-        icon: Globe,
+        label: "Organizações",
+        icon: Building2,
         children: [
-            { href: "/saas/tenants", label: "Organizações (Tenants)" },
-            { href: "/saas/plans", label: "Planos & Assinaturas" },
+            { href: "/saas/tenants", label: "Gestão de Instâncias" },
+            { href: "/saas/plans", label: "Planos & Tiers" },
         ]
     },
     {
-        label: "Utilizadores",
+        label: "Controlo de Acessos",
         icon: Users,
         children: [
-            { href: "/saas/users", label: "Utilizadores Globais" },
-            { href: "/saas/roles", label: "Funções & Permissões" },
+            { href: "/saas/users", label: "Utilizadores" },
+            { href: "/saas/roles", label: "Permissões & RBAC" },
         ]
     },
     {
-        label: "Monitorização",
+        label: "Saúde do Sistema",
         icon: Activity,
         children: [
-            { href: "/saas/logs", label: "Audit Logs (SaaS)" },
-            { href: "/saas/health", label: "Estado do Sistema" },
+            { href: "/saas/health", label: "Telemetria & Status" },
+            { href: "/saas/audit", label: "Audit Logs (SaaS)" },
         ]
     },
-    { href: "/saas/settings", icon: Settings, label: "Configuração Global" },
+    { href: "/saas/settings", icon: Cpu, label: "Orquestração" },
 ];
 
 export function AdminMobileNav() {

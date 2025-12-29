@@ -18,30 +18,30 @@ export default async function SaaSSettingsPage() {
 
     return (
         <div className="space-y-8 pb-20">
-            {/* Navigation Bar */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" asChild className="hover:bg-slate-900 rounded-full">
+            {/* Futuristic Header */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/5 pb-8 relative z-10">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 text-[10px] font-mono tracking-tighter uppercase font-bold">
+                            Infrastructure Console
+                        </Badge>
+                    </div>
+                    <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        <Cpu className="h-8 w-8 text-blue-500" />
+                        Orquestração Global
+                    </h1>
+                    <p className="text-slate-400 text-sm italic opacity-80 leading-relaxed max-w-2xl">
+                        Controle central de automação, AI e segurança de infraestrutura para todo o cluster SmartLab.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl h-11 px-5" asChild>
                         <Link href="/saas">
-                            <ChevronLeft className="h-5 w-5" />
+                            <ChevronLeft className="mr-2 h-4 w-4" /> Voltar à Consola
                         </Link>
                     </Button>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Link href="/saas" className="hover:text-slate-300 transition-colors flex items-center gap-1">
-                            <Home className="h-3 w-3" /> SaaS
-                        </Link>
-                        <span>/</span>
-                        <span className="text-slate-300 font-medium">Configurações</span>
-                    </div>
                 </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                    <Terminal className="h-5 w-5 text-blue-500" />
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white">Configurações de Orquestração</h1>
-                </div>
-                <p className="text-slate-400 text-sm">Controle global de automação, AI e segurança de infraestrutura.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

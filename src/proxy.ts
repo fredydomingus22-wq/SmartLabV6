@@ -16,7 +16,7 @@ const BYPASS_ROUTES = [
     "/favicon.ico",
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Bypass static assets and API routes

@@ -71,7 +71,8 @@ export function UserCard({ user }: UserCardProps) {
             whileHover={{ y: -5 }}
             transition={{ duration: 0.3 }}
         >
-            <Card className="glass group relative overflow-hidden border-white/5 hover:border-blue-500/20 transition-all duration-500 shadow-2xl">
+            <Card className="glass group relative overflow-hidden border-white/5 hover:border-blue-500/20 transition-all duration-500 shadow-2xl bg-gradient-to-br from-white/[0.03] to-transparent">
+                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
                 {/* Decorative Background Glow */}
                 <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-blue-500/5 blur-[40px] rounded-full pointer-events-none" />
 

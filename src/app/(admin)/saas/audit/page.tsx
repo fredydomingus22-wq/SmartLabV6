@@ -23,33 +23,34 @@ export default async function AuditPage() {
 
     return (
         <div className="space-y-8">
-            {/* Navigation Bar */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" asChild className="hover:bg-slate-900 rounded-full">
-                        <Link href="/saas">
-                            <ChevronLeft className="h-5 w-5" />
-                        </Link>
-                    </Button>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Link href="/saas" className="hover:text-slate-300 transition-colors flex items-center gap-1">
-                            <Home className="h-3 w-3" /> SaaS
-                        </Link>
-                        <span>/</span>
-                        <span className="text-slate-300 font-medium">Audit Trail</span>
+            {/* Futuristic Header */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/5 pb-8 relative z-10">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-slate-500/10 text-slate-400 border-slate-500/20 px-3 py-1 text-[10px] font-mono tracking-tighter uppercase font-bold">
+                            Immutable Log
+                        </Badge>
                     </div>
+                    <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        <History className="h-8 w-8 text-blue-500" />
+                        Audit Trail
+                    </h1>
+                    <p className="text-slate-400 text-sm italic opacity-80 leading-relaxed max-w-2xl">
+                        Rastreabilidade total do sistema. Histórico imutável de todas as ações administrativas realizadas na consola global.
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 hover:text-slate-100 hover:bg-slate-800 gap-2">
-                        <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl h-11 px-5">
+                        <RefreshCw className="mr-2 h-4 w-4 text-slate-400" /> Atualizar
+                    </Button>
+                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl h-11 px-5" asChild>
+                        <Link href="/saas">
+                            <ChevronLeft className="mr-2 h-4 w-4 text-slate-400" /> Voltar à Consola
+                        </Link>
                     </Button>
                 </div>
             </div>
-
-            <PageHeader
-                title="Rastreabilidade do Sistema"
-                description="Histórico imutável de todas as ações administrativas realizadas na consola global."
-            />
 
             <div className="space-y-4">
                 {logs.length === 0 ? (
