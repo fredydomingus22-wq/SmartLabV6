@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
+import { createNotificationAction } from "./notifications";
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -43,6 +44,19 @@ export async function createTaskAction(params: CreateTaskParams) {
         .single();
 
     if (error) throw error;
+
+    // Notify assignee if specific user is assigned
+    if (params.assigneeId) {
+        await createNotificationAction({
+            title: `Nova Tarefa: ${params.title}`,
+            content: `Foi-lhe atribuída uma nova tarefa no módulo ${params.moduleContext}.`,
+            type: 'task',
+            severity: params.priority || 'medium',
+            targetUserId: params.assigneeId,
+            link: '/tasks',
+            plantId: user.plant_id
+        });
+    }
 
     revalidatePath("/tasks");
     return data;

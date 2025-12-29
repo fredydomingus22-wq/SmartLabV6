@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoutButton } from "@/components/smart/logout-button";
 import { Badge } from "@/components/ui/badge";
 import { SafeUser } from "@/lib/auth";
+import { NotificationBell } from "./notification-bell";
 import Link from "next/link";
 
 interface AppHeaderProps {
@@ -89,15 +90,7 @@ export function AppHeader({ user }: AppHeaderProps) {
 
             {/* Right: Actions & User */}
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-900/50" asChild>
-                    <Link href="/notifications">
-                        <Bell className="h-5 w-5" />
-                        <span className="absolute top-2 right-2 flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-                        </span>
-                    </Link>
-                </Button>
+                <NotificationBell />
 
                 <div className="h-6 w-px bg-slate-800 mx-1" />
 

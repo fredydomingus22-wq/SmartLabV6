@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { createNotificationAction } from "./notifications";
 import { z } from "zod";
 
 // Schemas
@@ -190,6 +191,18 @@ export async function createNCAction(formData: FormData) {
             created_by: user.id
         });
     }
+
+    // 4. Send Notification to QA Managers (Admins)
+    await createNotificationAction({
+        title: `Nova Não Conformidade: ${ncNumber}`,
+        content: `A não conformidade "${validation.data.title}" foi registada com gravidade ${validation.data.severity}.`,
+        type: 'deviation',
+        severity: validation.data.severity === 'critical' ? 'critical' :
+            validation.data.severity === 'major' ? 'high' : 'medium',
+        targetRole: 'admin',
+        link: `/quality/qms/${ncData.id}`,
+        plantId: plantId
+    });
 
     revalidatePath("/quality/qms");
     return {
@@ -601,6 +614,17 @@ export async function create8DAction(formData: FormData) {
             entity_id: data.id,
             entity_reference: reportNumber,
             created_by: user.id
+        });
+
+        // Notify champion
+        await createNotificationAction({
+            title: `Líder 8D Designado: ${reportNumber}`,
+            content: `Foi designado como Champion para o relatório 8D ${reportNumber}.`,
+            type: 'task',
+            severity: 'high',
+            targetUserId: champion,
+            link: `/quality/qms/8d/${data.id}`,
+            plantId: plantId
         });
     }
 

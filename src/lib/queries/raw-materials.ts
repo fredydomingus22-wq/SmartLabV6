@@ -27,28 +27,62 @@ export async function getSuppliers(options?: { status?: string }) {
 /**
  * Get all raw materials (catalog)
  */
-export async function getRawMaterials(options?: { status?: string; category?: string }) {
+export async function getRawMaterials(options?: {
+    status?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+}) {
     const supabase = await createClient();
     const user = await getSafeUser();
+    const page = options?.page || 1;
+    const limit = options?.limit || 5;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
     let query = supabase
         .from("raw_materials")
-        .select("id, name, code, description, category, unit, allergens, storage_conditions, status")
+        .select("id, name, code, description, category, unit, allergens, storage_conditions, status", { count: "exact" })
         .eq("organization_id", user.organization_id)
-        .order("name");
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
     if (options?.status) {
         query = query.eq("status", options.status);
     }
 
-    if (options?.category) {
-        query = query.eq("category", options.category);
-    }
-
-    const { data, error } = await query;
+    const { data, count, error } = await query;
 
     if (error) throw error;
-    return data;
+    return { data, count: count || 0 };
+}
+
+/**
+ * Get single raw material details with associated lots
+ */
+export async function getRawMaterialDetails(id: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data: material, error: materialError } = await supabase
+        .from("raw_materials")
+        .select("*")
+        .eq("organization_id", user.organization_id)
+        .eq("id", id)
+        .single();
+
+    if (materialError) throw materialError;
+
+    // Get stats for this material
+    const { data: lots, error: lotsError } = await supabase
+        .from("raw_material_lots")
+        .select("*")
+        .eq("raw_material_id", id)
+        .order("received_date", { ascending: false });
+
+    if (lotsError) throw lotsError;
+
+    return { material, lots };
 }
 
 /**
@@ -57,10 +91,15 @@ export async function getRawMaterials(options?: { status?: string; category?: st
 export async function getLots(options?: {
     status?: string;
     materialId?: string;
+    page?: number;
     limit?: number;
 }) {
     const supabase = await createClient();
     const user = await getSafeUser();
+    const page = options?.page || 1;
+    const limit = options?.limit || 5;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
     let query = supabase
         .from("raw_material_lots")
@@ -78,9 +117,10 @@ export async function getLots(options?: {
             notes,
             raw_material:raw_materials(id, name, code),
             supplier:suppliers(id, name, code)
-        `)
+        `, { count: "exact" })
         .eq("organization_id", user.organization_id)
-        .order("received_date", { ascending: false });
+        .order("received_date", { ascending: false })
+        .range(from, to);
 
     if (options?.status) {
         query = query.eq("status", options.status);
@@ -90,14 +130,10 @@ export async function getLots(options?: {
         query = query.eq("raw_material_id", options.materialId);
     }
 
-    if (options?.limit) {
-        query = query.limit(options.limit);
-    }
-
-    const { data, error } = await query;
+    const { data, count, error } = await query;
 
     if (error) throw error;
-    return data;
+    return { data, count: count || 0 };
 }
 
 /**

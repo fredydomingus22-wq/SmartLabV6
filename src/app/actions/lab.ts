@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { createNotificationAction } from "./notifications";
 import { format } from "date-fns";
 import { z } from "zod";
 import { SAMPLE_TYPE_CATEGORIES, isFinishedProduct, isIntermediateProduct } from "@/lib/constants/lab";
@@ -622,13 +623,18 @@ export async function approveSampleAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    // Also update all lab_analysis results with signature
-    await supabase
-        .from("lab_analysis")
-        .update({ signed_transaction_hash: signatureHash })
-        .eq("sample_id", validation.data.sample_id)
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
+    // --- NOTIFICATION: Notify about Approval/Rejection ---
+    await createNotificationAction({
+        title: `Amostra ${validation.data.status === 'approved' ? 'Aprovada' : 'Rejeitada'}: ${validation.data.sample_id.substring(0, 8)}`,
+        content: validation.data.status === 'rejected'
+            ? `A amostra foi rejeitada. Motivo: ${validation.data.reason || 'Não especificado'}.`
+            : `A amostra foi aprovada e os resultados foram assinados digitalmente.`,
+        type: validation.data.status === 'approved' ? 'info' : 'alert',
+        severity: validation.data.status === 'approved' ? 'low' : 'high',
+        plantId: profile.plant_id,
+        // Target specifically the 'admin' or anyone with permission to see this plant's lab results
+        targetRole: 'admin'
+    });
 
     revalidatePath("/lab");
     return {
