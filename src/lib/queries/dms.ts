@@ -32,7 +32,7 @@ export async function getDocuments(filters?: {
         .select(`
       *,
       category:doc_categories(name, code),
-      current_version:document_versions!current_version_id(*)
+      current_version:document_versions!fk_current_version(*)
     `)
         .eq("organization_id", user.organization_id)
         .order("updated_at", { ascending: false });
@@ -64,14 +64,17 @@ export async function getDocumentById(id: string) {
         .select(`
       *,
       category:doc_categories(*),
-      versions:document_versions(*, approvals:document_approvals(*, approver:user_profiles!approver_id(full_name))),
+      versions:document_versions!document_versions_document_id_fkey(*, approvals:document_approvals(*, approver:user_profiles!approver_id(full_name))),
       periodic_reviews:doc_periodic_reviews(*)
     `)
         .eq("organization_id", user.organization_id)
         .eq("id", id)
         .single();
 
-    if (docError) return { document: null, versions: [], error: docError };
+    if (docError) {
+        console.error("getDocumentById error for ID", id, ":", docError);
+        return { document: null, versions: [], error: docError };
+    }
 
     // Sort versions by number or date
     const sortedVersions = (document.versions || []).sort((a: any, b: any) =>
@@ -124,7 +127,7 @@ export async function getDocumentVersion(versionId: string) {
         .select(`
       *,
       document:documents(title, doc_number),
-      approvals:document_approvals(*)
+      approvals:document_approvals(*, approver:user_profiles!approver_id(full_name))
     `)
         .eq("id", versionId)
         .single();

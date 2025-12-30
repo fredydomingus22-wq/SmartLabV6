@@ -21,13 +21,13 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-interface ManualsClientProps {
+interface DocumentsClientProps {
     documents: any[];
     categories: any[];
     plants: any[];
 }
 
-export function ManualsClient({ documents = [], categories = [], plants = [] }: ManualsClientProps) {
+export function DocumentsClient({ documents = [], categories = [], plants = [] }: DocumentsClientProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -145,7 +145,7 @@ export function ManualsClient({ documents = [], categories = [], plants = [] }: 
                             {filteredDocuments.map((doc) => {
                                 const status = getStatusInfo(doc.current_version?.status);
                                 return (
-                                    <Link key={doc.id} href={`/quality/manuals/${doc.id}`}>
+                                    <Link key={doc.id} href={`/quality/documents/${doc.id}`}>
                                         <Card className="glass border-slate-800/50 hover:border-emerald-500/40 hover:bg-slate-800/20 transition-all group overflow-hidden">
                                             <CardContent className="p-5">
                                                 <div className="flex justify-between items-start mb-4">

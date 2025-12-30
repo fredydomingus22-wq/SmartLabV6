@@ -2,10 +2,26 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Plus, Scale, Thermometer, AlertTriangle, Calendar, CheckCircle2 } from "lucide-react";
+import {
+    FlaskConical,
+    Plus,
+    Scale,
+    Thermometer,
+    AlertTriangle,
+    Calendar,
+    CheckCircle2,
+    Activity,
+    BarChart3,
+    History,
+    Search,
+    Filter,
+    ArrowUpRight,
+    Settings
+} from "lucide-react";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
 
 export const dynamic = "force-dynamic";
 
@@ -33,14 +49,6 @@ const categoryLabels: Record<string, string> = {
     general: "Geral",
 };
 
-const categoryColors: Record<string, string> = {
-    balance: "text-blue-400",
-    ph_meter: "text-emerald-400",
-    refractometer: "text-purple-400",
-    thermometer: "text-orange-400",
-    general: "text-slate-400",
-};
-
 const statusColors: Record<string, string> = {
     active: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     out_of_calibration: "bg-rose-500/10 text-rose-400 border-rose-500/20",
@@ -50,10 +58,10 @@ const statusColors: Record<string, string> = {
 
 const getCategoryIcon = (category: string) => {
     switch (category) {
-        case 'balance': return <Scale className="h-4 w-4 text-blue-400" />;
-        case 'ph_meter': return <FlaskConical className="h-4 w-4 text-emerald-400" />;
-        case 'thermometer': return <Thermometer className="h-4 w-4 text-orange-400" />;
-        default: return <FlaskConical className="h-4 w-4 text-slate-400" />;
+        case 'balance': return <Scale className="h-5 w-5 text-blue-400" />;
+        case 'ph_meter': return <FlaskConical className="h-5 w-5 text-emerald-400" />;
+        case 'thermometer': return <Thermometer className="h-5 w-5 text-orange-400" />;
+        default: return <Settings className="h-5 w-5 text-slate-400" />;
     }
 };
 
@@ -68,71 +76,88 @@ export default async function LabAssetsPage() {
     const today = new Date();
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                        <FlaskConical className="h-8 w-8 text-emerald-400" />
-                        Instrumentos de Laboratório
-                    </h1>
-                    <p className="text-slate-400 mt-1">
-                        Gestão de equipamentos de medição e conformidade ISO 17025.
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Link href="/lab/equipment/routine-checks">
-                        <Button variant="outline" className="glass border-slate-800">
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Verificações Diárias
+        <div className="container py-8 space-y-8 animate-in fade-in duration-700">
+            {/* Header Section */}
+            <div className="relative group perspective">
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                <div className="relative glass p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
+                    <div className="flex items-center gap-6">
+                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-inner group-hover:scale-110 transition-transform duration-500">
+                            <FlaskConical className="h-10 w-10 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tight text-white mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
+                                Instrumentos de Laboratório
+                            </h1>
+                            <div className="flex items-center gap-2 text-slate-400">
+                                <Activity className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm font-medium">Gestão de equipamentos & Conformidade ISO 17025</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Link href="/lab/equipment/routine-checks">
+                            <Button variant="outline" className="glass border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 rounded-xl h-12 px-6">
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Verificações Diárias
+                            </Button>
+                        </Link>
+                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Novo Instrumento
                         </Button>
-                    </Link>
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Instrumento
-                    </Button>
+                    </div>
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-slate-100">{assets?.length || 0}</div>
-                        <div className="text-xs text-slate-500 mt-1">Total de Instrumentos</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-emerald-400">
-                            {assets?.filter(a => a.status === 'active').length || 0}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Ativos</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-amber-400">
-                            {assets?.filter(a => {
-                                if (!a.next_calibration_date) return false;
-                                const days = differenceInDays(new Date(a.next_calibration_date), today);
-                                return days <= 30 && days >= 0;
-                            }).length || 0}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Calibração Próxima (&lt;30d)</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-rose-400">
-                            {assets?.filter(a => a.status === 'out_of_calibration').length || 0}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Fora de Calibração</div>
-                    </CardContent>
-                </Card>
+            {/* Stats Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {[
+                    { label: "Total Asset", value: assets?.length || 0, icon: BarChart3, color: "text-blue-400", bg: "bg-blue-400/10" },
+                    { label: "Instrumentos Ativos", value: assets?.filter(a => a.status === 'active').length || 0, icon: Activity, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+                    {
+                        label: "Calibração Próxima", value: assets?.filter(a => {
+                            if (!a.next_calibration_date) return false;
+                            const days = differenceInDays(new Date(a.next_calibration_date), today);
+                            return days <= 30 && days >= 0;
+                        }).length || 0, icon: Calendar, color: "text-amber-400", bg: "bg-amber-400/10"
+                    },
+                    { label: "Fora de Calibração", value: assets?.filter(a => a.status === 'out_of_calibration').length || 0, icon: AlertTriangle, color: "text-rose-400", bg: "bg-rose-400/10" },
+                ].map((stat, i) => (
+                    <Card key={i} className="glass border-white/5 overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+                        <CardContent className="p-6 relative">
+                            <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
+                                <stat.icon className="h-12 w-12" />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-3xl font-black text-white">{stat.value}</h3>
+                                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                    <span className={`h-1.5 w-1.5 rounded-full ${stat.color} bg-current`} />
+                                    {stat.label}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* Filters & Search */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                    <Input
+                        placeholder="Procurar por nome, código ou fabricante..."
+                        className="glass border-white/5 pl-10 h-12 rounded-xl text-white placeholder:text-slate-600 focus:border-emerald-500/30 transition-all"
+                    />
+                </div>
+                <Button variant="outline" className="glass border-white/5 text-slate-300 rounded-xl h-12">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filtros Avançados
+                </Button>
             </div>
 
             {/* Assets Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {assets?.map((asset: LabAsset) => {
                     const daysToCalibration = asset.next_calibration_date
                         ? differenceInDays(new Date(asset.next_calibration_date), today)
@@ -142,83 +167,94 @@ export default async function LabAssetsPage() {
                     const isNearDue = daysToCalibration !== null && daysToCalibration <= 30 && daysToCalibration >= 0;
 
                     return (
-                        <Card key={asset.id} className="glass overflow-hidden border-slate-800/50 hover:border-emerald-500/30 transition-all group">
-                            <CardHeader className="pb-3">
+                        <Card key={asset.id} className="glass border-white/5 overflow-hidden hover:border-emerald-500/30 transition-all duration-500 group hover:-translate-y-2">
+                            <CardHeader className="pb-4 space-y-4">
                                 <div className="flex items-start justify-between">
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            {getCategoryIcon(asset.asset_category)}
-                                            {asset.name}
-                                        </CardTitle>
-                                        <CardDescription className="font-mono text-[10px] uppercase tracking-wider mt-1">
-                                            {asset.code} • {categoryLabels[asset.asset_category] || asset.asset_category}
-                                        </CardDescription>
+                                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all">
+                                        {getCategoryIcon(asset.asset_category)}
                                     </div>
-                                    <Badge className={statusColors[asset.status] || statusColors.active}>
-                                        {asset.status === 'active' ? 'Ativo' :
-                                            asset.status === 'out_of_calibration' ? 'Fora Cal.' : asset.status}
+                                    <Badge className={`${statusColors[asset.status] || statusColors.active} rounded-lg border-none px-3 py-1 font-bold text-[10px] uppercase tracking-tighter`}>
+                                        {asset.status === 'active' ? 'Operacional' :
+                                            asset.status === 'out_of_calibration' ? 'Vencido' : asset.status}
                                     </Badge>
                                 </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {/* Equipment Info */}
-                                {(asset.manufacturer || asset.model) && (
-                                    <div className="text-xs text-slate-400">
-                                        {asset.manufacturer && <span>{asset.manufacturer}</span>}
-                                        {asset.model && <span className="ml-1 font-mono text-slate-500">({asset.model})</span>}
-                                    </div>
-                                )}
-
-                                {/* Calibration Status */}
-                                <div className={`p-3 rounded-lg border ${isOverdue
-                                        ? 'bg-rose-500/10 border-rose-500/20'
-                                        : isNearDue
-                                            ? 'bg-amber-500/10 border-amber-500/20'
-                                            : 'bg-slate-800/50 border-slate-700/50'
-                                    }`}>
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-2">
+                                        {asset.name}
+                                        <ArrowUpRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </CardTitle>
                                     <div className="flex items-center gap-2">
-                                        {isOverdue ? (
-                                            <AlertTriangle className="h-4 w-4 text-rose-400" />
-                                        ) : (
-                                            <Calendar className="h-4 w-4 text-slate-500" />
-                                        )}
-                                        <span className={`text-xs font-medium ${isOverdue ? 'text-rose-400' : isNearDue ? 'text-amber-400' : 'text-slate-400'
-                                            }`}>
-                                            {isOverdue ? 'CALIBRAÇÃO VENCIDA' : 'Próxima Calibração'}
+                                        <span className="font-mono text-[10px] text-slate-500 bg-white/5 px-2 py-0.5 rounded uppercase tracking-widest border border-white/5">
+                                            {asset.code}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 uppercase tracking-widest">
+                                            {categoryLabels[asset.asset_category] || asset.asset_category}
                                         </span>
                                     </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* Calibration Focus Card */}
+                                <div className={`relative p-4 rounded-2xl border transition-all duration-300 ${isOverdue
+                                    ? 'bg-rose-500/5 border-rose-500/20 group-hover:bg-rose-500/10'
+                                    : isNearDue
+                                        ? 'bg-amber-500/5 border-amber-500/20 group-hover:bg-amber-500/10'
+                                        : 'bg-white/5 border-white/5 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/10'
+                                    }`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Próxima Calibração</span>
+                                        {isOverdue && <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" />}
+                                    </div>
+
                                     {asset.next_calibration_date ? (
-                                        <div className="mt-1 font-bold text-sm text-slate-200">
-                                            {format(new Date(asset.next_calibration_date), "dd MMM yyyy", { locale: pt })}
-                                            {daysToCalibration !== null && !isOverdue && (
-                                                <span className="ml-2 text-xs font-normal text-slate-500">
-                                                    ({daysToCalibration} dias)
+                                        <div className="flex flex-col">
+                                            <span className={`text-lg font-black ${isOverdue ? 'text-rose-400' : isNearDue ? 'text-amber-400' : 'text-slate-200'}`}>
+                                                {format(new Date(asset.next_calibration_date), "dd MMM yyyy", { locale: pt })}
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full ${isOverdue ? 'bg-rose-500' : isNearDue ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                        style={{ width: isOverdue ? '100%' : `${Math.max(0, Math.min(100, (daysToCalibration || 0) * 3))}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[9px] font-mono text-slate-500 uppercase whitespace-nowrap">
+                                                    {isOverdue ? 'Vencida' : `${daysToCalibration} dias`}
                                                 </span>
-                                            )}
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="mt-1 text-xs text-slate-500 italic">Não definida</div>
+                                        <div className="text-xs text-slate-600 italic">Não agendada</div>
                                     )}
                                 </div>
 
-                                {/* Criticality Badge */}
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-slate-500 uppercase">Criticidade:</span>
-                                    <Badge variant="outline" className={`text-[10px] ${asset.criticality === 'high' ? 'border-rose-500/50 text-rose-400' :
-                                            asset.criticality === 'medium' ? 'border-amber-500/50 text-amber-400' :
-                                                'border-slate-500/50 text-slate-400'
-                                        }`}>
-                                        {asset.criticality.toUpperCase()}
-                                    </Badge>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Fabricante</span>
+                                        <p className="text-xs text-white truncate font-medium">{asset.manufacturer || "---"}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Criticidade</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`h-1.5 w-1.5 rounded-full ${asset.criticality === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                                                asset.criticality === 'medium' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                                                    'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                                }`} />
+                                            <span className="text-[10px] text-white uppercase font-black">{asset.criticality}</span>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Actions */}
-                                <div className="flex gap-2 pt-2">
+                                <div className="flex gap-2">
                                     <Link href={`/lab/assets/${asset.id}`} className="flex-1">
-                                        <Button variant="outline" size="sm" className="w-full glass border-slate-700">
-                                            Ver Histórico
+                                        <Button variant="ghost" className="w-full text-[10px] uppercase font-black tracking-widest text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl h-10 border border-transparent hover:border-emerald-500/20 transition-all">
+                                            <History className="h-3 w-3 mr-2" />
+                                            Historial
                                         </Button>
                                     </Link>
+                                    <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-white rounded-xl h-10 w-10">
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -227,9 +263,17 @@ export default async function LabAssetsPage() {
             </div>
 
             {(!assets || assets.length === 0) && (
-                <div className="text-center py-20 bg-slate-900/40 rounded-3xl border border-dashed border-slate-800">
-                    <FlaskConical className="h-12 w-12 text-slate-700 mx-auto mb-4 opacity-20" />
-                    <p className="text-slate-500 italic">Nenhum instrumento configurado.</p>
+                <div className="text-center py-32 glass rounded-[2.5rem] border border-dashed border-white/5 animate-in zoom-in duration-500">
+                    <div className="p-6 bg-white/5 rounded-full inline-block mb-6 shadow-inner">
+                        <FlaskConical className="h-16 w-16 text-slate-700 opacity-20" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-300 mb-2 font-mono">Inventário Vazio</h3>
+                    <p className="text-slate-500 text-sm max-w-[300px] mx-auto leading-relaxed">
+                        Nenhum instrumento configurado. Adicione o seu primeiro equipamento para começar o rastreio de calibração.
+                    </p>
+                    <Button className="mt-8 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl px-10 h-12 uppercase tracking-widest text-xs font-black">
+                        Adicionar Agora
+                    </Button>
                 </div>
             )}
         </div>

@@ -26,6 +26,7 @@ import { Create8DDialog } from "./create-8d-dialog";
 import { NCAttachments } from "./nc-attachments";
 import { CloseNCDialog } from "./close-nc-dialog";
 import { CAPAStatusUpdate } from "./capa-status-update";
+import { VerifyEffectivenessDialog } from "./verify-effectiveness-dialog";
 import { NCInsights } from "../nc-insights";
 import { cn } from "@/lib/utils";
 
@@ -238,7 +239,17 @@ export default async function NCDetailPage({ params }: PageProps) {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
+
+                                                    {/* Effectiveness Review Hook */}
+                                                    {['completed', 'verification'].includes(capa.status) && (
+                                                        <VerifyEffectivenessDialog
+                                                            capaId={capa.id}
+                                                            capaDescription={capa.description}
+                                                        />
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}

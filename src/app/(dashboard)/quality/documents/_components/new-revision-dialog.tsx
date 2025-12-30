@@ -2,90 +2,81 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Plus } from "lucide-react";
-import { ActionForm } from "@/components/smart/action-form";
+import { FileSignature, Loader2, UploadCloud } from "lucide-react";
 import { createDocumentVersionAction } from "@/app/actions/dms";
+import { toast } from "sonner";
 import { FileUpload } from "@/components/smart/file-upload";
+import { ActionForm } from "@/components/smart/action-form";
 
-interface UploadVersionDialogProps {
+interface NewRevisionDialogProps {
     documentId: string;
-    lastVersion?: string;
-    variant?: "default" | "link";
+    currentVersion: string;
 }
 
-export function UploadVersionDialog({ documentId, lastVersion, variant = "default" }: UploadVersionDialogProps) {
+export function NewRevisionDialog({ documentId, currentVersion }: NewRevisionDialogProps) {
     const [open, setOpen] = useState(false);
 
     // Sugerir próxima versão (ex: 1.0 -> 1.1 ou 2.0)
-    const nextVersion = lastVersion ? (parseFloat(lastVersion) + 0.1).toFixed(1) : "1.0";
+    const nextVersion = currentVersion ? (parseFloat(currentVersion) + 0.1).toFixed(1) : "1.0";
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {variant === "default" ? (
-                    <Button variant="outline" className="border-slate-800 text-slate-300">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Nova Versão
-                    </Button>
-                ) : (
-                    <Button variant="link" className="text-emerald-400 p-0 h-auto">
-                        Carregar primeira versão
-                    </Button>
-                )}
+                <Button className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
+                    <FileSignature className="mr-2 h-4 w-4" />
+                    Nova Revisão
+                </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md glass border-slate-800">
+            <DialogContent className="glass border-slate-800 bg-slate-950/80 backdrop-blur-xl sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Carregar Nova Versão</DialogTitle>
-                    <DialogDescription>
-                        Adicione um novo ficheiro e descreva as alterações realizadas.
+                    <DialogTitle className="text-xl flex items-center gap-2">
+                        <UploadCloud className="h-5 w-5 text-indigo-400" />
+                        Carregar Nova Versão
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                        Crie uma nova versão para este documento. A versão atual é <strong>{currentVersion}</strong>.
                     </DialogDescription>
                 </DialogHeader>
 
                 <ActionForm
                     action={createDocumentVersionAction}
                     onSuccess={() => setOpen(false)}
-                    submitText="Guardar Versão"
+                    submitText="Criar Versão"
                 >
                     <input type="hidden" name="document_id" value={documentId} />
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="version_number">Número da Versão *</Label>
                             <Input
                                 id="version_number"
                                 name="version_number"
                                 defaultValue={nextVersion}
+                                className="bg-black/20 border-white/10"
+                                placeholder="ex: 1.1"
                                 required
-                                className="glass"
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="change_description">Descrição das Alterações *</Label>
+                            <Label htmlFor="change_description">Descrição da Alteração *</Label>
                             <Textarea
                                 id="change_description"
                                 name="change_description"
-                                placeholder="O que mudou nesta versão?"
+                                className="bg-black/20 border-white/10 min-h-[100px]"
+                                placeholder="Descreva o que mudou nesta versão..."
                                 required
-                                className="glass"
                             />
                         </div>
 
                         <FileUpload
                             name="file_path"
                             label="Documento (PDF/Word) *"
-                            bucket="coa-documents" // Using existing bucket for now
+                            bucket="coa-documents"
                             folder="dms"
                         />
                     </div>

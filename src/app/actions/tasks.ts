@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { createNotificationAction } from "./notifications";
+import { ActionState } from "@/lib/types";
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -20,7 +21,7 @@ export interface CreateTaskParams {
     entityReference?: string;
 }
 
-export async function createTaskAction(params: CreateTaskParams) {
+export async function createTaskAction(params: CreateTaskParams): Promise<ActionState> {
     const supabase = await createClient();
     const user = await getSafeUser();
 
@@ -43,7 +44,7 @@ export async function createTaskAction(params: CreateTaskParams) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) return { success: false, message: error.message };
 
     // Notify assignee if specific user is assigned
     if (params.assigneeId) {
@@ -59,14 +60,14 @@ export async function createTaskAction(params: CreateTaskParams) {
     }
 
     revalidatePath("/tasks");
-    return data;
+    return { success: true, message: "Tarefa criada com sucesso.", data };
 }
 
-export async function updateTaskStatusAction(taskId: string, status: TaskStatus) {
+export async function updateTaskStatusAction(taskId: string, status: TaskStatus): Promise<ActionState> {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const updateData: any = { status };
+    const updateData: { status: TaskStatus; started_at?: string; completed_at?: string } = { status };
     if (status === 'in_progress') updateData.started_at = new Date().toISOString();
     if (status === 'done') updateData.completed_at = new Date().toISOString();
 
@@ -78,10 +79,10 @@ export async function updateTaskStatusAction(taskId: string, status: TaskStatus)
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) return { success: false, message: error.message };
 
     revalidatePath("/tasks");
-    return data;
+    return { success: true, message: "Estado da tarefa atualizado.", data };
 }
 
 export async function getMyTasksAction() {

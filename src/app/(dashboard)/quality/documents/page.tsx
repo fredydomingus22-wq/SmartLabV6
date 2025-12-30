@@ -3,18 +3,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FileText, GraduationCap } from "lucide-react";
 import { CreateDocumentDialog } from "./_components/create-document-dialog";
-import { ManualsClient } from "./_components/manuals-client";
+import { DocumentsClient } from "./_components/documents-client";
 import { getDocuments, getDocCategories, getPlants } from "@/lib/queries/dms";
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 
-export default async function ManualsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DocumentsPage() {
     const { data: documents } = await getDocuments();
     let { data: categories } = await getDocCategories();
     const { data: plants } = await getPlants();
 
     // Auto-seed if empty (Rescue logic for new organizations)
-    if (categories.length === 0) {
+    if (categories?.length === 0) {
         const supabase = await createClient();
         const user = await getSafeUser();
 
@@ -65,7 +67,7 @@ export default async function ManualsPage() {
                 </TabsList>
 
                 <TabsContent value="documents" className="animate-in fade-in duration-500 border-none p-0 outline-none">
-                    <ManualsClient
+                    <DocumentsClient
                         documents={documents}
                         categories={categories}
                         plants={plants}
@@ -91,24 +93,4 @@ export default async function ManualsPage() {
             </Tabs>
         </div>
     );
-}
-
-function getStatusColor(status?: string) {
-    switch (status) {
-        case 'published': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-        case 'review': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-        case 'draft': return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-        case 'superseded': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-        default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-    }
-}
-
-function getStatusLabel(status?: string) {
-    switch (status) {
-        case 'published': return 'Publicado';
-        case 'review': return 'Em Revisão';
-        case 'draft': return 'Rascunho';
-        case 'superseded': return 'Obsoleto';
-        default: return 'Pendente';
-    }
 }

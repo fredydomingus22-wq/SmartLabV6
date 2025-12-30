@@ -12,10 +12,16 @@ interface NCInsightsProps {
     ncId: string;
 }
 
+interface AIAnalysis {
+    riskAnalysis: string;
+    rootCauses: string[];
+    suggestedActions: string[];
+}
+
 export function NCInsights({ ncId }: NCInsightsProps) {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
-    const [analysis, setAnalysis] = useState<any>(null);
+    const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
     const [isCached, setIsCached] = useState(false);
 
     async function handleAnalyze() {

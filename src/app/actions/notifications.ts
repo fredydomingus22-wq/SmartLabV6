@@ -62,7 +62,7 @@ export async function getNotificationsAction() {
     // Map to include 'isRead' property
     return notifications.map(n => ({
         ...n,
-        isRead: n.reads.some((r: any) => r.user_id === user.id)
+        isRead: n.reads.some((r: { user_id: string }) => r.user_id === user.id)
     }));
 }
 
@@ -80,7 +80,7 @@ export async function getUnreadCountAction() {
 
     if (error) return 0;
 
-    const unread = notifications.filter(n => !n.reads.some((r: any) => r.user_id === user.id));
+    const unread = notifications.filter(n => !n.reads.some((r: { user_id: string }) => r.user_id === user.id));
     return unread.length;
 }
 
