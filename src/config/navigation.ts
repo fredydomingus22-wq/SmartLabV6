@@ -11,6 +11,7 @@ import {
     Globe,
     FileText,
     ClipboardList,
+    Wrench,
 } from "lucide-react";
 import { Module } from "@/lib/permissions";
 import { ComponentType } from "react";
@@ -43,8 +44,7 @@ export const menuItems: MenuItem[] = [
         children: [
             { href: "/lab", label: "Amostras Lab" },
             { href: "/micro/samples", label: "Amostras Micro" },
-            { href: "/lab/equipment/routine-checks", label: "Verificações" },
-            { href: "/lab/assets", label: "Gestão de Instrumentos" },
+            { href: "/lab/equipment/routine-checks", label: "Verificações Rotina" },
             { href: "/lab/sample-types", label: "Configuração" },
         ]
     },
@@ -60,15 +60,26 @@ export const menuItems: MenuItem[] = [
         ]
     },
     {
-        label: "Produção & Ativos",
+        label: "Produção",
         icon: Factory,
         module: "production",
         children: [
             { href: "/production", label: "Lotes em Curso" },
             { href: "/production/tanks", label: "Monitorização de Tanques" },
-            { href: "/production/equipment", label: "Equipamentos de Processo" },
             { href: "/production/lines", label: "Linhas de Enchimento" },
             { href: "/cip/register", label: "Registo de CIP/Higienização" },
+        ]
+    },
+    {
+        label: "Gestão de Ativos",
+        icon: Wrench,
+        module: "assets",
+        children: [
+            { href: "/assets", label: "Visão Geral" },
+            { href: "/assets/instruments", label: "Instrumentos Lab" },
+            { href: "/assets/process-equipment", label: "Equipamentos Prod." },
+            { href: "/assets/calibrations", label: "Calibrações" },
+            { href: "/assets/maintenance", label: "Manutenção Preventiva" },
         ]
     },
     {

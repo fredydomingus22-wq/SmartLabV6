@@ -33,6 +33,7 @@ export type Module =
     | 'reports'
     | 'settings'
     | 'tasks'
+    | 'assets'
     | 'saas';
 
 // Access levels
@@ -58,6 +59,7 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         reports: 'full',
         settings: 'full',
         tasks: 'full',
+        assets: 'full',
     },
     qa_manager: {
         dashboard: 'full',
@@ -70,6 +72,7 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         materials: 'read',
         reports: 'full',
         tasks: 'full',
+        assets: 'full',
     },
     lab_analyst: {
         dashboard: 'full',
@@ -79,6 +82,7 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         haccp: 'own',
         reports: 'own',
         tasks: 'own',
+        assets: 'own',
     },
     micro_analyst: {
         dashboard: 'full',
@@ -124,6 +128,7 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         materials: 'read',
         reports: 'full',
         tasks: 'full',
+        assets: 'full',
     },
     haccp: {
         dashboard: 'full',
