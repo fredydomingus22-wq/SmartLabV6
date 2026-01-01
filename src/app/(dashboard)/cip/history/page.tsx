@@ -58,8 +58,8 @@ export default async function CIPHistoryPage() {
                     </h1>
                     <p className="text-muted-foreground">Registo histórico de todos os ciclos de limpeza executados.</p>
                 </div>
-                <Link href="/cip/monitor">
-                    <Button variant="outline">Voltar ao Monitor</Button>
+                <Link href="/cip">
+                    <Button variant="outline">Voltar ao Dashboard</Button>
                 </Link>
             </div>
 

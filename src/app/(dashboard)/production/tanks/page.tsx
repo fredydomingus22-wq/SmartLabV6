@@ -2,10 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Container, Plus, Droplets, Settings2, AlertTriangle } from "lucide-react";
+import { Container, Droplets, Settings2 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
-import { pt } from "date-fns/locale";
+import { TankDialog } from "./_components/tank-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +16,7 @@ interface Tank {
     capacity_unit: string | null;
     status: string;
     created_at: string;
+    description: string | null;
 }
 
 interface TankContent {
@@ -70,10 +70,7 @@ export default async function TanksPage() {
                         Vista geral de tanques de armazenamento e seu conteúdo atual.
                     </p>
                 </div>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Tanque
-                </Button>
+                <TankDialog />
             </div>
 
             {/* Stats */}
@@ -177,6 +174,14 @@ export default async function TanksPage() {
                                             Detalhes
                                         </Button>
                                     </Link>
+                                    <TankDialog
+                                        tank={tank}
+                                        trigger={
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-white">
+                                                <Settings2 className="h-4 w-4" />
+                                            </Button>
+                                        }
+                                    />
                                 </div>
                             </CardContent>
                         </Card>

@@ -15,9 +15,11 @@ import {
     Search,
     Filter,
     ClipboardCheck,
+    ClipboardCheck,
     AlertTriangle,
     Boxes
 } from "lucide-react";
+import { EquipmentDialog } from "./equipment-dialog";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
@@ -101,7 +103,7 @@ export default async function ProcessEquipmentPage() {
         <div className="container py-8 space-y-8 animate-in fade-in duration-700">
             {/* Header Section */}
             <div className="relative group perspective">
-                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 pointer-events-none"></div>
                 <div className="relative glass p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
                     <div className="flex items-center gap-6">
                         <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl shadow-inner group-hover:rotate-12 transition-transform duration-500">
@@ -118,10 +120,7 @@ export default async function ProcessEquipmentPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Novo Equipamento
-                        </Button>
+                        <EquipmentDialog mode="create" />
                     </div>
                 </div>
             </div>

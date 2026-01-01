@@ -12,11 +12,14 @@ interface Batch {
     planned_quantity: number;
     start_date: string;
     product?: { name: string }[] | { name: string };
+    samples?: { ai_risk_status: string }[];
 }
 
 interface ProductionPageClientProps {
     batches: Batch[];
 }
+
+import { ShieldAlert, ShieldCheck, AlertTriangle, Info, Beer } from "lucide-react";
 
 export function ProductionPageClient({ batches }: ProductionPageClientProps) {
     const columns = [
@@ -38,6 +41,44 @@ export function ProductionPageClient({ batches }: ProductionPageClientProps) {
             render: (row: Batch) => {
                 const product = Array.isArray(row.product) ? row.product[0] : row.product;
                 return product?.name || "Unknown";
+            }
+        },
+        {
+            key: "qc_status",
+            label: "IA Qualidade",
+            render: (row: Batch) => {
+                const samples = row.samples || [];
+                if (samples.length === 0) return <span className="text-[10px] text-slate-500 font-bold uppercase">N/A</span>;
+
+                const hasBlocked = samples.some(s => s.ai_risk_status === 'blocked');
+                const hasWarning = samples.some(s => s.ai_risk_status === 'warning');
+                const allApproved = samples.every(s => s.ai_risk_status === 'approved');
+
+                if (hasBlocked) return (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                        <ShieldAlert className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase">Crítico</span>
+                    </div>
+                );
+                if (hasWarning) return (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase">Risco</span>
+                    </div>
+                );
+                if (allApproved) return (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <ShieldCheck className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase">Seguro</span>
+                    </div>
+                );
+
+                return (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                        <Info className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase">Análise</span>
+                    </div>
+                );
             }
         },
         {

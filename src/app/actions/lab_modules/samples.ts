@@ -7,6 +7,9 @@ import { format } from "date-fns";
 import { z } from "zod";
 import { SAMPLE_TYPE_CATEGORIES, isFinishedProduct, isIntermediateProduct } from "@/lib/constants/lab";
 import { getSafeUser } from "@/lib/auth.server";
+import { createAuditEvent } from "@/domain/audit/audit.service";
+import { SampleFSM, SampleStatus } from "@/domain/lab/sample.fsm";
+import { SampleDomainService } from "@/domain/lab/sample.service";
 
 const CreateSampleSchema = z.object({
     sample_type_id: z.string().uuid(),
@@ -21,116 +24,54 @@ const CreateSampleSchema = z.object({
  * Create a new Sample for analysis
  */
 export async function createSampleAction(formData: FormData) {
-    const user = await getSafeUser();
-    const supabase = await createClient();
+    try {
+        const user = await getSafeUser();
+        const supabase = await createClient();
 
-    const rawData = {
-        sample_type_id: formData.get("sample_type_id"),
-        code: formData.get("code"),
-        production_batch_id: formData.get("production_batch_id") || undefined,
-        intermediate_product_id: formData.get("intermediate_product_id") || undefined,
-        sampling_point_id: formData.get("sampling_point_id") || undefined,
-        plant_id: formData.get("plant_id"),
-    };
+        const rawData = {
+            sample_type_id: formData.get("sample_type_id"),
+            code: formData.get("code"),
+            production_batch_id: formData.get("production_batch_id") || undefined,
+            intermediate_product_id: formData.get("intermediate_product_id") || undefined,
+            sampling_point_id: formData.get("sampling_point_id") || undefined,
+            plant_id: formData.get("plant_id"),
+        };
 
-    const validation = CreateSampleSchema.safeParse(rawData);
-    if (!validation.success) {
-        return { success: false, message: validation.error.issues[0].message };
-    }
-
-    let collectedAt = formData.get("collected_at") as string || new Date().toISOString();
-    let finalCode = validation.data.code;
-    let categoryFilter: string[] = [];
-    let productId = null;
-    let sampleTypeCode = "NOSKU";
-
-    const { data: sampleType } = await supabase
-        .from("sample_types")
-        .select("id, test_category, code")
-        .eq("id", validation.data.sample_type_id)
-        .single();
-
-    if (!sampleType) return { success: false, message: "Tipo de amostra inválido." };
-
-    sampleTypeCode = sampleType.code || "NOTYPE";
-    const testCategory = sampleType.test_category || "physico_chemical";
-
-    if (testCategory === SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL) {
-        categoryFilter = [SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL];
-    } else if (testCategory === SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL) {
-        categoryFilter = [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL];
-    } else if (testCategory === "both") {
-        categoryFilter = [SAMPLE_TYPE_CATEGORIES.PHYSICO_CHEMICAL, SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL];
-    }
-
-    if (validation.data.production_batch_id) {
-        const { data: batch } = await supabase.from("production_batches").select("product_id").eq("id", validation.data.production_batch_id).single();
-        productId = batch?.product_id;
-    } else if (validation.data.intermediate_product_id) {
-        const { data: ip } = await supabase.from("intermediate_products").select("production_batches(product_id)").eq("id", validation.data.intermediate_product_id).single();
-        const batchData = Array.isArray(ip?.production_batches) ? ip.production_batches[0] : ip?.production_batches;
-        productId = batchData?.product_id;
-    }
-
-    let sampleCodePrefix = "NOSKU";
-    if (productId) {
-        const { data: product } = await supabase.from("products").select("sku").eq("id", productId).single();
-        sampleCodePrefix = product?.sku || "NOSKU";
-    } else if (validation.data.sampling_point_id) {
-        const { data: sp } = await supabase.from("sampling_points").select("code").eq("id", validation.data.sampling_point_id).single();
-        sampleCodePrefix = sp?.code || "NOSP";
-    }
-
-    let dateObj = collectedAt && !collectedAt.endsWith("Z") ? new Date(`${collectedAt}:00+01:00`) : new Date(collectedAt);
-    collectedAt = dateObj.toISOString();
-
-    const formatter = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Africa/Luanda', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-    const parts = formatter.formatToParts(dateObj);
-    const getPart = (type: string) => parts.find(p => p.type === type)?.value || "";
-    finalCode = `${sampleCodePrefix}-${sampleTypeCode}-${getPart('year')}${getPart('month')}${getPart('day')}-${getPart('hour')}${getPart('minute')}`;
-
-    const { data: newSample, error } = await supabase.from("samples").insert({
-        organization_id: user.organization_id,
-        plant_id: validation.data.plant_id,
-        sample_type_id: validation.data.sample_type_id,
-        code: finalCode,
-        production_batch_id: validation.data.production_batch_id || null,
-        intermediate_product_id: validation.data.intermediate_product_id || null,
-        sampling_point_id: validation.data.sampling_point_id || null,
-        collected_by: user.id,
-        collected_at: collectedAt,
-        status: "collected",
-    }).select("id").single();
-
-    if (error) return { success: false, message: error.message };
-
-    if (newSample?.id && productId && categoryFilter.length > 0) {
-        const { data: specs } = await supabase.from("product_specifications").select("qa_parameter_id, qa_parameters!inner(category, status)").eq("product_id", productId).eq("qa_parameters.status", "active").in("qa_parameters.category", categoryFilter).eq("sample_type_id", validation.data.sample_type_id);
-        if (specs && specs.length > 0) {
-            const uniqueParamIds = Array.from(new Set(specs.map(s => s.qa_parameter_id)));
-            await supabase.from("lab_analysis").insert(uniqueParamIds.map(paramId => ({ organization_id: user.organization_id, plant_id: validation.data.plant_id, sample_id: newSample.id, qa_parameter_id: paramId })));
+        const validation = CreateSampleSchema.safeParse(rawData);
+        if (!validation.success) {
+            return { success: false, message: validation.error.issues[0].message };
         }
-    }
 
-    const assigneeId = formData.get("assignee_id") as string;
-    if (newSample?.id && assigneeId) {
-        await supabase.from("app_tasks").insert({
+        const service = new SampleDomainService(supabase, {
             organization_id: user.organization_id,
-            plant_id: validation.data.plant_id,
-            title: `Análise: ${finalCode}`,
-            description: `Executar análises laboratoriais para a amostra ${finalCode}.`,
-            status: 'todo',
-            priority: 'medium',
-            assignee_id: assigneeId,
-            module_context: (sampleTypeCode === 'MICRO' || sampleTypeCode === 'ENV') ? 'micro_sample' : 'lab_sample',
-            entity_id: newSample.id,
-            entity_reference: finalCode,
-            created_by: user.id
+            user_id: user.id,
+            correlation_id: crypto.randomUUID()
         });
-    }
 
-    revalidatePath("/lab");
-    return { success: true, message: "Sample Created", sampleId: newSample?.id };
+        const result = await service.registerSample({
+            sample_type_id: validation.data.sample_type_id,
+            plant_id: validation.data.plant_id,
+            code: validation.data.code,
+            production_batch_id: validation.data.production_batch_id,
+            intermediate_product_id: validation.data.intermediate_product_id,
+            sampling_point_id: validation.data.sampling_point_id,
+            collected_at: formData.get("collected_at") as string || undefined,
+            assignee_id: formData.get("assignee_id") as string || undefined
+        });
+
+        if (!result.success) return { success: false, message: result.message };
+
+        revalidatePath("/lab");
+        return {
+            success: true,
+            message: "Sample Registered (Industrial Core)",
+            sampleId: result.data.id,
+            code: result.data.code
+        };
+    } catch (error: any) {
+        console.error("createSampleAction error:", error);
+        return { success: false, message: error.message };
+    }
 }
 
 export async function updateSampleStatusAction(data: FormData | { id: string, status: string }) {
@@ -148,11 +89,27 @@ export async function updateSampleStatusAction(data: FormData | { id: string, st
         status = data.status;
     }
 
-    const validStatuses = ["pending", "collected", "in_analysis", "reviewed", "approved", "rejected", "validated"];
+    const validStatuses = ["draft", "registered", "collected", "in_analysis", "under_review", "approved", "rejected", "released", "archived"];
     if (!sample_id || !validStatuses.includes(status)) return { success: false, message: "Invalid data" };
+
+    // FSM Validation
+    const { data: currentSample } = await supabase.from("samples").select("status").eq("id", sample_id).single();
+    if (currentSample) {
+        if (!SampleFSM.isValidTransition(currentSample.status as SampleStatus, status as SampleStatus)) {
+            return { success: false, message: `Transição de estado inválida: ${currentSample.status} -> ${status}` };
+        }
+    }
 
     const { error } = await supabase.from("samples").update({ status }).eq("id", sample_id).eq("organization_id", user.organization_id).eq("plant_id", user.plant_id);
     if (error) return { success: false, message: error.message };
+
+    // Industrial Audit Trail: Manual Status Update
+    await createAuditEvent({
+        eventType: 'SAMPLE_STATUS_UPDATED',
+        entityType: 'samples',
+        entityId: sample_id,
+        payload: { new_status: status }
+    });
 
     revalidatePath("/lab");
     revalidatePath("/lab/kanban");
@@ -172,12 +129,24 @@ export async function advanceSampleAction(sampleId: string) {
 
     let nextStatus = sample.status;
     if (totalCount > 0) {
-        if (completedCount > 0 && completedCount < totalCount) nextStatus = "in_analysis";
-        else if (completedCount === totalCount && totalCount > 0) nextStatus = "reviewed";
+        if (completedCount > 0 && completedCount < totalCount) {
+            nextStatus = "in_analysis";
+        } else if (SampleFSM.isReadyForReview(completedCount, totalCount)) {
+            nextStatus = "under_review";
+        }
     }
 
     if (nextStatus !== sample.status) {
         await supabase.from("samples").update({ status: nextStatus }).eq("id", sampleId).eq("organization_id", user.organization_id).eq("plant_id", user.plant_id);
+
+        // Industrial Audit Trail: Automatic Progression
+        await createAuditEvent({
+            eventType: 'SAMPLE_STATUS_PROGRESSED',
+            entityType: 'samples',
+            entityId: sampleId,
+            payload: { old_status: sample.status, new_status: nextStatus }
+        });
+
         revalidatePath("/lab");
         revalidatePath("/lab/kanban");
     }
@@ -188,7 +157,7 @@ export async function getPendingSamplesAction() {
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    const { data: samples, error } = await supabase.from("samples").select(`id, code, status, collected_at, sample_type:sample_types(name), batch:production_batches(code, product:products(name))`).eq("organization_id", user.organization_id).eq("plant_id", user.plant_id).in("status", ["pending", "collected", "in_analysis"]).order("collected_at", { ascending: true });
+    const { data: samples, error } = await supabase.from("samples").select(`id, code, status, collected_at, sample_type:sample_types(name), batch:production_batches(code, product:products(name))`).eq("organization_id", user.organization_id).eq("plant_id", user.plant_id).in("status", ["registered", "collected", "in_analysis", "under_review"]).order("collected_at", { ascending: true });
     if (error) return { success: false, message: error.message, data: [] };
     return { success: true, data: samples };
 }

@@ -40,6 +40,13 @@ export default async function PCCDashboardPage() {
         .select("id, name, code")
         .order("name");
 
+    // Fetch Active Production Batches for traceability
+    const { data: activeBatches } = await supabase
+        .from("production_batches")
+        .select("id, batch_number, product:inventory_items(name)")
+        .eq("status", "in_progress")
+        .order("created_at", { ascending: false });
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -56,7 +63,13 @@ export default async function PCCDashboardPage() {
                 </h2>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {ccps.map(ccp => (
-                        <CCPItemCard key={ccp.id} ccp={ccp} latestLog={latestStatusMap.get(ccp.id)} equipments={equipments || []} />
+                        <CCPItemCard
+                            key={ccp.id}
+                            ccp={ccp}
+                            latestLog={latestStatusMap.get(ccp.id)}
+                            equipments={equipments || []}
+                            activeBatches={activeBatches || []}
+                        />
                     ))}
 
                     {ccps.length === 0 && (
@@ -74,7 +87,13 @@ export default async function PCCDashboardPage() {
                 </h2>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {oprps.map(ccp => (
-                        <CCPItemCard key={ccp.id} ccp={ccp} latestLog={latestStatusMap.get(ccp.id)} equipments={equipments || []} />
+                        <CCPItemCard
+                            key={ccp.id}
+                            ccp={ccp}
+                            latestLog={latestStatusMap.get(ccp.id)}
+                            equipments={equipments || []}
+                            activeBatches={activeBatches || []}
+                        />
                     ))}
                     {oprps.length === 0 && (
                         <div className="col-span-full text-center py-12 text-muted-foreground border border-dashed rounded-xl glass">
@@ -88,8 +107,10 @@ export default async function PCCDashboardPage() {
 }
 
 
-function CCPItemCard({ ccp, latestLog, equipments }: { ccp: any, latestLog: any, equipments: any[] }) {
+function CCPItemCard({ ccp, latestLog, equipments, activeBatches }: { ccp: any, latestLog: any, equipments: any[], activeBatches: any[] }) {
     let statusColor = "bg-slate-500";
+    // ... rest of lines
+
     let StatusIcon = Clock;
 
     if (latestLog) {
@@ -139,7 +160,7 @@ function CCPItemCard({ ccp, latestLog, equipments }: { ccp: any, latestLog: any,
                 )}
 
 
-                <PCCCheckDialog hazard={ccp} equipments={equipments} />
+                <PCCCheckDialog hazard={ccp} equipments={equipments} activeBatches={activeBatches} />
             </CardContent>
         </Card>
     );

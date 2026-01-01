@@ -39,6 +39,13 @@ const LinkIngredientSchema = z.object({
     unit: z.string().min(1),
 });
 
+const LinkPackagingSchema = z.object({
+    production_batch_id: z.string().uuid(),
+    packaging_lot_id: z.string().uuid(),
+    quantity_used: z.coerce.number().positive(),
+    unit: z.string().min(1).default("un"),
+});
+
 /**
  * Create Golden Batch from Form (used by CreateBatchDialog)
  */
@@ -342,6 +349,73 @@ export async function finalizeBatchAction(batch_id: string) {
     revalidatePath("/production");
     revalidatePath(`/production/${batch_id}`);
     return { success: true, message: "Produção finalizada. Aguardando revisão do Manager." };
+}
+
+/**
+ * Link Packaging Lot to Production Batch
+ */
+export async function linkPackagingLotAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+
+    const rawData = {
+        production_batch_id: formData.get("production_batch_id"),
+        packaging_lot_id: formData.get("packaging_lot_id"),
+        quantity_used: formData.get("quantity_used"),
+        unit: formData.get("unit") || "un",
+    };
+
+    const validation = LinkPackagingSchema.safeParse(rawData);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
+    }
+
+    const validated = validation.data;
+
+    // 1. Fetch batch to verify existence and get org/plant
+    const { data: batch } = await supabase
+        .from("production_batches")
+        .select("organization_id, plant_id")
+        .eq("id", validated.production_batch_id)
+        .single();
+
+    if (!batch) return { success: false, message: "Batch not found" };
+
+    // 2. Verify Packaging Lot and quantity
+    const { data: lot } = await supabase
+        .from("packaging_lots")
+        .select("remaining_quantity, status")
+        .eq("id", validated.packaging_lot_id)
+        .single();
+
+    if (!lot) return { success: false, message: "Packaging lot not found" };
+    if (!['approved', 'active'].includes(lot.status)) return { success: false, message: "Packaging lot is not approved or active" };
+    if (lot.remaining_quantity < validated.quantity_used) {
+        return { success: false, message: `Insufficient quantity. Available: ${lot.remaining_quantity}` };
+    }
+
+    // 3. Insert usage
+    const { error: insertError } = await supabase.from("batch_packaging_usage").insert({
+        organization_id: batch.organization_id,
+        plant_id: batch.plant_id,
+        production_batch_id: validated.production_batch_id,
+        packaging_lot_id: validated.packaging_lot_id,
+        quantity_used: validated.quantity_used,
+        unit: validated.unit,
+        added_by: user.id
+    });
+
+    if (insertError) return { success: false, message: insertError.message };
+
+    // 4. Update lot quantity
+    const newQuantity = Number(lot.remaining_quantity) - Number(validated.quantity_used);
+    await supabase
+        .from("packaging_lots")
+        .update({ remaining_quantity: newQuantity })
+        .eq("id", validated.packaging_lot_id);
+
+    revalidatePath(`/production/${validated.production_batch_id}`);
+    return { success: true, message: "Material de embalagem adicionado com sucesso." };
 }
 
 /**

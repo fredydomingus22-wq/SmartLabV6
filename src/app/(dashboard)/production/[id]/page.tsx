@@ -17,6 +17,7 @@ import { BatchReportButton } from "@/components/reports/BatchReportButton";
 import { getBatchTraceabilityAction } from "@/app/actions/traceability";
 import { BatchDossier } from "./batch-dossier";
 import { ReleaseBatchButton } from "./release-batch-button";
+import { PackagingDialog } from "./packaging-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -150,11 +151,46 @@ export default async function BatchDetailPage({ params }: PageProps) {
     const reportPhases = Array.from(phasesMap.entries()).map(([name, samples]) => ({ name, samples }));
 
     // 5. Fetch Aux Data (Tanks, Types, Points)
-    const { data: tanks } = await supabase
-        .from("equipments")
-        .select("id, name, code, status")
-        .eq("equipment_type", "tank")
-        .eq("status", "active");
+    const [{ data: legacyTanks }, { data: modernTanks }] = await Promise.all([
+        supabase
+            .from("equipments")
+            .select("id, name, code, status")
+            .eq("equipment_type", "tank")
+            .eq("status", "active"),
+        supabase
+            .from("tanks")
+            .select("id, name, code, status")
+            .eq("status", "active")
+    ]);
+
+    // Merge tanks avoiding duplicates
+    const tanksMap = new Map();
+    legacyTanks?.forEach(t => tanksMap.set(t.id, t));
+    modernTanks?.forEach(t => tanksMap.set(t.id, t));
+    const tanks = Array.from(tanksMap.values());
+
+    // 4. Fetch available Raw Material Lots (for IngredientDialog)
+    const { data: rawMaterialLots } = await supabase
+        .from("raw_material_lots")
+        .select("id, lot_code, quantity_remaining, unit, raw_material:raw_materials(name, code)")
+        .eq("status", "approved")
+        .gt("quantity_remaining", 0)
+        .order("lot_code");
+
+    // 5. Fetch available Packaging Lots
+    const { data: availablePackaging } = await supabase
+        .from("packaging_lots")
+        .select("id, lot_code, remaining_quantity, material:packaging_materials(name, code)")
+        .in("status", ["approved", "active"])
+        .gt("remaining_quantity", 0)
+        .order("lot_code");
+
+    // 6. Fetch used Packaging for this batch
+    const { data: usedPackaging } = await supabase
+        .from("batch_packaging_usage")
+        .select("*, lot:packaging_lots(lot_code, material:packaging_materials(name))")
+        .eq("production_batch_id", id);
+
 
     const { data: sampleTypes } = await supabase.from("sample_types").select("id, name, code").order("name");
     const { data: samplingPoints } = await supabase.from("sampling_points").select("id, name, code").order("name");
@@ -277,31 +313,84 @@ export default async function BatchDetailPage({ params }: PageProps) {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="tanks" className="mt-4">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-sm font-bold uppercase tracking-tight">Tanques e Misturas</h2>
-                                <p className="text-[10px] text-muted-foreground uppercase">Monitorização de produtos em fase intermédia</p>
-                            </div>
-                            <IntermediateDialog batchId={id} availableTanks={tanks || []} />
+                <TabsContent value="intermediates" className="mt-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-bold tracking-tight">Produtos Intermédios</h3>
+                            <p className="text-sm text-muted-foreground">Monitorização de tanques e silos ocupados por este lote.</p>
                         </div>
-
-                        {intermediates && intermediates.length > 0 ? (
-                            <IntermediatesTable
-                                intermediates={intermediates}
-                                sampleTypes={sampleTypes || []}
-                                samplingPoints={samplingPoints || []}
-                                plantId={batch.plant_id}
-                                batchCode={batch.code}
-                            />
-                        ) : (
-                            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
-                                <Package className="h-8 w-8 mx-auto mb-3 opacity-20" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">Nenhum tanque associado a este lote</p>
-                            </div>
-                        )}
+                        <IntermediateDialog batchId={id} availableTanks={tanks || []} />
                     </div>
+
+                    {intermediates && intermediates.length > 0 ? (
+                        <IntermediatesTable
+                            intermediates={intermediates || []}
+                            sampleTypes={sampleTypes || []}
+                            samplingPoints={samplingPoints || []}
+                            plantId={batch.plant_id}
+                            batchCode={batch.code}
+                            availableLots={rawMaterialLots || []}
+                        />
+                    ) : (
+                        <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
+                            <Package className="h-8 w-8 mx-auto mb-3 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">Nenhum tanque associado a este lote</p>
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="packaging" className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold tracking-tight">Utilização de Embalagem</h3>
+                            <p className="text-sm text-muted-foreground">Registo de lotes de embalagem utilizados neste lote.</p>
+                        </div>
+                        <PackagingDialog
+                            batchId={batch.id}
+                            availableLots={availablePackaging || []}
+                        />
+                    </div>
+
+                    <Card className="glass border-none overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-muted/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/5">
+                                    <tr>
+                                        <th className="px-6 py-4">Material</th>
+                                        <th className="px-6 py-4">Lote</th>
+                                        <th className="px-6 py-4 text-right">Quantidade</th>
+                                        <th className="px-6 py-4 text-right">Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/5">
+                                    {(usedPackaging || []).length > 0 ? (
+                                        usedPackaging?.map((usage) => (
+                                            <tr key={usage.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4 font-medium">
+                                                    {(usage.lot as any)?.material?.name || "Material"}
+                                                </td>
+                                                <td className="px-6 py-4 font-mono text-xs">
+                                                    {(usage.lot as any)?.lot_code}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-bold">
+                                                    {usage.quantity_used} {usage.unit}
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-muted-foreground text-xs">
+                                                    {new Date(usage.added_at).toLocaleString('pt-PT')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground uppercase text-[10px] font-bold tracking-widest opacity-30">
+                                                Nenhum material de embalagem registado
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="quality" className="mt-4">

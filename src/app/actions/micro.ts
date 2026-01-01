@@ -36,6 +36,7 @@ const RegisterMicroResultSchema = z.object({
     is_tntc: z.boolean().optional(),
     is_presence_absence: z.boolean().optional(),
     result_text: z.string().optional(),
+    password: z.string().optional(),
 });
 
 const CreateMicroSampleSchema = z.object({
@@ -401,10 +402,11 @@ export async function registerMicroResultAction(formData: FormData) {
         colony_count: formData.get("colony_count"),
         is_tntc: formData.get("is_tntc") === 'on',
         result_text: formData.get("result_text"),
+        password: formData.get("password") || undefined,
     };
 
     const validation = RegisterMicroResultSchema.safeParse(rawData);
-    if (!validation.success) return { success: false, message: "Invalid Data" };
+    if (!validation.success) return { success: false, message: "DADOS INVÁLIDOS: Verifique os campos." };
 
     // Get the micro result with sample and parameter info
     const { data: result } = await supabase
@@ -422,10 +424,7 @@ export async function registerMicroResultAction(formData: FormData) {
         .eq("id", validation.data.result_id)
         .single();
 
-    if (!result) return { success: false, message: "Result not found" };
-
-    // Use userData from requirePermission
-    const profile = userData;
+    if (!result) return { success: false, message: "Resultado não encontrado." };
 
     // Get spec limit for conformity check
     const sample = Array.isArray(result.sample) ? result.sample[0] : result.sample;
@@ -434,7 +433,6 @@ export async function registerMicroResultAction(formData: FormData) {
     const productId = batchData?.product_id;
 
     let maxColonyCount: number | null = null;
-
     if (productId) {
         const { data: specs } = await supabase
             .from("product_specifications")
@@ -444,25 +442,57 @@ export async function registerMicroResultAction(formData: FormData) {
             .eq("status", "active")
             .eq("sample_type_id", sample.sample_type_id)
             .single();
-
         maxColonyCount = specs?.max_colony_count ?? null;
     }
 
     // Determine conformity
     let isConforming: boolean | null = null;
-    const colonyCount = validation.data.colony_count;
+    const colonyCount = validation.data.colony_count !== null ? Number(validation.data.colony_count) : null;
     const isTntc = validation.data.is_tntc;
 
     if (isTntc) {
-        // TNTC is always non-conforming if there's a limit
         isConforming = maxColonyCount === null ? null : false;
-    } else if (colonyCount !== undefined && colonyCount !== null) {
+    } else if (colonyCount !== null) {
         if (maxColonyCount !== null) {
             isConforming = colonyCount <= maxColonyCount;
         }
     }
 
-    // Update the micro result
+    // --- Industrial Compliance & Sync ---
+    const { ResultDomainService } = await import("@/domain/lab/result.service");
+    const resultService = new ResultDomainService(supabase, {
+        organization_id: userData.organization_id,
+        plant_id: userData.plant_id,
+        user_id: userData.id,
+        role: userData.role,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const numericValue = isTntc ? null : colonyCount;
+
+    // 1. Synchronize with lab_analysis (Primary Source of Truth for Sample Status)
+    const { data: analysisRecord } = await supabase
+        .from("lab_analysis")
+        .select("id")
+        .eq("sample_id", result.sample_id)
+        .eq("qa_parameter_id", result.qa_parameter_id)
+        .maybeSingle();
+
+    if (analysisRecord) {
+        const syncResult = await resultService.registerResult({
+            sample_id: result.sample_id,
+            qa_parameter_id: result.qa_parameter_id,
+            value_numeric: numericValue ?? undefined,
+            value_text: validation.data.result_text || undefined,
+            is_conforming: isConforming ?? undefined,
+            notes: validation.data.result_text || undefined,
+            password: validation.data.password
+        });
+
+        if (!syncResult.success) return { success: false, message: syncResult.message };
+    }
+
+    // 2. Update the micro_results table
     const { error } = await supabase
         .from("micro_results")
         .update({
@@ -484,10 +514,9 @@ export async function registerMicroResultAction(formData: FormData) {
     return {
         success: true,
         message: isConforming === true
-            ? "Result: CONFORMING ✓"
+            ? "Result: CONFORMANTE ✓"
             : isConforming === false
-                ? "Result: NON-CONFORMING ✗"
-                : "Result Registered"
+                ? "Result: NÃO CONFORMANTE ✗"
+                : "Resultado Registado"
     };
 }
-

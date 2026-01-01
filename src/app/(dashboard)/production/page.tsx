@@ -3,6 +3,8 @@ import { CreateBatchDialog } from "./create-batch-dialog";
 import { ProductionCharts } from "./production-charts";
 import { ProductionPageClient } from "./production-page-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Clock, Activity, CheckCircle2, ShieldAlert, BrainCircuit, BarChart3, TrendingUp, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +41,13 @@ export default async function ProductionPage() {
         .eq("plant_id", plant_id)
         .eq("status", "active");
 
-    // 3. Fetch Batches (Scoped to Plant)
+    // 3. Fetch Batches (Scoped to Plant) with QC Status aggregation
     const { data: batches, error: batchesError } = await supabase
         .from("production_batches")
         .select(`
             *,
-            product:products(name)
+            product:products(name),
+            samples:samples(ai_risk_status)
         `)
         .eq("plant_id", plant_id)
         .order("created_at", { ascending: false });
@@ -106,32 +109,30 @@ export default async function ProductionPage() {
                 />
             </div>
 
-            {/* Industrial KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                <div className="p-4 glass rounded-2xl border border-blue-500/10 bg-blue-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-blue-600/70 mb-1">Planeados</p>
-                    <p className="text-2xl font-bold text-blue-700">{stats.planned}</p>
-                </div>
-                <div className="p-4 glass rounded-2xl border border-amber-500/10 bg-amber-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-600/70 mb-1">Em Processo</p>
-                    <p className="text-2xl font-bold text-amber-700">{stats.inProcess}</p>
-                </div>
-                <div className="p-4 glass rounded-2xl border border-purple-500/10 bg-purple-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-purple-600/70 mb-1">Finalizados</p>
-                    <p className="text-2xl font-bold text-purple-700">{stats.completed}</p>
-                </div>
-                <div className="p-4 glass rounded-2xl border border-rose-500/10 bg-rose-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-rose-600/70 mb-1">Bloqueados</p>
-                    <p className="text-2xl font-bold text-rose-700">{stats.blocked}</p>
-                </div>
-                <div className="p-4 glass rounded-2xl border border-emerald-500/10 bg-emerald-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-600/70 mb-1">Liberados</p>
-                    <p className="text-2xl font-bold text-emerald-700">{stats.released}</p>
-                </div>
-                <div className="p-4 glass rounded-2xl border border-indigo-500/10 bg-indigo-500/5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-600/70 mb-1">Quality Rate</p>
-                    <p className="text-2xl font-bold text-indigo-700">{stats.qualityRate}%</p>
-                </div>
+            {/* Industrial KPI Cards - Professional Grid */}
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                {[
+                    { label: "Planeados", val: stats.planned, color: "blue", icon: Clock },
+                    { label: "Em Processo", val: stats.inProcess, color: "amber", icon: Activity },
+                    { label: "Finalizados", val: stats.completed, color: "purple", icon: CheckCircle2 },
+                    { label: "Bloqueados", val: stats.blocked, color: "rose", icon: ShieldAlert },
+                    { label: "Liberados", val: stats.released, color: "emerald", icon: CheckCircle2 },
+                    { label: "Taxa Qualidade", val: `${stats.qualityRate}%`, color: "indigo", icon: BrainCircuit },
+                ].map((kpi, i) => (
+                    <div key={i} className={cn(
+                        "p-5 glass rounded-3xl border transition-all hover:scale-[1.02] relative overflow-hidden group",
+                        `border-${kpi.color}-500/20 bg-${kpi.color}-500/5`
+                    )}>
+                        <div className={cn("absolute top-0 right-0 w-16 h-16 blur-[40px] -mr-8 -mt-8 rounded-full opacity-20 transition-all group-hover:opacity-40", `bg-${kpi.color}-500`)} />
+                        <div className="flex flex-col gap-2 relative z-10">
+                            <div className="flex items-center justify-between">
+                                <p className={cn("text-[9px] font-black uppercase tracking-widest opacity-60", `text-${kpi.color}-400`)}>{kpi.label}</p>
+                                <kpi.icon className={cn("h-3 w-3", `text-${kpi.color}-400`)} />
+                            </div>
+                            <p className={cn("text-3xl font-black tracking-tighter", `text-${kpi.color}-200`)}>{kpi.val}</p>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Strategic KPI Overlay */}

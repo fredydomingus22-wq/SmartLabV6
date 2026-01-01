@@ -153,8 +153,9 @@ export function DashboardClient({
                             {[
                                 { id: 'all', label: 'Todas', color: 'bg-slate-800 text-slate-100' },
                                 { id: 'collected', label: 'Colhidas', color: 'data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400' },
-                                { id: 'in_analysis', label: 'Análise', color: 'data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400' },
-                                { id: 'reviewed', label: 'Fechadas', color: 'data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400' }
+                                { id: 'in_analysis', label: 'Análise', color: 'data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400' },
+                                { id: 'under_review', label: 'Em Revisão', color: 'data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400' },
+                                { id: 'approved', label: 'Aprovadas', color: 'data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400' }
                             ].map((tab) => (
                                 <TabsTrigger
                                     key={tab.id}

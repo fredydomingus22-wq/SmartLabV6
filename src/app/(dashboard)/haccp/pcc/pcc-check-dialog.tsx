@@ -14,9 +14,10 @@ import { toast } from "sonner";
 interface PCCCheckDialogProps {
     hazard: any;
     equipments: { id: string; name: string; code: string }[];
+    activeBatches: any[];
 }
 
-export function PCCCheckDialog({ hazard, equipments }: PCCCheckDialogProps) {
+export function PCCCheckDialog({ hazard, equipments, activeBatches }: PCCCheckDialogProps) {
     const [open, setOpen] = useState(false);
     const [showSignature, setShowSignature] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -66,6 +67,20 @@ export function PCCCheckDialog({ hazard, equipments }: PCCCheckDialogProps) {
 
                     <form ref={formRef} onSubmit={handlePreSubmit} className="space-y-4 py-4">
                         <input type="hidden" name="hazard_id" value={hazard.id} />
+
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right text-xs">Lote em Produção</Label>
+                            <div className="col-span-3">
+                                <SearchableSelect
+                                    name="production_batch_id"
+                                    options={activeBatches.map(b => ({
+                                        label: `${b.batch_number} - ${b.product?.name || 'Unknown'}`,
+                                        value: b.id
+                                    }))}
+                                    placeholder="Select active batch (traceability)..."
+                                />
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label className="text-right">Equipment</Label>

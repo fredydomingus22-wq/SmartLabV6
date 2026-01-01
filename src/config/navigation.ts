@@ -67,7 +67,6 @@ export const menuItems: MenuItem[] = [
             { href: "/production", label: "Lotes em Curso" },
             { href: "/production/tanks", label: "Monitorização de Tanques" },
             { href: "/production/lines", label: "Linhas de Enchimento" },
-            { href: "/cip/register", label: "Registo de CIP/Higienização" },
         ]
     },
     {
@@ -93,7 +92,10 @@ export const menuItems: MenuItem[] = [
             { href: "/quality/objectives", label: "Objetivos Estratégicos" },
             { href: "/quality/parameters", label: "Engenharia de Produto" },
             { href: "/quality/documents", label: "DMS & Manuais" },
+            { href: "/quality/training/manager", label: "Training Manager (Admin)" },
+            { href: "/quality/training", label: "Formação & Competências" },
             { href: "/quality/spc", label: "CEP (Controlo Estatístico)" },
+            { href: "/admin/audit", label: "Rasto de Auditoria (Data Integrity)" },
         ]
     },
     {
@@ -101,11 +103,23 @@ export const menuItems: MenuItem[] = [
         icon: ShieldAlert,
         module: "haccp",
         children: [
+            { href: "/haccp/performance", label: "Performance & Compliance" },
             { href: "/haccp/prp", label: "Prerrequisitos (PRP)" },
             { href: "/haccp/pcc", label: "Controlo Crítico (PCC)" },
             { href: "/haccp/hazards", label: "Plano HACCP" },
             { href: "/quality/environmental", label: "Higiene Ambiental" },
             { href: "/haccp/taccp", label: "Food Defense & Fraud" },
+        ]
+    },
+    {
+        label: "CIP & Higienização",
+        icon: RefreshCw,
+        module: "production",
+        children: [
+            { href: "/cip", label: "Visão Geral" },
+            { href: "/cip/register", label: "Execução de Limpeza" },
+            { href: "/cip/programs", label: "Programas & Receitas" },
+            { href: "/cip/history", label: "Histórico & Auditoria" },
         ]
     },
     {

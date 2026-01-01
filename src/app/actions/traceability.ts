@@ -75,7 +75,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
     // Discovery 2: Direct Intermediates (Linked via production_batch_id)
     const { data: directIntermediates } = await supabase
         .from("intermediate_products")
-        .select("id, equipment:equipments(id)")
+        .select("id, equipment_id")
         .eq("production_batch_id", batchId);
 
     const directIntermediateIds = directIntermediates?.map(i => i.id) || [];
@@ -114,8 +114,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
         supabase
             .from("intermediate_products")
             .select(`
-                id, code, status,
-                equipment:equipments(id, name, code)
+                id, code, status, equipment_id
             `).in("id", finalIntermediateIds),
         batch.supervisor_approved_by ? supabase
             .from("user_profiles")
@@ -252,16 +251,31 @@ export async function getBatchTraceabilityAction(batchId: string) {
             };
         }) || [];
 
+    // 4.1 Manual Enrichment for Intermediate Equipment (Polymorphic: Tank or Equipment)
+    const tankIds = processIntermediates
+        .map(p => p.equipment_id)
+        .filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)); // Validate only UUIDs
+
+    let tankAssets: any[] = [];
+    if (tankIds.length > 0) {
+        const [tanksRes, equipRes] = await Promise.all([
+            supabase.from("tanks").select("id, code, name").in("id", tankIds),
+            supabase.from("equipments").select("id, code, name").in("id", tankIds)
+        ]);
+        tankAssets = [...(tanksRes.data || []), ...(equipRes.data || [])];
+    }
+
     const tanks = finalIntermediateIds.map(id => {
         const ip = processIntermediates?.find(p => p.id === id);
-        const tankAsset = ip?.equipment;
+        const tankAsset = tankAssets.find(t => t.id === ip?.equipment_id);
+
         // Find last CIP for this tank
-        const lastCip = tankAsset ? cips.filter((c: any) => c.equipment_uid === (tankAsset as any).id).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())[0] : null;
+        const lastCip = tankAsset ? cips.filter((c: any) => c.equipment_uid === tankAsset.id).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())[0] : null;
 
         return {
             tank: ip ? {
-                tank_number: (Array.isArray(ip.equipment) ? (ip.equipment as any)[0]?.code : (ip.equipment as any)?.code) || ip.code,
-                name: (Array.isArray(ip.equipment) ? (ip.equipment as any)[0]?.name : (ip.equipment as any)?.name),
+                tank_number: tankAsset?.code || ip.code,
+                name: tankAsset?.name || "Unknown Asset",
                 status: ip.status,
                 last_cip: lastCip ? {
                     program: (lastCip as any).program?.name,

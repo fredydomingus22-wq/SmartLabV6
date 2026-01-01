@@ -263,3 +263,53 @@ export async function getOrganizationUsers() {
 
     return { data: data || [], error };
 }
+
+/**
+ * Get single CAPA Action with full details
+ */
+export async function getCAPAById(id: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    // 1. Fetch CAPA with joins
+    const { data: capa, error: capaError } = await supabase
+        .from("capa_actions")
+        .select(`
+            *,
+            nonconformity:nonconformities(id, nc_number, title, severity),
+            responsible_user:user_profiles!responsible_id(full_name),
+            verifier_user:user_profiles!verified_by(full_name),
+            training_module:training_modules(id, title)
+        `)
+        .eq("organization_id", user.organization_id)
+        .eq("id", id)
+        .single();
+
+    if (capaError) {
+        console.error("getCAPAById error:", capaError);
+        return { capa: null, error: capaError.message };
+    }
+
+    // 2. Fetch Attachments
+    const { data: attachments } = await supabase
+        .from("capa_actions_attachments")
+        .select("*")
+        .eq("capa_action_id", id)
+        .order("uploaded_at", { ascending: false });
+
+    // 3. Fetch History (Audit Log)
+    const { data: history } = await supabase
+        .from("qms_audit_log")
+        .select(`
+            *,
+            actor:user_profiles!changed_by(full_name)
+        `)
+        .eq("entity_id", id)
+        .eq("entity_type", "capa_action")
+        .order("changed_at", { ascending: false });
+
+    return {
+        capa: { ...capa, attachments, history: history || [] },
+        error: null
+    };
+}

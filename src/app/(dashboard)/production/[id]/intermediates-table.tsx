@@ -43,9 +43,10 @@ interface IntermediatesTableProps {
     samplingPoints: { id: string; name: string; code: string; }[];
     plantId: string;
     batchCode: string;
+    availableLots: any[];
 }
 
-export function IntermediatesTable({ intermediates, sampleTypes, samplingPoints, plantId, batchCode }: IntermediatesTableProps) {
+export function IntermediatesTable({ intermediates, sampleTypes, samplingPoints, plantId, batchCode, availableLots }: IntermediatesTableProps) {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
     const toggleRow = (id: string) => {
@@ -158,7 +159,11 @@ export function IntermediatesTable({ intermediates, sampleTypes, samplingPoints,
                             <div className="p-5 bg-background/50 border-t border-border/5 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Composição do Tanque</span>
-                                    <IngredientDialog intermediateId={intermediate.id} intermediateName={intermediate.code} />
+                                    <IngredientDialog
+                                        intermediateId={intermediate.id}
+                                        intermediateName={intermediate.code}
+                                        availableLots={availableLots}
+                                    />
                                 </div>
                                 {ingredients.length > 0 ? (
                                     <div className="space-y-2">

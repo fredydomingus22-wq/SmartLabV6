@@ -10,9 +10,11 @@ import { Loader2, Save, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignatureDialog } from "./signature-dialog";
-import { signAndSaveResultsAction } from "@/app/actions/lab";
+import { signAndSaveResultsAction, startAnalysisAction } from "@/app/actions/lab_modules/results";
 import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
-import { LabInstrumentSelect } from "@/components/lab/lab-instrument-select";
+import { AnalysisStatus } from "@/domain/lab/analysis.fsm";
+import { IndustrialExecutionWizard } from "./_components/IndustrialExecutionWizard";
+import { Activity, Beaker, ShieldCheck, Zap } from "lucide-react";
 
 // Handle Supabase returning nested relations as arrays
 interface ParameterInfo {
@@ -32,8 +34,10 @@ interface Analysis {
     analyzed_at: string | null;
     analysis_method: string | null;
     equipment_id: string | null;
+    status: 'pending' | 'started' | 'completed' | 'reviewed' | 'validated' | 'invalidated';
     parameter: ParameterInfo | ParameterInfo[] | null;
     analyst?: { full_name: string } | null;
+    equipment?: { id: string; name: string; code: string; next_calibration_date: string; status: string } | null;
     final_value?: string | number | null;
     ai_insight?: { status: 'approved' | 'warning' | 'blocked' | 'info'; message: string; confidence: number } | null;
 }
@@ -52,14 +56,16 @@ interface Spec {
 }
 
 interface AnalysisFormProps {
-    sampleId: string;
-    sampleCode: string;
+    sample: any;
     analyses: Analysis[];
     specs: Record<string, Spec>;
     isValidated: boolean;
 }
 
-export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidated }: AnalysisFormProps) {
+export function AnalysisForm({ sample, analyses, specs, isValidated }: AnalysisFormProps) {
+    const sampleId = sample.id;
+    const sampleCode = sample.code;
+    const [wizardOpen, setWizardOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [signatureOpen, setSignatureOpen] = useState(false);
     const [results, setResults] = useState<Record<string, string>>(() => {
@@ -93,6 +99,7 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
     useEffect(() => {
         const resultSync: Record<string, string> = {};
         const noteSync: Record<string, string> = {};
+        const equipmentSync: Record<string, string> = {};
 
         analyses.forEach(a => {
             if (a.value_numeric !== null && a.value_numeric !== undefined) {
@@ -101,10 +108,12 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                 resultSync[a.id] = a.value_text;
             }
             if (a.notes) noteSync[a.id] = a.notes;
+            if (a.equipment_id) equipmentSync[a.id] = a.equipment_id;
         });
 
         setResults(resultSync);
         setNotes(noteSync);
+        setEquipmentIds(equipmentSync);
     }, [analyses]);
 
     const handleResultChange = (analysisId: string, value: string) => {
@@ -160,12 +169,18 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
     const handleSignAndSave = async (password: string) => {
         setLoading(true);
 
-        const resultsArray = Object.entries(results).map(([analysisId, value]) => ({
-            analysisId,
-            value: value.trim() === "" ? null : value,
-            notes: notes[analysisId] || undefined,
-            equipmentId: equipmentIds[analysisId] || undefined
-        }));
+        const resultsArray = Object.entries(results).map(([analysisId, value]) => {
+            const analysis = analyses.find(a => a.id === analysisId);
+            const specStatus = analysis ? checkSpec(analysis, value) : "unknown";
+
+            return {
+                analysisId,
+                value: value.trim() === "" ? null : value,
+                notes: notes[analysisId] || undefined,
+                equipmentId: equipmentIds[analysisId] || undefined,
+                is_conforming: specStatus === "pass"
+            };
+        });
 
         const result = await signAndSaveResultsAction(sampleId, resultsArray, password);
         setLoading(false);
@@ -183,7 +198,8 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
         // If we have a saved value and it matches the current input, use the server's conformity status
         if (analysis.is_conforming !== null && (
             (analysis.value_numeric?.toString() === value) ||
-            (analysis.value_text === value)
+            (analysis.value_text === value) ||
+            (value === "" && analysis.value_numeric === null)
         )) {
             return analysis.is_conforming ? "pass" : "fail";
         }
@@ -198,8 +214,11 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
         const numValue = parseFloat(value);
         if (isNaN(numValue)) return "unknown";
 
-        if (spec.min_value !== undefined && numValue < spec.min_value) return "fail";
-        if (spec.max_value !== undefined && numValue > spec.max_value) return "fail";
+        // Handle numeric limits correctly even if one side is null/undefined
+        const isMinViolated = (spec.min_value !== undefined && spec.min_value !== null) && numValue < spec.min_value;
+        const isMaxViolated = (spec.max_value !== undefined && spec.max_value !== null) && numValue > spec.max_value;
+
+        if (isMinViolated || isMaxViolated) return "fail";
 
         return "pass";
     };
@@ -215,6 +234,31 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
         if (spec.max_value !== undefined) return `≤ ${spec.max_value}`;
         if (spec.target_value !== undefined) return `= ${spec.target_value}`;
         return "—";
+    };
+
+    const getAnalysisStatusBadge = (status: string) => {
+        const configs: Record<string, { label: string, className: string }> = {
+            pending: { label: "Pendente", className: "bg-slate-900 text-slate-500 border-slate-800" },
+            started: { label: "Em Curso", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+            completed: { label: "Concluída", className: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+            reviewed: { label: "Revisada", className: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+            validated: { label: "Validada", className: "bg-green-500/10 text-green-400 border-green-500/20" },
+            invalidated: { label: "Inválida", className: "bg-red-500/10 text-red-400 border-red-500/20" },
+        };
+        const config = configs[status] || configs.pending;
+        return <Badge variant="outline" className={cn("text-[9px] font-bold uppercase", config.className)}>{config.label}</Badge>;
+    };
+
+    const handleStartAnalysis = async (analysisId: string) => {
+        setLoading(true);
+        const res = await startAnalysisAction(analysisId);
+        setLoading(false);
+        if (res.success) {
+            toast.success(res.message);
+            router.refresh();
+        } else {
+            toast.error(res.message);
+        }
     };
 
     // Stats calculation
@@ -245,140 +289,116 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
     }
 
     return (
-        <div className="space-y-4">
-            <Card className="bg-slate-900/50 border-slate-800 shadow-2xl backdrop-blur-md">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 border-b border-slate-800/50">
-                    <div>
-                        <CardTitle className="text-xl font-bold text-white tracking-tight">Analysis Results</CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Enter results for all parameters. Spec limits are shown for reference.
-                        </CardDescription>
-                    </div>
+        <div className="space-y-6">
+            <Card className="bg-slate-900/40 border-slate-800 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Activity className="h-32 w-32" />
+                </div>
+
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 pb-8 border-b border-white/5 relative z-10">
                     <div className="flex items-center gap-4">
-                        <div className="text-center px-4 border-r border-slate-800">
-                            <div className="text-2xl font-black text-white">{completedParams}/{totalParams}</div>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Progress</div>
+                        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                            <Beaker className="h-6 w-6 text-blue-400" />
                         </div>
-                        <div className="text-center px-4 border-r border-slate-800">
-                            <div className="text-2xl font-black text-green-400">{conformingParams}</div>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Pass</div>
+                        <div>
+                            <CardTitle className="text-2xl font-black text-white tracking-tighter uppercase italic">Quadro Analítico</CardTitle>
+                            <CardDescription className="text-slate-500 font-medium">Controle de parâmetros e especificações industriais</CardDescription>
                         </div>
-                        <div className="text-center px-4">
-                            <div className="text-2xl font-black text-red-500">{nonConformingParams}</div>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Fail</div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex gap-4">
+                            <StatBox label="Progress" value={`${completedParams}/${totalParams}`} />
+                            <StatBox label="Conforming" value={conformingParams} color="text-emerald-400" />
+                            <StatBox label="OOS" value={nonConformingParams} color="text-rose-400" />
                         </div>
+
+                        {!isValidated && (
+                            <Button
+                                onClick={() => setWizardOpen(true)}
+                                className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
+                            >
+                                <Zap className="h-4 w-4 mr-2" />
+                                Iniciar Execução Guiada
+                            </Button>
+                        )}
                     </div>
                 </CardHeader>
-                <CardContent className="pt-6">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/20 overflow-hidden">
+
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-slate-800 bg-slate-900/40">
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Parameter</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Result</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Unit</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Instrumento</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Spec</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AI</th>
-                                    <th className="text-left p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Notes</th>
-                                    <th className="text-center p-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Status</th>
+                                <tr className="border-b border-white/5 bg-slate-900/60">
+                                    <th className="text-left p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Parâmetro</th>
+                                    <th className="text-center p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Alvo / Spec</th>
+                                    <th className="text-center p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Último Valor</th>
+                                    <th className="text-center p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Status IA</th>
+                                    <th className="text-center p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Lote FSM</th>
+                                    <th className="text-center p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Decisão</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-white/5">
                                 {analyses.map((analysis) => {
                                     const value = results[analysis.id] || "";
                                     const specStatus = checkSpec(analysis, value);
                                     const param = getParameter(analysis.parameter);
 
                                     return (
-                                        <tr key={analysis.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                            <td className="p-4">
-                                                <div className="font-bold text-slate-200">
-                                                    {param?.name || "Unknown"}
+                                        <tr key={analysis.id} className="group hover:bg-white/[0.02] transition-colors">
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                        "w-1 h-8 rounded-full",
+                                                        specStatus === "pass" ? "bg-emerald-500" : specStatus === "fail" ? "bg-rose-500" : "bg-slate-800"
+                                                    )} />
+                                                    <div>
+                                                        <div className="font-black text-slate-100 uppercase tracking-tight">{param?.name}</div>
+                                                        <div className="text-[10px] font-mono text-slate-500">{param?.code}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="text-[10px] font-mono text-slate-500">
-                                                    {param?.code}
-                                                </div>
                                             </td>
-                                            <td className="p-4">
-                                                <Input
-                                                    type="text"
-                                                    value={value}
-                                                    onChange={(e) => handleResultChange(analysis.id, e.target.value)}
-                                                    placeholder="0.00"
-                                                    className={cn(
-                                                        "w-28 bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:ring-blue-500/20",
-                                                        specStatus === "fail" && "border-red-500/50 bg-red-500/5 text-red-200"
-                                                    )}
-                                                    disabled={isValidated}
-                                                />
-                                            </td>
-                                            <td className="p-4 text-xs font-semibold text-slate-400">
-                                                {param?.unit || "-"}
-                                            </td>
-                                            <td className="p-4">
-                                                <LabInstrumentSelect
-                                                    value={equipmentIds[analysis.id]}
-                                                    onValueChange={(val) => handleEquipmentChange(analysis.id, val)}
-                                                    disabled={isValidated}
-                                                    error={(results[analysis.id] || "") !== "" && !equipmentIds[analysis.id]}
-                                                />
-                                            </td>
-                                            <td className="p-4">
-                                                <Badge variant="outline" className="text-[10px] bg-slate-900 border-slate-800 text-slate-300 font-mono">
+                                            <td className="p-6 text-center">
+                                                <Badge variant="outline" className="font-mono text-[10px] bg-black/40 border-slate-800 text-blue-400">
                                                     {formatSpec(param?.id || "")}
                                                 </Badge>
-                                                {specs[param?.id || ""]?.haccp && (
-                                                    <div className="mt-1">
-                                                        {specs[param?.id || ""]?.haccp?.is_pcc ? (
-                                                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px] px-1 py-0 hover:bg-red-500/30">
-                                                                CCP
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[9px] px-1 py-0 hover:bg-blue-500/30">
-                                                                OPRP
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                )}
                                             </td>
-                                            <td className="p-4">
+                                            <td className="p-6 text-center">
+                                                <div className={cn(
+                                                    "text-lg font-black font-mono",
+                                                    specStatus === "fail" ? "text-rose-400" : "text-white"
+                                                )}>
+                                                    {value || "—"}
+                                                    <span className="text-[10px] text-slate-600 ml-1 font-bold">{param?.unit}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-6 text-center">
                                                 <RealtimeAIBadge
                                                     analysisId={analysis.id}
                                                     initialInsight={analysis.ai_insight || null}
                                                 />
                                             </td>
-                                            <td className="p-4">
-                                                <Input
-                                                    type="text"
-                                                    value={notes[analysis.id] || ""}
-                                                    onChange={(e) => handleNoteChange(analysis.id, e.target.value)}
-                                                    placeholder="Add note..."
-                                                    className={cn(
-                                                        "w-48 text-[11px] bg-slate-900/30 border-slate-800 text-slate-300 placeholder:text-slate-700",
-                                                        specStatus === "fail" && (notes[analysis.id] || "").trim() === "" && "border-amber-500/50 bg-amber-500/5 placeholder:text-amber-500/40"
-                                                    )}
-                                                    disabled={isValidated}
-                                                />
+                                            <td className="p-6 text-center">
+                                                {getAnalysisStatusBadge(analysis.status)}
                                             </td>
-                                            <td className="p-4 text-center">
-                                                {specStatus === "pass" && (
-                                                    <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20 gap-1 px-2.5 py-0.5 text-[10px] font-bold">
-                                                        <CheckCircle className="h-3 w-3" />
-                                                        PASS
-                                                    </Badge>
-                                                )}
-                                                {specStatus === "fail" && (
-                                                    <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/20 gap-1 px-2.5 py-0.5 text-[10px] font-bold">
-                                                        <XCircle className="h-3 w-3" />
-                                                        FAIL
-                                                    </Badge>
-                                                )}
-                                                {specStatus === "unknown" && (
-                                                    <Badge variant="outline" className="text-slate-600 border-slate-800 bg-slate-900/50 px-2.5 py-0.5 text-[10px]">
-                                                        PENDING
-                                                    </Badge>
-                                                )}
+                                            <td className="p-6 text-center">
+                                                <div className="flex justify-center">
+                                                    {specStatus === "pass" && (
+                                                        <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase">
+                                                            <CheckCircle className="h-3 w-3" />
+                                                            Conforme
+                                                        </div>
+                                                    )}
+                                                    {specStatus === "fail" && (
+                                                        <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-black uppercase">
+                                                            <XCircle className="h-3 w-3" />
+                                                            OOS
+                                                        </div>
+                                                    )}
+                                                    {specStatus === "unknown" && (
+                                                        <div className="text-slate-600 text-[10px] font-bold uppercase">Pendente</div>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -386,21 +406,16 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                             </tbody>
                         </table>
                     </div>
-
-                    {!isValidated && (
-                        <div className="flex justify-end gap-3 items-center mt-8">
-                            <Button
-                                onClick={handleOpenSignature}
-                                disabled={loading}
-                                className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 px-8 py-6 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                                SIGN & FINALIZE RESULTS (AI AUTO-VALIDATION)
-                            </Button>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
+
+            <IndustrialExecutionWizard
+                open={wizardOpen}
+                onOpenChange={setWizardOpen}
+                analyses={analyses}
+                specs={specs}
+                sample={sample}
+            />
 
             <SignatureDialog
                 open={signatureOpen}
@@ -408,6 +423,15 @@ export function AnalysisForm({ sampleId, sampleCode, analyses, specs, isValidate
                 loading={loading}
                 onConfirm={handleSignAndSave}
             />
+        </div>
+    );
+}
+
+function StatBox({ label, value, color = "text-white" }: { label: string, value: string | number, color?: string }) {
+    return (
+        <div className="text-center px-4 md:px-6 border-r border-white/5 last:border-0">
+            <div className={cn("text-2xl font-black tracking-tighter", color)}>{value}</div>
+            <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{label}</div>
         </div>
     );
 }

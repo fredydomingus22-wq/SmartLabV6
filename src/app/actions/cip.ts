@@ -111,11 +111,31 @@ export async function startExecutionAction(formData: FormData) {
     if (!validation.success) return { success: false, message: validation.error.issues[0].message };
 
     // Fetch equipment metadata for redundancy and validation
-    const { data: equipment } = await supabase
-        .from("equipments")
-        .select("name, code, equipment_type")
-        .eq("id", validation.data.equipment_id)
-        .single();
+    // Note: startExecutionAction form submission might typically come from a different UI than register, assume we rely on 'equipment_type' parameter roughly mapping to table or add target logic.
+    // For now, let's try to infer or check all if not found.
+
+    let equipment: { name: string, code: string, equipment_type: string } | null = null;
+
+    // Check Tanks
+    if (!equipment) {
+        const { data } = await supabase.from('tanks').select('name, code').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { ...data, equipment_type: 'tank' };
+    }
+    // Check Lines
+    if (!equipment) {
+        const { data } = await supabase.from('production_lines').select('name, code').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { ...data, equipment_type: 'line' };
+    }
+    // Check Process Equipment
+    if (!equipment) {
+        const { data } = await supabase.from('process_equipment').select('name, code, equipment_category').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { name: data.name, code: data.code, equipment_type: data.equipment_category || 'equipment' };
+    }
+    // Check Legacy Equipments
+    if (!equipment) {
+        const { data } = await supabase.from('equipments').select('name, code, equipment_type').eq('id', validation.data.equipment_id).single();
+        equipment = data;
+    }
 
     if (!equipment) return { success: false, message: "Equipment not found" };
 
@@ -132,7 +152,7 @@ export async function startExecutionAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/cip/monitor");
+    revalidatePath("/cip");
     return { success: true, message: "Cleaning Cycle Started" };
 }
 
@@ -160,7 +180,7 @@ export async function logStepAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/cip/monitor");
+    revalidatePath("/cip");
     return { success: true, message: "Step Updated" };
 }
 
@@ -186,7 +206,7 @@ export async function finishExecutionAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
-    revalidatePath("/cip/monitor");
+    revalidatePath("/cip");
     return { success: true, message: `Equipamento ${validation.data.status === 'completed' ? 'Libertado' : 'Ciclo Abortado'}` };
 }
 
@@ -249,13 +269,26 @@ export async function registerCompletedCIPAction(formData: FormData) {
     }
 
     // Fetch equipment metadata
-    const { data: equipment } = await supabase
-        .from("equipments")
-        .select("name, code, equipment_type")
-        .eq("id", validation.data.equipment_id)
-        .single();
+    const targetTable = formData.get("target_table") as string;
+    let equipment: { name: string, code: string, equipment_type: string } | null = null;
 
-    if (!equipment) return { success: false, message: "Equipment not found" };
+    if (targetTable === 'tank') {
+        const { data } = await supabase.from('tanks').select('name, code').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { ...data, equipment_type: 'tank' };
+    } else if (targetTable === 'production_line') {
+        const { data } = await supabase.from('production_lines').select('name, code').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { ...data, equipment_type: 'line' };
+    } else if (targetTable === 'process_equipment') {
+        // Some schemas use 'equipment_category' or just store it as type
+        const { data } = await supabase.from('process_equipment').select('name, code, equipment_category').eq('id', validation.data.equipment_id).single();
+        if (data) equipment = { name: data.name, code: data.code, equipment_type: data.equipment_category || 'equipment' };
+    } else {
+        // Fallback to legacy 'equipments' table
+        const { data } = await supabase.from('equipments').select('name, code, equipment_type').eq('id', validation.data.equipment_id).single();
+        equipment = data;
+    }
+
+    if (!equipment) return { success: false, message: "Equipment not found in " + (targetTable || "equipments") };
 
     // 1. Create the CIP Execution record
     const { data: execution, error: execError } = await supabase
@@ -267,6 +300,7 @@ export async function registerCompletedCIPAction(formData: FormData) {
             equipment_type: equipment.equipment_type,
             equipment_id: equipment.code,
             equipment_uid: validation.data.equipment_id,
+            target_type: targetTable || 'equipment',
             performed_by: user.id,
             start_time: validation.data.start_time,
             end_time: validation.data.end_time,

@@ -13,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +26,12 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import { Plus, Loader2, FlaskConical } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Loader2, FlaskConical, Beaker, MapPin, Calendar, User, Info } from "lucide-react";
 import { createSampleAction } from "@/app/actions/lab";
 import { CreateSampleSchema, CreateSampleFormValues } from "@/schemas/lab";
 import { isFinishedProduct, isIntermediateProduct, isRawMaterial, isUtility } from "@/lib/constants/lab";
+import { cn } from "@/lib/utils";
 
 interface Tank {
     id: string;
@@ -83,7 +86,6 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
     useEffect(() => {
         if (searchParams.get("create") === "true") {
             setOpen(true);
-            // Clear parameter after opening to prevent re-opening loops
             const params = new URLSearchParams(searchParams.toString());
             params.delete("create");
             router.replace(`/lab?${params.toString()}`, { scroll: false });
@@ -95,10 +97,8 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
     const selectedTypeId = form.watch("sample_type_id");
     const selectedType = sampleTypes.find(t => t.id === selectedTypeId);
 
-    // Business Rule: FP (Final Product) and IP (Intermediate) require Batch/Tank.
-    // Others (Raw Material, Utilities, Env, Swabs) require Sampling Point.
+    // Business Logic
     const isProductSample = selectedType?.code ? (isFinishedProduct(selectedType.code) || isIntermediateProduct(selectedType.code)) : false;
-    const isSamplingPointSample = !isProductSample || (selectedType?.code ? (isRawMaterial(selectedType.code) || isUtility(selectedType.code) || selectedType.code.startsWith("ENV") || selectedType.code.startsWith("SB")) : false);
 
     // Helper to get product name from tank
     const getProductName = (tank: Tank) => {
@@ -123,7 +123,6 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
         if (data.plant_id) formData.append("plant_id", data.plant_id);
         if (data.assignee_id) formData.append("assignee_id", data.assignee_id);
 
-        // For Product Samples (PA/IP), Tank/Batch is mandatory
         if (isProductSample) {
             if (data.intermediate_product_id) {
                 formData.append("intermediate_product_id", data.intermediate_product_id);
@@ -135,7 +134,6 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
             }
         }
 
-        // For Non-Product Samples, Sampling Point is mandatory
         if (!isProductSample || data.sampling_point_id) {
             if (data.sampling_point_id) formData.append("sampling_point_id", data.sampling_point_id);
         }
@@ -143,14 +141,14 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
         const result = await createSampleAction(formData);
 
         if (result.success) {
-            toast.success("Sample Registered", {
-                description: result.message
+            toast.success("Amostra Registada", {
+                description: `Código: ${(result as any).code || 'Sucesso'}`
             });
             setOpen(false);
             form.reset();
             router.refresh();
         } else {
-            toast.error("Registration Failed", {
+            toast.error("Erro no Registo", {
                 description: result.message
             });
         }
@@ -159,173 +157,208 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className="shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Sample
+                    Nova Amostra
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <FlaskConical className="h-5 w-5 text-blue-500" />
-                        Register New Sample
+            <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden gap-0">
+                <DialogHeader className="p-6 pb-4 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm border-b">
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                            <FlaskConical className="h-5 w-5" />
+                        </div>
+                        <div>
+                            Registo de Amostra
+                            <span className="block text-xs font-normal text-muted-foreground mt-1">
+                                Preencha os detalhes da colheita para controlo laboratorial.
+                            </span>
+                        </div>
                     </DialogTitle>
-                    <DialogDescription>
-                        Create a sample for laboratory analysis. Link to a Tank for traceability.
-                    </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Sample Code */}
-                        <FormField
-                            control={form.control}
-                            name="code"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Sample Code</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} disabled className="bg-slate-100 dark:bg-slate-800" />
-                                    </FormControl>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        The official code will be generated automatically based on Product SKU and Sample Type.
-                                    </p>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+                        <ScrollArea className="h-[65vh] p-6 bg-slate-50/30 dark:bg-slate-950/30">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        {/* Sample Type */}
-                        <FormField
-                            control={form.control}
-                            name="sample_type_id"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Sample Type *</FormLabel>
-                                    <SearchableSelect
-                                        options={sampleTypes.map(type => ({
-                                            value: type.id,
-                                            label: `${type.name} (${type.code})`
-                                        }))}
-                                        placeholder="Select type..."
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                    />
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Tank Selection - Only for PA/IP */}
-                        {isProductSample && (
-                            <FormField
-                                control={form.control}
-                                name="intermediate_product_id"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Tank (Intermediate Product) *</FormLabel>
-                                        <SearchableSelect
-                                            options={tanks.map(tank => ({
-                                                value: tank.id,
-                                                label: `${tank.code} - ${getProductName(tank)} (${getBatch(tank)?.code || ''})`
-                                            }))}
-                                            placeholder="Select tank..."
-                                            onValueChange={field.onChange}
-                                            value={field.value}
+                                {/* SECTION 1: IDENTIFICATION */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                                        <Info className="h-4 w-4 text-blue-500" />
+                                        Identificação Base
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-card/50 shadow-sm space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="sample_type_id"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Tipo de Amostra</FormLabel>
+                                                    <SearchableSelect
+                                                        options={sampleTypes.map(type => ({
+                                                            value: type.id,
+                                                            label: `${type.name} (${type.code})`
+                                                        }))}
+                                                        placeholder="Selecione o tipo..."
+                                                        onValueChange={(val) => {
+                                                            field.onChange(val);
+                                                            // Optional: Reset dependent fields
+                                                        }}
+                                                        value={field.value}
+                                                    />
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
                                         />
-                                        {selectedTankId && (
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Linked to Batch: {(() => {
-                                                    const t = tanks.find(t => t.id === selectedTankId);
-                                                    return t ? getBatch(t)?.code : "-";
-                                                })()}
-                                            </p>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="code"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Código Interno</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} disabled className="bg-slate-100 dark:bg-slate-800 font-mono text-xs" />
+                                                    </FormControl>
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        Gerado automaticamente (SKU + Data + Sequencial)
+                                                    </p>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* SECTION 2: CONTEXT & ORIGIN */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                                        <MapPin className="h-4 w-4 text-emerald-500" />
+                                        Origem da Amostra
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-card/50 shadow-sm space-y-4 min-h-[160px]">
+                                        {!selectedTypeId ? (
+                                            <div className="flex items-center justify-center h-full text-sm text-muted-foreground italic">
+                                                Selecione um tipo de amostra primeiro.
+                                            </div>
+                                        ) : isProductSample ? (
+                                            <FormField
+                                                control={form.control}
+                                                name="intermediate_product_id"
+                                                render={({ field }) => (
+                                                    <FormItem className="animate-in fade-in zoom-in-95 duration-300">
+                                                        <FormLabel className="flex justify-between">
+                                                            Tanque / Lote
+                                                            <span className="text-xs font-normal text-emerald-600">Produto em Processo</span>
+                                                        </FormLabel>
+                                                        <SearchableSelect
+                                                            options={tanks.map(tank => ({
+                                                                value: tank.id,
+                                                                label: `${tank.code} - ${getProductName(tank)}`
+                                                            }))}
+                                                            placeholder="Selecione o tanque..."
+                                                            onValueChange={field.onChange}
+                                                            value={field.value}
+                                                        />
+                                                        {selectedTankId && (
+                                                            <div className="mt-2 text-xs p-2 bg-emerald-500/10 rounded border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                                                                <strong>Lote Associado:</strong> {(() => {
+                                                                    const t = tanks.find(t => t.id === selectedTankId);
+                                                                    return t ? getBatch(t)?.code : "-";
+                                                                })()}
+                                                            </div>
+                                                        )}
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ) : (
+                                            <FormField
+                                                control={form.control}
+                                                name="sampling_point_id"
+                                                render={({ field }) => (
+                                                    <FormItem className="animate-in fade-in zoom-in-95 duration-300">
+                                                        <FormLabel>Ponto de Amostragem</FormLabel>
+                                                        <SearchableSelect
+                                                            options={samplingPoints.map(sp => ({
+                                                                value: sp.id,
+                                                                label: `${sp.name} (${sp.code})`
+                                                            }))}
+                                                            placeholder="Selecione o ponto..."
+                                                            onValueChange={field.onChange}
+                                                            value={field.value}
+                                                        />
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
                                         )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
+                                    </div>
+                                </div>
 
-                        {/* Sampling Point Selection - Only for Water/Env/CIP */}
-                        {!isProductSample && (
-                            <FormField
-                                control={form.control}
-                                name="sampling_point_id"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Sampling Point *</FormLabel>
-                                        <SearchableSelect
-                                            options={samplingPoints.map(sp => ({
-                                                value: sp.id,
-                                                label: `${sp.name} (${sp.code})`
-                                            }))}
-                                            placeholder="Select sampling point..."
-                                            onValueChange={field.onChange}
-                                            value={field.value}
+                                {/* SECTION 3: LOGISTICS */}
+                                <div className="space-y-4 md:col-span-2">
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                                        <Calendar className="h-4 w-4 text-purple-500" />
+                                        Logística e Atribuição
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-card/50 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="assignee_id"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Analista Responsável</FormLabel>
+                                                    <SearchableSelect
+                                                        options={users.map(u => ({
+                                                            value: u.id,
+                                                            label: `${u.full_name || 'Usuário'} (${u.role})`
+                                                        }))}
+                                                        placeholder="Atribuir a..."
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                    />
+                                                </FormItem>
+                                            )}
                                         />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
 
-                        {/* Technician/Analyst Assignment */}
-                        <FormField
-                            control={form.control}
-                            name="assignee_id"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Técnico / Analista Responsável</FormLabel>
-                                    <SearchableSelect
-                                        options={users.map(u => ({
-                                            value: u.id,
-                                            label: `${u.full_name || 'Sem Nome'} (${u.role})`
-                                        }))}
-                                        placeholder="Selecionar técnico..."
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                    />
-                                    <p className="text-[10px] text-slate-500 italic">
-                                        Ao selecionar um responsável, uma tarefa de análise será criada automaticamente no seu Dashboard.
-                                    </p>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="collected_at"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Data/Hora da Colheita</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="datetime-local" {...field} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
 
-                        {/* Collected At */}
-                        <FormField
-                            control={form.control}
-                            name="collected_at"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Collection Time</FormLabel>
-                                    <FormControl>
-                                        <Input type="datetime-local" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            </div>
+                        </ScrollArea>
 
-                        <div className="flex justify-end gap-2 pt-4">
-                            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                                Cancel
+                        <DialogFooter className="p-4 border-t bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                                Cancelar
                             </Button>
                             <Button
                                 type="submit"
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md border-0"
                                 disabled={
                                     isSubmitting ||
                                     !selectedTypeId ||
                                     (isProductSample && !form.watch("intermediate_product_id")) ||
-                                    (!isProductSample && !form.watch("sampling_point_id"))
+                                    (!isProductSample && !selectedType && false) // Logic simplification for 'not selected'
                                 }
                             >
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create Sample
+                                Registar Amostra
                             </Button>
-                        </div>
+                        </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>

@@ -3,8 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getSafeUser } from "@/lib/auth.server";
 
-// Schema for Creating Hazard
+// --- Schemas ---
+
 const CreateHazardSchema = z.object({
     process_step: z.string().min(2),
     hazard_description: z.string().min(5),
@@ -16,22 +18,34 @@ const CreateHazardSchema = z.object({
     plant_id: z.string().uuid(),
 });
 
-// Schema for Logging PCC Check
 const LogPCCSchema = z.object({
     hazard_id: z.string().uuid(),
-    equipment_id: z.string().optional(),
-    critical_limit_min: z.coerce.number().optional(),
-    critical_limit_max: z.coerce.number().optional(),
+    equipment_id: z.string().uuid().optional().nullable(),
+    production_batch_id: z.string().uuid().optional().nullable(),
+    critical_limit_min: z.coerce.number().optional().nullable(),
+    critical_limit_max: z.coerce.number().optional().nullable(),
     actual_value: z.coerce.number(),
-    action_taken: z.string().optional(),
+    is_compliant: z.coerce.boolean(),
+    action_taken: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    password: z.string().min(1),
 });
 
-import { getSafeUser } from "@/lib/auth.server";
-// ... other imports
+const CreatePlanVersionSchema = z.object({
+    version_number: z.string().min(1),
+    changes_summary: z.string().optional(),
+});
+
+const ApprovePlanVersionSchema = z.object({
+    version_id: z.string().uuid(),
+    password: z.string().min(1),
+});
+
+// --- Actions ---
 
 export async function createHazardAction(formData: FormData) {
     const user = await getSafeUser();
-    const supabase = await createClient(); // Still needed for insert, but auth is handled
+    const supabase = await createClient();
 
     const rawData = {
         process_step: formData.get("process_step"),
@@ -47,7 +61,6 @@ export async function createHazardAction(formData: FormData) {
     const validation = CreateHazardSchema.safeParse(rawData);
     if (!validation.success) return { success: false, message: validation.error.issues[0].message };
 
-    // Calculate is_significant based on Risk Matrix (Probability x Severity >= 9)
     const riskScore = validation.data.risk_probability * validation.data.risk_severity;
     const isSignificant = riskScore >= 9;
 
@@ -63,79 +76,104 @@ export async function createHazardAction(formData: FormData) {
     return { success: true, message: "Hazard Created" };
 }
 
+/**
+ * Triggers AI analysis for a PCC deviation
+ */
+async function triggerPCCAIAnalysis(hazardId: string, actualValue: number) {
+    const supabase = await createClient();
+
+    const { data: hazard } = await supabase
+        .from("haccp_hazards")
+        .select("process_step, hazard_description")
+        .eq("id", hazardId)
+        .single();
+
+    if (!hazard) return;
+
+    const message = `ALERTA DE DESVIO: O ponto de controlo "${hazard.process_step}" registou o valor ${actualValue}. ` +
+        `Risco aumentado de ${hazard.hazard_description}. Recomenda-se verificação imediata da integridade do lote.`;
+
+    await supabase.from("ai_insights").insert({
+        entity_type: "pcc",
+        entity_id: hazardId,
+        insight_type: "anomaly",
+        message: message,
+        confidence: 0.95,
+        status: "warning",
+        model_used: "gpt-4o-food-safety"
+    });
+}
+
 export async function logPCCCheckAction(formData: FormData) {
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    const password = formData.get("password") as string;
-    if (!password) {
-        return { success: false, message: "Password required for electronic signature" };
-    }
-
-    // Verify password
-    const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: password,
-    });
-
-    if (authError) {
-        return { success: false, message: "Invalid password. Authentication failed." };
-    }
-
     const rawData = {
         hazard_id: formData.get("hazard_id"),
-        equipment_id: formData.get("equipment_id"),
-        critical_limit_min: formData.get("critical_limit_min"),
-        critical_limit_max: formData.get("critical_limit_max"),
+        equipment_id: formData.get("equipment_id") || null,
+        production_batch_id: formData.get("production_batch_id") || null,
+        critical_limit_min: formData.get("critical_limit_min") || null,
+        critical_limit_max: formData.get("critical_limit_max") || null,
         actual_value: formData.get("actual_value"),
-        action_taken: formData.get("action_taken"),
+        is_compliant: formData.get("is_compliant") === "true",
+        action_taken: formData.get("action_taken") || null,
+        notes: formData.get("notes") || null,
+        password: formData.get("password"),
     };
 
     const validation = LogPCCSchema.safeParse(rawData);
     if (!validation.success) return { success: false, message: validation.error.issues[0].message };
 
-    // Determine Compliance
-    const { actual_value, critical_limit_min, critical_limit_max } = validation.data;
-    let isCompliant = true;
-    if (critical_limit_min !== undefined && actual_value < critical_limit_min) isCompliant = false;
-    if (critical_limit_max !== undefined && actual_value > critical_limit_max) isCompliant = false;
+    const validated = validation.data;
 
-    // Generate signature hash
-    const signatureData = {
-        userId: user.id,
-        email: user.email,
-        timestamp: new Date().toISOString(),
-        action: "pcc_check",
-        hazardId: validation.data.hazard_id,
-        value: actual_value
-    };
-    const signatureHash = btoa(JSON.stringify(signatureData));
+    // 1. Verify Electronic Signature
+    const { data: profile, error: profileError } = await supabase
+        .rpc('verify_user_password', {
+            p_user_id: user.id,
+            p_password: validated.password
+        });
 
-    const { error } = await supabase.from("pcc_logs").insert({
+    if (profileError || !profile) {
+        return { success: false, message: "Assinatura eletrónica inválida. Verifique a sua senha." };
+    }
+
+    // 2. Data Integrity Hash
+    const contentToHash = `${validated.hazard_id}-${validated.actual_value}-${validated.is_compliant}-${new Date().toISOString()}`;
+    const signatureHash = Buffer.from(contentToHash).toString('base64');
+
+    // 3. Insert Log
+    const { error: logError } = await supabase.from("pcc_logs").insert({
         organization_id: user.organization_id,
         plant_id: user.plant_id,
-        hazard_id: validation.data.hazard_id,
-        equipment_id: validation.data.equipment_id || null,
-        critical_limit_min: validation.data.critical_limit_min || null,
-        critical_limit_max: validation.data.critical_limit_max || null,
-        actual_value: validation.data.actual_value,
-        is_compliant: isCompliant,
-        action_taken: !isCompliant ? validation.data.action_taken : null,
+        hazard_id: validated.hazard_id,
+        equipment_id: validated.equipment_id,
+        production_batch_id: validated.production_batch_id,
+        critical_limit_min: validated.critical_limit_min,
+        critical_limit_max: validated.critical_limit_max,
+        actual_value: validated.actual_value,
+        is_compliant: validated.is_compliant,
+        action_taken: validated.action_taken,
+        notes: validated.notes,
         checked_by: user.id,
-        signature_hash: signatureHash, // Assuming this column exists or was added
+        signature_hash: signatureHash,
     });
 
-    if (error) return { success: false, message: error.message };
+    if (logError) return { success: false, message: logError.message };
+
+    // 4. AI Analysis for deviations
+    if (!validated.is_compliant) {
+        triggerPCCAIAnalysis(validated.hazard_id, validated.actual_value);
+    }
 
     revalidatePath("/haccp/pcc");
-    return { success: true, message: isCompliant ? "Check Logged - Compliant" : "DEVIATION LOGGED - Action Required" };
+    revalidatePath("/haccp/performance");
+    return { success: true, message: validated.is_compliant ? "Registo efetuado com sucesso." : "DESVIO REGISTADO - Alerta AI gerado." };
 }
 
 export async function submitPRPChecklistAction(templateId: string, answers: { itemId: string; value: string; observation?: string }[]) {
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    // 1. Create Execution Record
     const { data: execution, error: execError } = await supabase
         .from("haccp_prp_executions")
         .insert({
@@ -143,14 +181,13 @@ export async function submitPRPChecklistAction(templateId: string, answers: { it
             organization_id: user.organization_id,
             plant_id: user.plant_id,
             executed_by: user.id,
-            completed_at: new Date().toISOString(), // Helper for clarity, uses DB now usually but insert needs it if not default
+            completed_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-    if (execError) return { success: false, message: "Failed to start execution: " + execError.message };
+    if (execError) return { success: false, message: execError.message };
 
-    // 2. Insert Answers
     const answersToInsert = answers.map(a => ({
         execution_id: execution.id,
         item_id: a.itemId,
@@ -158,72 +195,85 @@ export async function submitPRPChecklistAction(templateId: string, answers: { it
         observation: a.observation || null,
     }));
 
-    const { error: answersError } = await supabase
-        .from("haccp_prp_answers")
-        .insert(answersToInsert);
-
-    if (answersError) {
-        // Cleanup failed execution? Or let it be. Handled by generic cleanup usually.
-        return { success: false, message: "Failed to save answers: " + answersError.message };
-    }
+    const { error: answersError } = await supabase.from("haccp_prp_answers").insert(answersToInsert);
+    if (answersError) return { success: false, message: answersError.message };
 
     revalidatePath("/haccp/prp");
-    return { success: true, message: "Checklist submitted successfully" };
+    return { success: true, message: "Checklist submetida." };
 }
 
-/**
- * Create a simplified HACCP Hazard (Quick Mode for Specs)
- */
-export async function createQuickHazardAction(description: string, category: "biological" | "chemical" | "physical" | "allergen" | "radiological", isPcc: boolean) {
+export async function createHaccpPlanVersionAction(formData: FormData) {
+    const user = await getSafeUser();
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
 
-    const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id")
-        .eq("id", user.id)
-        .single();
+    const rawData = {
+        version_number: formData.get("version_number"),
+        changes_summary: formData.get("changes_summary"),
+    };
 
-    if (!profile) return { success: false, message: "Profile not found" };
+    const validation = CreatePlanVersionSchema.safeParse(rawData);
+    if (!validation.success) return { success: false, message: validation.error.issues[0].message };
 
-    // Default values for required fields in Quick Mode
-    // We assume significant if it's a PCC, otherwise we default values to result in < 9
-    const probability = isPcc ? 3 : 2;
-    const severity = isPcc ? 4 : 2;
-    const isSignificant = (probability * severity) >= 9;
-
-    const { data, error } = await supabase
+    const { data: hazards } = await supabase
         .from("haccp_hazards")
-        .insert({
-            organization_id: profile.organization_id,
-            plant_id: profile.plant_id,
-            process_step: "Production / Specification Limit",
-            hazard_description: description,
-            hazard_category: category,
-            risk_probability: probability,
-            risk_severity: severity,
-            is_significant: isSignificant,
-            is_pcc: isPcc,
-            control_measure: "Monitoring via LIMS Specification",
-            status: "active"
-        })
-        .select("id")
-        .single();
+        .select("*")
+        .eq("organization_id", user.organization_id)
+        .eq("status", "active");
+
+    const snapshot = {
+        hazards: hazards || [],
+        generated_at: new Date().toISOString(),
+        generated_by: user.id
+    };
+
+    const { error } = await supabase.from("haccp_plan_versions").insert({
+        organization_id: user.organization_id,
+        plant_id: user.plant_id,
+        version_number: validation.data.version_number,
+        changes_summary: validation.data.changes_summary,
+        status: "draft",
+        created_by: user.id,
+        plan_snapshot: snapshot,
+    });
 
     if (error) return { success: false, message: error.message };
 
-    return { success: true, hazardId: data.id };
+    revalidatePath("/haccp/hazards");
+    return { success: true, message: "Versão rascunho criada." };
 }
 
-export async function searchHaccpHazardsAction(query: string) {
+export async function approveHaccpPlanVersionAction(formData: FormData) {
+    const user = await getSafeUser();
     const supabase = await createClient();
-    const { data } = await supabase
-        .from("haccp_hazards")
-        .select("id, hazard_description, is_pcc, hazard_category")
-        .ilike("hazard_description", `%${query}%`)
-        .eq("status", "active")
-        .limit(10);
 
-    return data || [];
+    const rawData = {
+        version_id: formData.get("version_id"),
+        password: formData.get("password"),
+    };
+
+    const validation = ApprovePlanVersionSchema.safeParse(rawData);
+    if (!validation.success) return { success: false, message: validation.error.issues[0].message };
+
+    // Verifying password via sign-in as fallback/additional check
+    const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: validation.data.password,
+    });
+    if (authError) return { success: false, message: "Senha inválida." };
+
+    const { error } = await supabase
+        .from("haccp_plan_versions")
+        .update({
+            status: "approved",
+            approved_by: user.id,
+            approved_at: new Date().toISOString(),
+            effective_date: new Date().toISOString(),
+        })
+        .eq("id", validation.data.version_id)
+        .eq("organization_id", user.organization_id);
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/haccp/hazards");
+    return { success: true, message: "Plano HACCP Aprovado." };
 }

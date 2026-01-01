@@ -12,6 +12,9 @@ interface AnalysisResult {
     min_limit?: string | number;
     max_limit?: string | number;
     status: 'pending' | 'compliant' | 'non_compliant';
+    instrument?: string;
+    min_limit_display?: string;
+    max_limit_display?: string;
 }
 
 interface SampleData {
@@ -147,15 +150,12 @@ export const CertificateOfAnalysis = ({ sample, analyses, organization, approver
                     <Text style={{ fontWeight: 'bold' }}>{approver?.name || '________________'}</Text>
                     <Text>{approver?.role || 'Quality Manager'}</Text>
                 </View>
-                {/* Can add another signature block here if needed */}
             </View>
 
             {/* Footer */}
             <View style={styles.footer}>
                 <Text>This report is electronically generated and valid without a manual signature. {organization.name} - {organization.address}</Text>
-                <Text render={({ pageNumber, totalPages }) => (
-                    `Page ${pageNumber} of ${totalPages}`
-                )} fixed />
+                <Text>CONFIDENTIAL DOCUMENT</Text>
             </View>
 
         </Page>

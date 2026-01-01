@@ -28,18 +28,31 @@ export interface SampleCardProps {
         sampling_point?: {
             name: string;
         };
+        ai_risk_status?: 'approved' | 'warning' | 'blocked' | 'info';
+        ai_risk_message?: string;
     };
     onEnterResults: (sampleId: string) => void;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+    draft: { label: "Rascunho", color: "text-slate-500", bg: "bg-slate-500/10", icon: MoreHorizontal },
     pending: { label: "Pendente", color: "text-amber-500", bg: "bg-amber-500/10", icon: Clock },
     collected: { label: "Colhida", color: "text-blue-400", bg: "bg-blue-400/10", icon: Database },
-    in_analysis: { label: "Análise", color: "text-purple-400", bg: "bg-purple-400/10", icon: Beaker },
-    reviewed: { label: "Revista", color: "text-emerald-400", bg: "bg-emerald-400/10", icon: CheckCircle2 },
-    approved: { label: "Aprovada", color: "text-green-500", bg: "bg-green-500/10", icon: CheckCircle2 },
+    in_analysis: { label: "Análise", color: "text-amber-400", bg: "bg-amber-400/10", icon: Beaker },
+    under_review: { label: "Revisão", color: "text-purple-400", bg: "bg-purple-400/10", icon: ShieldCheck },
+    approved: { label: "Aprovada", color: "text-emerald-400", bg: "bg-emerald-400/10", icon: CheckCircle2 },
     rejected: { label: "Rejeitada", color: "text-rose-400", bg: "bg-rose-400/10", icon: AlertCircle },
+    released: { label: "Libertada", color: "text-indigo-400", bg: "bg-indigo-400/10", icon: ShieldCheck },
 };
+
+const riskConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+    blocked: { label: "Crítico", color: "text-rose-500", bg: "bg-rose-500/20", icon: ShieldAlert },
+    warning: { label: "Atenção", color: "text-amber-500", bg: "bg-amber-500/20", icon: ShieldAlert },
+    approved: { label: "Seguro", color: "text-emerald-500", bg: "bg-emerald-500/20", icon: ShieldCheck },
+    info: { label: "Info", color: "text-blue-500", bg: "bg-blue-500/20", icon: Info },
+};
+
+import { ShieldCheck, ShieldAlert, Info } from "lucide-react";
 
 
 export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
@@ -66,8 +79,18 @@ export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
                         {sample.type?.name}
                     </p>
                 </div>
-                <div className={cn("p-2 rounded-xl border border-white/5 shadow-inner", status.bg, status.color)}>
-                    <status.icon className="h-4 w-4" />
+                <div className="flex items-center gap-2">
+                    {sample.ai_risk_status && (
+                        <div className={cn("p-1.5 rounded-lg border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
+                            {(() => {
+                                const Icon = riskConfig[sample.ai_risk_status].icon;
+                                return <Icon className="h-3.5 w-3.5" />;
+                            })()}
+                        </div>
+                    )}
+                    <div className={cn("p-2 rounded-xl border border-white/5 shadow-inner", status.bg, status.color)}>
+                        <status.icon className="h-4 w-4" />
+                    </div>
                 </div>
             </div>
 

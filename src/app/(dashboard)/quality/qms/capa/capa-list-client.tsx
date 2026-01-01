@@ -103,6 +103,11 @@ export function CAPAListClient({ capas }: CAPAListClientProps) {
             label: "",
             render: (row: CAPA) => (
                 <div className="flex gap-2">
+                    <Link href={`/quality/qms/capa/${row.id}`}>
+                        <Button variant="ghost" size="sm" title="Ver Detalhes" className="hover:bg-slate-800 text-emerald-400">
+                            <Eye className="h-4 w-4" />
+                        </Button>
+                    </Link>
                     <CAPAStatusUpdate capaId={row.id} currentStatus={row.status} />
                     {row.nonconformity_id && (
                         <Link href={`/quality/qms/${row.nonconformity_id}`}>

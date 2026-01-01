@@ -1,4 +1,4 @@
-import { getNonconformityById } from "@/lib/queries/qms";
+import { getNonconformityById, getOrganizationUsers } from "@/lib/queries/qms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,8 @@ import {
     ShieldAlert,
     Target,
     Activity,
-    Info
+    Info,
+    Eye
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -39,6 +40,7 @@ interface PageProps {
 export default async function NCDetailPage({ params }: PageProps) {
     const { id } = await params;
     const { nc, capas, eightD, error } = await getNonconformityById(id);
+    const { data: users } = await getOrganizationUsers();
 
     if (!nc || error) {
         notFound();
@@ -199,7 +201,7 @@ export default async function NCDetailPage({ params }: PageProps) {
                                     <CardDescription>{capas.length} ações corretivas/preventivas</CardDescription>
                                 </div>
                             </div>
-                            <CreateCAPADialog ncId={nc.id} />
+                            <CreateCAPADialog ncId={nc.id} users={users} />
                         </CardHeader>
                         <CardContent className="p-0">
                             {capas.length === 0 ? (
@@ -240,7 +242,14 @@ export default async function NCDetailPage({ params }: PageProps) {
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-2">
-                                                    <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
+                                                    <div className="flex gap-2">
+                                                        <Link href={`/quality/qms/capa/${capa.id}`}>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full hover:bg-emerald-500/10 text-emerald-400">
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                        <CAPAStatusUpdate capaId={capa.id} currentStatus={capa.status} />
+                                                    </div>
 
                                                     {/* Effectiveness Review Hook */}
                                                     {['completed', 'verification'].includes(capa.status) && (

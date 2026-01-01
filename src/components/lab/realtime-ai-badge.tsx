@@ -21,10 +21,14 @@ export function RealtimeAIBadge({ analysisId, initialInsight }: RealtimeAIBadgeP
     const [isPending, startTransition] = useTransition();
     const supabase = createClient();
 
-    const handleRevalidate = (e: React.MouseEvent) => {
+    const handleRevalidate = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        startTransition(async () => {
-            const res = await revalidateAI(analysisId);
+
+        // Execute the async work outside startTransition
+        const res = await revalidateAI(analysisId);
+
+        // Use transition only for the side effects/revalidation state if needed
+        startTransition(() => {
             if (res.success) {
                 toast.success("AI Re-validation requested");
             } else {

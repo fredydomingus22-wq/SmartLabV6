@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FlaskConical, CheckCircle, Clock, User, MapPin, XCircle, Sparkles, AlertTriangle, ShieldAlert, TestTube2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, CheckCircle, Clock, User, MapPin, XCircle, Sparkles, AlertTriangle, ShieldAlert, TestTube2, Info } from "lucide-react";
 import Link from "next/link";
 import { pt } from "date-fns/locale";
 import { AnalysisForm } from "./analysis-form";
@@ -13,7 +13,10 @@ import { ValidateDialog } from "./validate-dialog";
 import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
 import { PDFDownloadButton } from "@/components/reports/PDFDownloadButton";
 import { CertificateOfAnalysis } from "@/components/reports/templates/CertificateOfAnalysis";
+import { cn } from "@/lib/utils";
 import { AiInsightsCard } from "@/components/lab/ai-insights-card";
+import { approveSampleAction, reviewSampleAction } from "@/app/actions/lab_modules/approvals";
+import { getSafeUser } from "@/lib/auth.server";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +35,10 @@ interface Analysis {
     qa_parameter_id: string;
     analysis_method: string | null;
     equipment_id: string | null;
+    status: 'pending' | 'started' | 'completed' | 'reviewed' | 'validated' | 'invalidated';
     parameter: { id: string; name: string; code: string; unit: string | null } | null;
     analyst?: { full_name: string } | null;
+    equipment?: { id: string; name: string; code: string; next_calibration_date: string; status: string } | null;
     final_value?: string | number | null;
     ai_insight?: { status: 'approved' | 'warning' | 'blocked' | 'info'; message: string; confidence: number } | null;
 }
@@ -42,37 +47,56 @@ export default async function SampleDetailPage({ params }: PageProps) {
     const { id } = await params;
     const supabase = await createClient();
 
-    // Get sample with all related data in a single unified query for RLS robustness
-    const { data: sample, error: sampleError } = await supabase
+    const user = await getSafeUser();
+    const userRole = user.role;
+
+    // Build the query with role-based filtering for lab_analysis
+    let sampleQuery = supabase
         .from("samples")
         .select(`
-    *,
-    type: sample_types(id, name, code),
-        batch: production_batches(
-            id, code,
-            product: products(id, name, sku)
-        ),
+            *,
+            type: sample_types(id, name, code),
+            batch: production_batches(
+                id, code,
+                product: products(id, name, sku)
+            ),
             intermediate_product: intermediate_products(
                 id, code, status,
-                equipment: equipments(id, code, name)
+                equipment_id,
+                batch: production_batches(
+                    id, code,
+                    product: products(id, name, sku) 
+                )
             ),
-                sampling_point: sampling_points(id, name, code, location),
-                    lab_analysis(
-                        id,
-                        value_numeric,
-                        value_text,
-                        is_conforming,
-                        analyzed_by,
-                        analyzed_at,
-                        qa_parameter_id,
-                        parameter: qa_parameters(
-                            id, name, code, unit
-                        ),
-                        analyst: user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name)
-                    )
-                        `)
-        .eq("id", id)
-        .single();
+            sampling_point: sampling_points(id, name, code, location),
+            lab_analysis(
+                id,
+                value_numeric,
+                value_text,
+                is_conforming,
+                analyzed_by,
+                analyzed_at,
+                status,
+                qa_parameter_id,
+                parameter: qa_parameters!inner(
+                    id, name, code, unit, category
+                ),
+                analyst: user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name),
+                equipment: equipments(id, name, code, next_calibration_date, status)
+            )
+        `)
+        .eq("id", id);
+
+    // Apply strict category filtering based on role (Segregated Compliance)
+    if (userRole === 'lab_analyst') {
+        // Lab analysts see everything EXCEPT microbiological
+        sampleQuery = sampleQuery.filter('lab_analysis.parameter.category', 'neq', 'microbiological');
+    } else if (userRole === 'micro_analyst') {
+        // Micro analysts ONLY see microbiological
+        sampleQuery = sampleQuery.filter('lab_analysis.parameter.category', 'eq', 'microbiological');
+    }
+
+    const { data: sample, error: sampleError } = await sampleQuery.single();
 
     if (sampleError || !sample) {
         console.error("Sample fetch error:", sampleError);
@@ -98,6 +122,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
     const normalizedAnalyses: Analysis[] = analysesRaw.map((a: any) => {
         const parameter = Array.isArray(a.parameter) ? (a.parameter[0] || null) : (a.parameter || null);
         const analyst = Array.isArray(a.analyst) ? (a.analyst[0] || null) : (a.analyst || null);
+        const equipment = Array.isArray(a.equipment) ? (a.equipment[0] || null) : (a.equipment || null);
         const ai_insight = insightsMap.get(a.id) || null;
 
         // Explicitly map properties to ensure they are available to the UI
@@ -105,6 +130,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
             ...a,
             parameter,
             analyst,
+            equipment,
             ai_insight,
             // Ensure numeric values are prioritized if they exist
             final_value: a.value_numeric !== null && a.value_numeric !== undefined ? a.value_numeric : a.value_text
@@ -122,8 +148,9 @@ export default async function SampleDetailPage({ params }: PageProps) {
         : { data: null };
     const validatedByName = validatedUser?.full_name || "Unknown";
 
-    // Get product specifications for comparison
-    const productId = sample.batch?.product?.id;
+    // Resolve Product ID for Spec Lookup (Handles both Standard & Intermediate Samples)
+    const productId = sample.batch?.product?.id || sample.intermediate_product?.batch?.product?.id;
+
     let specs: Record<string, {
         min_value?: number;
         max_value?: number;
@@ -131,55 +158,96 @@ export default async function SampleDetailPage({ params }: PageProps) {
         haccp?: { is_pcc?: boolean; category?: string }
     }> = {};
 
-    if (productId) {
-        const { data: productSpecs } = await supabase
-            .from("product_specifications")
-            .select(`
-                qa_parameter_id, 
-                min_value, 
-                max_value, 
-                target_value, 
-                sample_type_id,
-                haccp_hazard_id,
-                haccp_hazard:haccp_hazards(is_pcc, hazard_category)
-            `)
-            .eq("product_id", productId)
-            .eq("status", "active");
+    // Fetch product specs strictly filtered by product + sample_type OR just sample_type (fallback)
+    // We use a conditional filter to avoid errors if productId is null
+    let specQuery = supabase
+        .from("product_specifications")
+        .select(`
+            qa_parameter_id, 
+            min_value, 
+            max_value, 
+            target_value, 
+            sample_type_id,
+            haccp_hazard_id,
+            haccp_hazard:haccp_hazards(is_pcc, hazard_category),
+            parameter:qa_parameters!inner(category)
+        `)
+        .eq("status", "active");
 
-        // Specific specs ONLY (Strict Mode requested by User)
-        // "samples should get parameters only from the specific sample_type... others don't need to appear"
-        productSpecs?.forEach((spec: any) => {
-            if (!spec.sample_type_id || spec.sample_type_id === sample.sample_type_id) {
-                specs[spec.qa_parameter_id] = {
-                    ...spec,
-                    haccp: spec.haccp_hazard_id ? {
-                        is_pcc: spec.haccp_hazard?.is_pcc,
-                        category: spec.haccp_hazard?.hazard_category
-                    } : undefined
-                };
-            }
-        });
+    if (userRole === 'lab_analyst') {
+        specQuery = specQuery.neq('parameter.category', 'microbiological');
+    } else if (userRole === 'micro_analyst') {
+        specQuery = specQuery.eq('parameter.category', 'microbiological');
     }
 
-    // Filter analyses to ONLY show those that have a defined Specification for this Sample Type
-    const filteredAnalyses = normalizedAnalyses.filter(a => !!specs[a.qa_parameter_id]);
+    if (productId) {
+        specQuery = specQuery.or(`product_id.eq.${productId},sample_type_id.eq.${sample.sample_type_id}`);
+    } else {
+        specQuery = specQuery.eq("sample_type_id", sample.sample_type_id);
+    }
+
+    const { data: productSpecs } = await specQuery;
+
+    productSpecs?.forEach((spec: any) => {
+        // Preference: Specific Product Spec > Global Spec for that Sample Type
+        const existing = specs[spec.qa_parameter_id];
+        if (!existing || (spec.product_id === productId)) {
+            specs[spec.qa_parameter_id] = {
+                ...spec,
+                haccp: spec.haccp_hazard_id ? {
+                    is_pcc: spec.haccp_hazard?.is_pcc,
+                    category: spec.haccp_hazard?.hazard_category
+                } : undefined
+            };
+        }
+    });
+
+    // Filter analyses strictly by those that have an active specification
+    // This prevents irrelevant parameters from cluttering the execution form
+    const filteredAnalyses = normalizedAnalyses.filter(analysis => {
+        const hasSpec = !!specs[analysis.qa_parameter_id];
+        // For auditability: if it was already analyzed, we show it even if the spec was deleted
+        const hasValue = analysis.value_numeric !== null || analysis.value_text !== null;
+        return hasSpec || hasValue;
+    });
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
-            collected: "bg-blue-100 text-blue-700",
-            pending: "bg-gray-100 text-gray-700",
-            in_analysis: "bg-yellow-100 text-yellow-700",
-            reviewed: "bg-purple-100 text-purple-700",
-            validated: "bg-green-100 text-green-700",
-            approved: "bg-green-100 text-green-700",
-            rejected: "bg-red-100 text-red-700",
+            draft: "bg-slate-100 text-slate-700",
+            registered: "bg-blue-100 text-blue-700 border-blue-200",
+            collected: "bg-cyan-100 text-cyan-700 border-cyan-200",
+            in_analysis: "bg-amber-100 text-amber-700 border-amber-200",
+            under_review: "bg-purple-100 text-purple-700 border-purple-200",
+            approved: "bg-emerald-100 text-emerald-700 border-emerald-200",
+            rejected: "bg-rose-100 text-rose-700 border-rose-200",
+            released: "bg-indigo-100 text-indigo-700 border-indigo-200",
+            archived: "bg-gray-100 text-gray-700 border-gray-200",
         };
-        return <Badge className={styles[status] || styles.pending}>{status}</Badge>;
+        const label: Record<string, string> = {
+            draft: "Rascunho",
+            registered: "Registada",
+            collected: "Colhida",
+            in_analysis: "Em Análise",
+            under_review: "Em Revisão",
+            approved: "Aprovado",
+            rejected: "Rejeitado",
+            released: "Libertado",
+            archived: "Arquivado",
+        };
+        return <Badge variant="outline" className={cn("font-bold tracking-tight px-3 py-1 rounded-full border shadow-sm", styles[status] || "bg-gray-100 text-gray-700")}>{label[status] || status}</Badge>;
     };
 
-    const isValidated = sample.status === "validated" || sample.status === "approved" || !!sample.validated_at;
-    const isReviewed = sample.status === "reviewed" || isValidated;
+    const isLocked = ['under_review', 'approved', 'rejected', 'released', 'archived'].includes(sample.status);
+    const isValidated = ['approved', 'rejected', 'released', 'archived'].includes(sample.status) || !!sample.validated_at;
     const canValidate = filteredAnalyses?.every(a => a.value_numeric !== null || a.value_text !== null);
+
+
+    const riskConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+        blocked: { label: "Crítico", color: "text-rose-500", bg: "bg-rose-500/20", icon: ShieldAlert },
+        warning: { label: "Atenção", color: "text-amber-500", bg: "bg-amber-500/20", icon: ShieldAlert },
+        approved: { label: "Seguro", color: "text-emerald-500", bg: "bg-emerald-500/20", icon: CheckCircle },
+        info: { label: "Info", color: "text-blue-500", bg: "bg-blue-500/20", icon: Info },
+    };
 
     return (
         <div className="container py-8 space-y-6">
@@ -207,6 +275,15 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                             {sample.code}
                                         </h1>
                                         {getStatusBadge(sample.status)}
+                                        {sample.ai_risk_status && (
+                                            <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
+                                                {(() => {
+                                                    const Icon = riskConfig[sample.ai_risk_status].icon;
+                                                    return <Icon className="h-3 w-3 inline mr-1" />;
+                                                })()}
+                                                IA: {riskConfig[sample.ai_risk_status].label}
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="text-lg text-slate-400 font-medium tracking-wide">
                                         {sample.type?.name || "Tipo Desconhecido"}
@@ -218,6 +295,28 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
                     <div className="flex flex-col items-end gap-4">
                         <div className="flex flex-wrap justify-end gap-3">
+                            {/* FSM: Review Action */}
+                            {sample.status === 'in_analysis' && (
+                                <form action={async () => {
+                                    "use server";
+                                    await reviewSampleAction(sample.id);
+                                }}>
+                                    <Button
+                                        type="submit"
+                                        className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20"
+                                        disabled={!canValidate}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Submeter p/ Revisão Técnica
+                                    </Button>
+                                </form>
+                            )}
+
+                            {/* Decision Dialog for Quality Review */}
+                            {sample.status === 'under_review' && (
+                                <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
+                            )}
+
                             {isValidated ? (
                                 <>
                                     <PDFDownloadButton
@@ -269,12 +368,14 @@ export default async function SampleDetailPage({ params }: PageProps) {
             </div>
 
             {/* Error Display for Debugging */}
-            {sampleError && (
-                <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-mono">
-                    <p className="font-bold mb-1 underline">FETCH ERROR:</p>
-                    <pre>{JSON.stringify(sampleError, null, 2)}</pre>
-                </div>
-            )}
+            {
+                sampleError && (
+                    <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-mono">
+                        <p className="font-bold mb-1 underline">FETCH ERROR:</p>
+                        <pre>{JSON.stringify(sampleError, null, 2)}</pre>
+                    </div>
+                )
+            }
 
             {/* Sample Info Cards - Premium Grid */}
             <div className="grid gap-6 md:grid-cols-3">
@@ -344,24 +445,26 @@ export default async function SampleDetailPage({ params }: PageProps) {
             </div>
 
             {/* Intermediate Product Info */}
-            {sample.intermediate_product && (
-                <div className="glass p-4 rounded-2xl border-slate-800/60 bg-slate-900/30 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                    <div className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                        Produto Intermédio
-                    </div>
-                    <div className="font-mono text-slate-300 font-bold">
-                        {sample.intermediate_product.code}
-                    </div>
-                    {sample.intermediate_product.equipment && (
-                        <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
-                            <span className="opacity-50">Armazenado em:</span>
-                            <span className="text-slate-200 font-bold">{sample.intermediate_product.equipment.name}</span>
-                            <span className="font-mono text-xs opacity-50">({sample.intermediate_product.equipment.code})</span>
+            {
+                sample.intermediate_product && (
+                    <div className="glass p-4 rounded-2xl border-slate-800/60 bg-slate-900/30 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                        <div className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400">
+                            Produto Intermédio
                         </div>
-                    )}
-                    <Badge className="ml-4 bg-slate-800 text-slate-300 border-slate-700">{sample.intermediate_product.status}</Badge>
-                </div>
-            )}
+                        <div className="font-mono text-slate-300 font-bold">
+                            {sample.intermediate_product.code}
+                        </div>
+                        {sample.intermediate_product.equipment && (
+                            <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
+                                <span className="opacity-50">Armazenado em:</span>
+                                <span className="text-slate-200 font-bold">{sample.intermediate_product.equipment.name}</span>
+                                <span className="font-mono text-xs opacity-50">({sample.intermediate_product.equipment.code})</span>
+                            </div>
+                        )}
+                        <Badge className="ml-4 bg-slate-800 text-slate-300 border-slate-700">{sample.intermediate_product.status}</Badge>
+                    </div>
+                )
+            }
 
             {/* Debug Info (Visible only for investigation) */}
             <div className="text-[10px] text-muted-foreground opacity-50 font-mono">
@@ -369,10 +472,6 @@ export default async function SampleDetailPage({ params }: PageProps) {
                 Sample User ID: {sample.collected_by || "—"} |
                 Org ID: {sample.organization_id || "—"}
             </div>
-
-
-
-            // ... existing imports
 
             {/* AI Insights Summary */}
             <AiInsightsCard insights={insights} />
@@ -499,36 +598,39 @@ export default async function SampleDetailPage({ params }: PageProps) {
                 </CardContent>
             </Card>
 
-            {!isReviewed && (
-                <AnalysisForm
-                    sampleId={sample.id}
-                    sampleCode={sample.code || ""}
-                    analyses={filteredAnalyses || []}
-                    specs={specs}
-                    isValidated={isValidated}
-                />
-            )}
+            {
+                sample.status !== 'released' && sample.status !== 'archived' && (
+                    <AnalysisForm
+                        sample={sample}
+                        analyses={filteredAnalyses}
+                        specs={specs}
+                        isValidated={isLocked}
+                    />
+                )
+            }
 
             {/* Validation Info */}
-            {isValidated && sample.validated_at && (
-                <Card className="glass border-green-200">
-                    <CardHeader>
-                        <CardTitle className="text-green-700 flex items-center gap-2">
-                            <CheckCircle className="h-5 w-5" />
-                            Validated
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-sm">
-                            <span className="font-semibold">By:</span>{" "}
-                            {validatedByName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            {format(new Date(sample.validated_at), "dd/MM/yyyy HH:mm")}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
+            {
+                isValidated && sample.validated_at && (
+                    <Card className="glass border-green-200">
+                        <CardHeader>
+                            <CardTitle className="text-green-700 flex items-center gap-2">
+                                <CheckCircle className="h-5 w-5" />
+                                Validated
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-sm">
+                                <span className="font-semibold">By:</span>{" "}
+                                {validatedByName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                                {format(new Date(sample.validated_at), "dd/MM/yyyy HH:mm")}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )
+            }
+        </div >
     );
 }

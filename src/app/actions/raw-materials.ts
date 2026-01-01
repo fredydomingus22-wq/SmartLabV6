@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { requirePermission } from "@/lib/permissions.server";
+import { createAuditEvent } from "@/domain/audit/audit.service";
 
 // --- Schemas ---
 
@@ -59,16 +61,8 @@ const ConsumeLotSchema = z.object({
  * Create a new Supplier
  */
 export async function createSupplierAction(formData: FormData) {
+    const user = await requirePermission('materials', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const { data: userData } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-    if (!userData) return { success: false, message: "Profile not found" };
 
     const rawData = {
         name: formData.get("name"),
@@ -86,7 +80,7 @@ export async function createSupplierAction(formData: FormData) {
     }
 
     const { error } = await supabase.from("suppliers").insert({
-        organization_id: userData.organization_id,
+        organization_id: user.organization_id,
         plant_id: validation.data.plant_id,
         name: validation.data.name,
         code: validation.data.code,
@@ -99,6 +93,14 @@ export async function createSupplierAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
+    // Industrial Audit Trail
+    await createAuditEvent({
+        eventType: 'SUPPLIER_CREATED',
+        entityType: 'materials',
+        entityId: validation.data.code,
+        payload: { name: validation.data.name }
+    });
+
     revalidatePath("/materials/raw");
     revalidatePath("/materials/suppliers");
     return { success: true, message: "Fornecedor criado" };
@@ -108,16 +110,8 @@ export async function createSupplierAction(formData: FormData) {
  * Create a Raw Material (catalog item)
  */
 export async function createRawMaterialAction(formData: FormData) {
+    const user = await requirePermission('materials', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const { data: userData } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-    if (!userData) return { success: false, message: "Profile not found" };
 
     const rawData = {
         name: formData.get("name"),
@@ -141,7 +135,7 @@ export async function createRawMaterialAction(formData: FormData) {
         : null;
 
     const { error } = await supabase.from("raw_materials").insert({
-        organization_id: userData.organization_id,
+        organization_id: user.organization_id,
         plant_id: validation.data.plant_id,
         name: validation.data.name,
         code: validation.data.code,
@@ -155,6 +149,14 @@ export async function createRawMaterialAction(formData: FormData) {
 
     if (error) return { success: false, message: error.message };
 
+    // Industrial Audit Trail
+    await createAuditEvent({
+        eventType: 'RAW_MATERIAL_CREATED',
+        entityType: 'materials',
+        entityId: validation.data.code,
+        payload: { name: validation.data.name, category: validation.data.category }
+    });
+
     revalidatePath("/materials/raw");
     return { success: true, message: "Matéria-prima criada" };
 }
@@ -163,16 +165,8 @@ export async function createRawMaterialAction(formData: FormData) {
  * Receive a new Raw Material Lot
  */
 export async function receiveLotAction(formData: FormData) {
+    const user = await requirePermission('materials', 'write');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Unauthorized" };
-
-    const { data: userData } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-    if (!userData) return { success: false, message: "Profile not found" };
 
     const rawData = {
         raw_material_id: formData.get("raw_material_id"),
@@ -194,8 +188,8 @@ export async function receiveLotAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    const { error } = await supabase.from("raw_material_lots").insert({
-        organization_id: userData.organization_id,
+    const { data: newLot, error } = await supabase.from("raw_material_lots").insert({
+        organization_id: user.organization_id,
         plant_id: validation.data.plant_id,
         raw_material_id: validation.data.raw_material_id,
         supplier_id: validation.data.supplier_id || null,
@@ -210,9 +204,17 @@ export async function receiveLotAction(formData: FormData) {
         storage_location: validation.data.storage_location || null,
         notes: validation.data.notes || null,
         status: "quarantine", // Starts in quarantine for QC
-    });
+    }).select("id").single();
 
     if (error) return { success: false, message: error.message };
+
+    // Industrial Audit Trail
+    await createAuditEvent({
+        eventType: 'LOT_RECEIVED',
+        entityType: 'materials',
+        entityId: newLot?.id || '',
+        payload: { lot_code: validation.data.lot_code, quantity: validation.data.quantity_received }
+    });
 
     revalidatePath("/materials/raw");
     return { success: true, message: "Lote recebido - Em quarentena" };
@@ -222,6 +224,7 @@ export async function receiveLotAction(formData: FormData) {
  * Approve or Reject a Lot after QC
  */
 export async function approveLotAction(formData: FormData) {
+    const user = await requirePermission('materials', 'write');
     const supabase = await createClient();
 
     const rawData = {
@@ -241,9 +244,18 @@ export async function approveLotAction(formData: FormData) {
             status: validation.data.status,
             notes: validation.data.notes
         })
-        .eq("id", validation.data.lot_id);
+        .eq("id", validation.data.lot_id)
+        .eq("organization_id", user.organization_id);
 
     if (error) return { success: false, message: error.message };
+
+    // Industrial Audit Trail
+    await createAuditEvent({
+        eventType: validation.data.status === 'approved' ? 'LOT_APPROVED' : 'LOT_REJECTED',
+        entityType: 'materials',
+        entityId: validation.data.lot_id,
+        payload: { notes: validation.data.notes }
+    });
 
     revalidatePath("/materials/raw");
     return {
@@ -258,6 +270,7 @@ export async function approveLotAction(formData: FormData) {
  * Consume from a Lot (reduces quantity_remaining)
  */
 export async function consumeLotAction(formData: FormData) {
+    const user = await requirePermission('materials', 'write');
     const supabase = await createClient();
 
     const rawData = {
@@ -270,31 +283,22 @@ export async function consumeLotAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Get current lot
-    const { data: lot, error: lotError } = await supabase
-        .from("raw_material_lots")
-        .select("quantity_remaining, status")
-        .eq("id", validation.data.lot_id)
-        .single();
-
-    if (lotError) return { success: false, message: lotError.message };
-    if (lot.status !== "approved") return { success: false, message: "Lot must be approved before use" };
-    if (lot.quantity_remaining < validation.data.quantity) {
-        return { success: false, message: "Insufficient quantity" };
-    }
-
-    const newRemaining = lot.quantity_remaining - validation.data.quantity;
-    const newStatus = newRemaining <= 0 ? "exhausted" : "approved";
-
-    const { error } = await supabase
-        .from("raw_material_lots")
-        .update({
-            quantity_remaining: newRemaining,
-            status: newStatus
-        })
-        .eq("id", validation.data.lot_id);
+    // Atomic update to avoid race conditions and ensure tenant isolation
+    const { data: lot, error } = await supabase.rpc('consume_material_lot', {
+        p_lot_id: validation.data.lot_id,
+        p_quantity: validation.data.quantity,
+        p_org_id: user.organization_id
+    });
 
     if (error) return { success: false, message: error.message };
+
+    // Industrial Audit Trail
+    await createAuditEvent({
+        eventType: 'LOT_CONSUMED',
+        entityType: 'materials',
+        entityId: validation.data.lot_id,
+        payload: { quantity: validation.data.quantity }
+    });
 
     revalidatePath("/materials/raw");
     return { success: true, message: "Consumo registado" };

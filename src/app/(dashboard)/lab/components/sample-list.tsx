@@ -13,13 +13,24 @@ interface SampleListProps {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any; bg: string }> = {
+    draft: { label: "Rascunho", color: "text-slate-500", icon: MoreHorizontal, bg: "bg-slate-500/10" },
     pending: { label: "Pendente", color: "text-amber-500", icon: Clock, bg: "bg-amber-500/10" },
     collected: { label: "Colhida", color: "text-blue-400", icon: Database, bg: "bg-blue-400/10" },
-    in_analysis: { label: "Análise", color: "text-purple-400", icon: Beaker, bg: "bg-purple-400/10" },
-    reviewed: { label: "Concluída", color: "text-emerald-400", icon: CheckCircle2, bg: "bg-emerald-400/10" },
+    in_analysis: { label: "Análise", color: "text-amber-400", icon: Beaker, bg: "bg-amber-400/10" },
+    under_review: { label: "Revisão", color: "text-purple-400", icon: ShieldCheck, bg: "bg-purple-400/10" },
     approved: { label: "Aprovada", color: "text-green-400", icon: CheckCircle2, bg: "bg-green-400/10" },
     rejected: { label: "Rejeitada", color: "text-rose-400", icon: MoreHorizontal, bg: "bg-rose-400/10" },
+    released: { label: "Libertada", color: "text-indigo-400", icon: ShieldCheck, bg: "bg-indigo-400/10" },
 };
+
+const riskConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+    blocked: { label: "Bloqueado", color: "text-rose-500", bg: "bg-rose-500/10", icon: ShieldAlert },
+    warning: { label: "Risco", color: "text-amber-500", bg: "bg-amber-500/10", icon: ShieldAlert },
+    approved: { label: "Validado", color: "text-emerald-500", bg: "bg-emerald-500/10", icon: ShieldCheck },
+    info: { label: "Info", color: "text-blue-500", bg: "bg-blue-500/10", icon: Info },
+};
+
+import { ShieldCheck, ShieldAlert, Info } from "lucide-react";
 
 export function SampleList({ samples, onEnterResults }: SampleListProps) {
     return (
@@ -79,6 +90,18 @@ export function SampleList({ samples, onEnterResults }: SampleListProps) {
                                     {format(date, "dd MMM, HH:mm", { locale: pt })}
                                 </span>
                             </div>
+                            {sample.ai_risk_status && (
+                                <div className="flex flex-col border-l border-slate-800/50 pl-8">
+                                    <span className="text-[9px] uppercase font-black tracking-tighter text-slate-600">Status IA</span>
+                                    <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
+                                        {(() => {
+                                            const Icon = riskConfig[sample.ai_risk_status].icon;
+                                            return <Icon className="h-3 w-3" />;
+                                        })()}
+                                        <span className="text-[10px] font-black uppercase tracking-tight">{riskConfig[sample.ai_risk_status].label}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Status Badge & Actions */}

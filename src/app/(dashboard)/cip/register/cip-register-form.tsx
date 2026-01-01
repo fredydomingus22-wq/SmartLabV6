@@ -130,6 +130,13 @@ export function CIPRegisterForm({ equipments, programs, programSteps }: CIPRegis
         formData.set("start_time", new Date(startTime).toISOString());
         formData.set("end_time", new Date(endTime).toISOString());
         formData.set("notes", notes);
+
+        // Find selected equipment type to help backend find the record
+        const selectedEqData = equipments.find(e => e.id === selectedEquipment);
+        if (selectedEqData?.target_type) {
+            formData.set("target_table", selectedEqData.target_type);
+        }
+
         formData.set("steps_json", JSON.stringify(stepEntries));
 
         const result = await registerCompletedCIPAction(formData);

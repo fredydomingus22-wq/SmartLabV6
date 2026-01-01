@@ -22,13 +22,21 @@ export async function getPendingSamples(options?: {
             status,
             collected_at,
             collected_by,
-            type:sample_types(id, name),
+            type:sample_types!inner(id, name, test_category),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
         `)
         .eq("organization_id", user.organization_id)
-        .in("status", statuses)
-        .order("collected_at", { ascending: true });
+        .in("status", statuses);
+
+    // RBAC: Segregated Compliance
+    if (user.role === 'lab_analyst') {
+        query = query.neq('type.test_category', 'microbiological');
+    } else if (user.role === 'micro_analyst') {
+        query = query.eq('type.test_category', 'microbiological');
+    }
+
+    query = query.order("collected_at", { ascending: true });
 
     if (options?.limit) {
         query = query.limit(options.limit);
@@ -62,13 +70,23 @@ export async function getDashboardSamples(options?: {
             status,
             collected_at,
             collected_by,
-            type:sample_types(id, name, test_category),
+            ai_risk_status,
+            ai_risk_message,
+            type:sample_types!inner(id, name, test_category),
             batch:production_batches(id, code, product:products(name, id)),
             intermediate:intermediate_products(id, code),
             sampling_point:sampling_points(name, id)
         `)
-        .eq("organization_id", user.organization_id)
-        .order("collected_at", { ascending: false });
+        .eq("organization_id", user.organization_id);
+
+    // RBAC: Segregated Compliance
+    if (user.role === 'lab_analyst') {
+        query = query.neq('type.test_category', 'microbiological');
+    } else if (user.role === 'micro_analyst') {
+        query = query.eq('type.test_category', 'microbiological');
+    }
+
+    query = query.order("collected_at", { ascending: false });
 
     // Apply filters
     if (options?.status && options.status !== "all") {
@@ -141,6 +159,8 @@ export async function getSampleWithResults(sampleId: string) {
             collected_by,
             notes,
             attachment_url,
+            ai_risk_status,
+            ai_risk_message,
             type:sample_types(id, name),
             batch:production_batches(id, code, product:products(name)),
             intermediate:intermediate_products(id, code)
@@ -333,11 +353,19 @@ export async function getLabStats() {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    // Get sample counts by status AND today's collections
-    const { data: samples, error: samplesError } = await supabase
+    // Get sample counts with RBAC filtering
+    let query = supabase
         .from("samples")
-        .select("id, status, collected_at")
+        .select("id, status, collected_at, type:sample_types!inner(test_category)")
         .eq("organization_id", user.organization_id);
+
+    if (user.role === 'lab_analyst') {
+        query = query.neq('type.test_category', 'microbiological');
+    } else if (user.role === 'micro_analyst') {
+        query = query.eq('type.test_category', 'microbiological');
+    }
+
+    const { data: samples, error: samplesError } = await query;
 
     if (samplesError) throw samplesError;
 
@@ -448,7 +476,8 @@ export async function getActiveTanks() {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
+    // 1. Fetch active intermediates
+    const { data: intermediates, error } = await supabase
         .from("intermediate_products")
         .select(`
             id,
@@ -457,7 +486,6 @@ export async function getActiveTanks() {
             volume,
             unit,
             equipment_id,
-            equipment:equipments(id, code, name),
             batch:production_batches(id, code, product:products(id, name))
         `)
         .eq("organization_id", user.organization_id)
@@ -466,7 +494,30 @@ export async function getActiveTanks() {
         .limit(50);
 
     if (error) throw error;
-    return data;
+
+    // 2. Fetch Equipment/Tank Details manually
+    const tankIds = intermediates
+        ?.map(i => i.equipment_id)
+        .filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) || [];
+
+    let equipmentMap = new Map<string, any>();
+
+    if (tankIds.length > 0) {
+        const [tanksRes, equipRes] = await Promise.all([
+            supabase.from("tanks").select("id, code, name").in("id", tankIds),
+            supabase.from("equipments").select("id, code, name").in("id", tankIds)
+        ]);
+
+        // Merge results into a map
+        (tanksRes.data || []).forEach(t => equipmentMap.set(t.id, t));
+        (equipRes.data || []).forEach(e => equipmentMap.set(e.id, e));
+    }
+
+    // 3. Attach equipment info back to intermediates
+    return intermediates?.map(i => ({
+        ...i,
+        equipment: equipmentMap.get(i.equipment_id) || null
+    })) || [];
 }
 
 /**
@@ -501,7 +552,7 @@ export async function getKanbanSamples(options?: { sampleTypeIds?: string[] }) {
             code,
             status,
             collected_at,
-            type:sample_types(id, name),
+            type:sample_types!inner(id, name, test_category),
             batch:production_batches(
                 id, 
                 code, 
@@ -513,8 +564,16 @@ export async function getKanbanSamples(options?: { sampleTypeIds?: string[] }) {
                 value_text
             )
         `)
-        .eq("organization_id", user.organization_id)
-        .order("collected_at", { ascending: false });
+        .eq("organization_id", user.organization_id);
+
+    // RBAC: Segregated Compliance
+    if (user.role === 'lab_analyst') {
+        query = query.neq('type.test_category', 'microbiological');
+    } else if (user.role === 'micro_analyst') {
+        query = query.eq('type.test_category', 'microbiological');
+    }
+
+    query = query.order("collected_at", { ascending: false });
 
     if (options?.sampleTypeIds && options.sampleTypeIds.length > 0) {
         query = query.in("sample_type_id", options.sampleTypeIds);

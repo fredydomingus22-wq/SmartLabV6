@@ -97,6 +97,26 @@ export function CreateDocumentDialog({ categories, plants }: CreateDocumentDialo
                         <div className="border-t border-slate-800 pt-4 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
+                                    <Label className="text-base text-amber-200">Requer Formação?</Label>
+                                    <p className="text-xs text-slate-400">
+                                        Bloqueia a publicação até que a formação seja concluída.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        name="requires_training_toggle"
+                                        defaultChecked={false}
+                                        onCheckedChange={(checked) => {
+                                            const input = document.getElementById("requires_training_input") as HTMLInputElement;
+                                            if (input) input.value = checked ? "true" : "false";
+                                        }}
+                                    />
+                                    <input type="hidden" id="requires_training_input" name="requires_training" defaultValue="false" />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
                                     <Label className="text-base">Carregar versão inicial?</Label>
                                     <p className="text-xs text-slate-400">
                                         Adicionar logo a primeira versão (v1.0) do documento.
@@ -140,6 +160,6 @@ export function CreateDocumentDialog({ categories, plants }: CreateDocumentDialo
                     </div>
                 </ActionForm>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }

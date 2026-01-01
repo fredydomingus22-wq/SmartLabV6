@@ -88,7 +88,7 @@ export default async function SpecificationDetailPage({ params }: PageProps) {
                             <Target className="h-8 w-8 text-purple-500" />
                             {spec.parameter?.name}
                         </h1>
-                        <p className="text-muted-foreground flex items-center gap-2">
+                        <div className="text-muted-foreground flex items-center gap-2">
                             <span>{spec.product?.name}</span>
                             <Badge variant="outline" className="font-mono">v{spec.version || 1}</Badge>
                             {spec.is_critical && (
@@ -97,7 +97,7 @@ export default async function SpecificationDetailPage({ params }: PageProps) {
                                     Critical
                                 </Badge>
                             )}
-                        </p>
+                        </div>
                     </div>
                 </div>
                 <SpecDialog

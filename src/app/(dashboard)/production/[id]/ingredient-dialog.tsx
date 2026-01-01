@@ -23,33 +23,14 @@ interface RawMaterialLot {
 interface IngredientDialogProps {
     intermediateId: string;
     intermediateName: string;
+    availableLots: RawMaterialLot[];
 }
 
-export function IngredientDialog({ intermediateId, intermediateName }: IngredientDialogProps) {
+export function IngredientDialog({ intermediateId, intermediateName, availableLots }: IngredientDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [lots, setLots] = useState<RawMaterialLot[]>([]);
     const [selectedLot, setSelectedLot] = useState<string>("");
     const router = useRouter();
-
-    // Fetch available lots when dialog opens
-    useEffect(() => {
-        if (open) {
-            fetchLots();
-        }
-    }, [open]);
-
-    const fetchLots = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("raw_material_lots")
-            .select("id, lot_code, quantity_remaining, unit, raw_material:raw_materials(name, code)")
-            .eq("status", "approved")
-            .gt("quantity_remaining", 0)
-            .order("lot_code");
-
-        setLots(data || []);
-    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -64,7 +45,7 @@ export function IngredientDialog({ intermediateId, intermediateName }: Ingredien
         formData.set("raw_material_lot_id", selectedLot);
 
         // Get lot code for backward compatibility
-        const lot = lots.find(l => l.id === selectedLot);
+        const lot = availableLots.find(l => l.id === selectedLot);
         if (lot) {
             formData.set("raw_material_lot_code", lot.lot_code);
         }
@@ -83,7 +64,7 @@ export function IngredientDialog({ intermediateId, intermediateName }: Ingredien
     };
 
     const unwrap = (val: any) => Array.isArray(val) ? val[0] : val;
-    const selectedLotData = lots.find(l => l.id === selectedLot);
+    const selectedLotData = availableLots.find(l => l.id === selectedLot);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>

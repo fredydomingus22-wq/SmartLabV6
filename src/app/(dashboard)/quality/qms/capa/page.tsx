@@ -1,4 +1,4 @@
-import { getCAPAActions } from "@/lib/queries/qms";
+import { getCAPAActions, getOrganizationUsers } from "@/lib/queries/qms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ export default async function CAPAPage({ searchParams }: PageProps) {
         status: params.status,
         type: params.type,
     });
+    const { data: users } = await getOrganizationUsers();
 
     // Calculate stats
     const openCapas = capas.filter((c: any) => ["planned", "in_progress"].includes(c.status)).length;
@@ -62,7 +63,7 @@ export default async function CAPAPage({ searchParams }: PageProps) {
                             </p>
                         </div>
                     </div>
-                    <CreateCAPADialog />
+                    <CreateCAPADialog users={users} />
                 </div>
             </div>
 

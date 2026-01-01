@@ -12,3 +12,22 @@ export const CreateSampleSchema = z.object({
 });
 
 export type CreateSampleFormValues = z.infer<typeof CreateSampleSchema>;
+
+export const CreateLabAssetSchema = z.object({
+    name: z.string().min(1, "Nome é obrigatório"),
+    code: z.string().min(1, "Código é obrigatório"),
+    asset_category: z.enum([
+        "balance", "ph_meter", "refractometer", "thermometer",
+        "spectrophotometer", "viscometer", "general"
+    ]),
+    manufacturer: z.string().optional(),
+    model: z.string().optional(),
+    serial_number: z.string().optional(),
+    calibration_date: z.string().optional(),
+    next_calibration_date: z.string().optional(),
+    criticality: z.enum(["low", "medium", "high"]).default("medium"),
+    status: z.enum(["active", "maintenance", "decommissioned"]).default("active"),
+    plant_id: z.string().uuid().optional(),
+});
+
+export type CreateLabAssetFormValues = z.infer<typeof CreateLabAssetSchema>;

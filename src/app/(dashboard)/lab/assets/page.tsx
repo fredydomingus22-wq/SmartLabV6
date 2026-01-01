@@ -16,12 +16,15 @@ import {
     Search,
     Filter,
     ArrowUpRight,
-    Settings
+    Settings,
+    FileCheck
 } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { AssetDialog } from "./_components/create-asset-dialog";
+import { RegisterCalibrationDialog } from "./_components/register-calibration-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -65,13 +68,23 @@ const getCategoryIcon = (category: string) => {
     }
 };
 
+import { getSafeUser } from "@/lib/auth.server";
+
 export default async function LabAssetsPage() {
     const supabase = await createClient();
+    const user = await getSafeUser();
 
     const { data: assets } = await supabase
         .from("lab_assets")
         .select("*")
         .order("code");
+
+    const { data: plantsData } = await supabase
+        .from("plants")
+        .select("id, name")
+        .order("name");
+
+    const plants = plantsData || [];
 
     const today = new Date();
 
@@ -79,7 +92,7 @@ export default async function LabAssetsPage() {
         <div className="container py-8 space-y-8 animate-in fade-in duration-700">
             {/* Header Section */}
             <div className="relative group perspective">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 pointer-events-none"></div>
                 <div className="relative glass p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
                     <div className="flex items-center gap-6">
                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-inner group-hover:scale-110 transition-transform duration-500">
@@ -102,13 +115,11 @@ export default async function LabAssetsPage() {
                                 Verificações Diárias
                             </Button>
                         </Link>
-                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Novo Instrumento
-                        </Button>
+
+                        <AssetDialog plants={plants} />
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Stats Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -252,15 +263,23 @@ export default async function LabAssetsPage() {
                                             Historial
                                         </Button>
                                     </Link>
-                                    <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-white rounded-xl h-10 w-10">
-                                        <Settings className="h-4 w-4" />
-                                    </Button>
+                                    <RegisterCalibrationDialog asset={asset}>
+                                        <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-emerald-400 rounded-xl h-10 w-10" title="Registar Calibração">
+                                            <FileCheck className="h-4 w-4" />
+                                        </Button>
+                                    </RegisterCalibrationDialog>
+                                    <AssetDialog plants={plants} assetToEdit={asset} mode="edit">
+                                        <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-white rounded-xl h-10 w-10">
+                                            <Settings className="h-4 w-4" />
+                                        </Button>
+                                    </AssetDialog>
                                 </div>
                             </CardContent>
                         </Card>
                     );
-                })}
-            </div>
+                })
+                }
+            </div >
 
             {(!assets || assets.length === 0) && (
                 <div className="text-center py-32 glass rounded-[2.5rem] border border-dashed border-white/5 animate-in zoom-in duration-500">
@@ -271,11 +290,11 @@ export default async function LabAssetsPage() {
                     <p className="text-slate-500 text-sm max-w-[300px] mx-auto leading-relaxed">
                         Nenhum instrumento configurado. Adicione o seu primeiro equipamento para começar o rastreio de calibração.
                     </p>
-                    <Button className="mt-8 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl px-10 h-12 uppercase tracking-widest text-xs font-black">
-                        Adicionar Agora
-                    </Button>
+                    <div className="mt-8">
+                        <AssetDialog plants={plants} />
+                    </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 }

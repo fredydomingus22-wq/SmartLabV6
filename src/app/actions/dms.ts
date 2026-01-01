@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { syncDocumentToTrainingAction } from "./quality/training-integration";
+import { createAuditEvent } from "@/domain/audit/audit.service";
 
 const DocumentSchema = z.object({
     title: z.string().min(3, "O título deve ter pelo menos 3 caracteres"),
@@ -14,6 +16,7 @@ const DocumentSchema = z.object({
     initial_version_file_path: z.string().optional(),
     initial_version_number: z.string().optional(),
     initial_version_description: z.string().optional(),
+    requires_training: z.boolean().optional(),
 });
 
 /**
@@ -47,6 +50,7 @@ export async function createDocumentAction(formData: FormData) {
                 plant_id: validatedFields.data.plant_id,
                 organization_id: user.organization_id,
                 owner_id: user.id,
+                requires_training: validatedFields.data.requires_training || false,
             })
             .select()
             .single();
@@ -72,6 +76,14 @@ export async function createDocumentAction(formData: FormData) {
                 // We don't throw here to avoid failing the document creation, but we warn
             }
         }
+
+        // Create Audit Event for Document Creation
+        await createAuditEvent({
+            eventType: 'DOCUMENT_CREATED',
+            entityType: 'documents',
+            entityId: doc.id,
+            payload: { title: doc.title, doc_number: doc.doc_number }
+        });
 
         revalidatePath("/(dashboard)/quality/manuals", "page");
         return { success: true, data: doc, message: "Documento criado com sucesso" };
@@ -194,6 +206,14 @@ export async function processApprovalAction(formData: FormData) {
 
         if (error) throw error;
 
+        // Industrial Audit Traceability
+        await createAuditEvent({
+            eventType: status === 'approved' ? 'DOCUMENT_APPROVED' : 'DOCUMENT_REJECTED',
+            entityType: 'documents',
+            entityId: approvalId, // Link to the approval record
+            payload: { status, comments, approverId: user.id }
+        });
+
         revalidatePath("/(dashboard)/quality/manuals", "layout");
         return { success: true, message: status === "approved" ? "Aprovado com sucesso" : "Rejeitado com sucesso" };
     } catch (error: any) {
@@ -213,7 +233,7 @@ export async function publishDocumentVersionAction(versionId: string) {
         // 1. Get version and document info
         const { data: version, error: vError } = await supabase
             .from("document_versions")
-            .select("document_id")
+            .select("document_id, version_number, documents(title, requires_training)")
             .eq("id", versionId)
             .single();
 
@@ -245,6 +265,28 @@ export async function publishDocumentVersionAction(versionId: string) {
             .update({ current_version_id: versionId, updated_at: new Date().toISOString() })
             .eq("id", version.document_id);
 
+        // 5. Training Trigger (The Closed Loop)
+        // If the document requires training, we automatically SYNC the training module
+        // This ensures the "Read & Understood" module always points to this new published version
+        const docData = version.documents as any; // Cast to bypass Supabase join type inference issues
+
+        if (docData?.requires_training) {
+            await syncDocumentToTrainingAction(
+                version.document_id,
+                versionId,
+                version.version_number,
+                docData.title
+            );
+        }
+
+        // Industrial Audit Traceability
+        await createAuditEvent({
+            eventType: 'DOCUMENT_PUBLISHED',
+            entityType: 'documents',
+            entityId: version.document_id,
+            payload: { versionId, versionNumber: version.version_number }
+        });
+
         revalidatePath("/(dashboard)/quality/manuals", "layout");
         return { success: true, message: "Documento publicado com sucesso" };
     } catch (error: any) {
@@ -252,6 +294,7 @@ export async function publishDocumentVersionAction(versionId: string) {
         return { success: false, error: error.message || "Erro ao publicar documento" };
     }
 }
+
 
 /**
  * Acknowledge reading a document version (Training record)
@@ -287,6 +330,14 @@ export async function acknowledgeDocumentReadingAction(formData: FormData) {
 
         if (error) throw error;
 
+        // Industrial Audit Traceability (Electronic Signature)
+        await createAuditEvent({
+            eventType: 'DOCUMENT_READ_ACKNOWLEDGED',
+            entityType: 'documents',
+            entityId: versionId,
+            payload: { userId: user.id }
+        });
+
         revalidatePath("/quality/manuals/[id]", "page");
         return { success: true, message: "Leitura confirmada com sucesso" };
     } catch (error: any) {
@@ -318,6 +369,14 @@ export async function performPeriodicReviewAction(formData: FormData) {
 
         if (error) throw error;
 
+        // Industrial Audit Traceability
+        await createAuditEvent({
+            eventType: 'DOCUMENT_PERIODIC_REVIEW_PERFORMED',
+            entityType: 'documents',
+            entityId: reviewId,
+            payload: { result, comments }
+        });
+
         // If revision is needed, we could automatically trigger a task or notification
 
         revalidatePath("/quality/manuals/[id]", "page");
@@ -327,3 +386,92 @@ export async function performPeriodicReviewAction(formData: FormData) {
     }
 }
 
+/**
+ * Generate a signed URL for a document version to allow secure preview
+ * Includes industrial-grade training gating (21 CFR Part 11 & GxP requirement)
+ */
+export async function getDocumentSignedUrlAction(pathOrUrl: string, versionId?: string) {
+    try {
+        const supabase = await createClient();
+        const user = await getSafeUser(); // Ensure authenticated
+
+        if (!pathOrUrl) return { success: false, error: "Caminho do ficheiro inválido" };
+
+        // 1. Training Gating (Industrial Compliance Check)
+        if (versionId) {
+            const { data: versionData, error: vError } = await supabase
+                .from("document_versions")
+                .select("document_id, documents(requires_training)")
+                .eq("id", versionId)
+                .single();
+
+            if (vError) console.warn("[DMS] Failed to fetch version metadata for gating:", vError);
+
+            const docInfo = versionData?.documents as any;
+            if (docInfo?.requires_training) {
+                // Check if user has acknowledged the reading
+                const { data: readLogs, error: lError } = await supabase
+                    .from("doc_reading_logs")
+                    .select("id")
+                    .eq("version_id", versionId)
+                    .eq("user_id", user.id)
+                    .maybeSingle();
+
+                if (!readLogs) {
+                    return {
+                        success: false,
+                        error: "TREINO OBRIGATÓRIO: Deve confirmar a leitura deste documento antes de aceder ao ficheiro.",
+                        requiresTraining: true
+                    };
+                }
+            }
+        }
+
+        // 2. Storage Path Resolution
+        let bucket = 'documents';
+        let relativePath = pathOrUrl;
+
+        if (pathOrUrl.includes('/storage/v1/object/public/')) {
+            const parts = pathOrUrl.split('/storage/v1/object/public/');
+            if (parts.length > 1) {
+                const bucketAndPath = parts[1]; // e.g., "coa-documents/dms/123_file.pdf"
+                const firstSlashIndex = bucketAndPath.indexOf('/');
+                bucket = bucketAndPath.substring(0, firstSlashIndex);
+                relativePath = bucketAndPath.substring(firstSlashIndex + 1);
+            }
+        } else if (pathOrUrl.includes('/storage/v1/object/sign/')) {
+            const parts = pathOrUrl.split('/storage/v1/object/sign/');
+            if (parts.length > 1) {
+                const bucketAndPath = parts[1];
+                const firstSlashIndex = bucketAndPath.indexOf('/');
+                bucket = bucketAndPath.substring(0, firstSlashIndex);
+                relativePath = bucketAndPath.substring(firstSlashIndex + 1).split('?')[0];
+            }
+        }
+
+        const { data, error } = await supabase
+            .storage
+            .from(bucket)
+            .createSignedUrl(relativePath, 3600); // 1 hour
+
+        if (error || !data?.signedUrl) {
+            // Fallback trial
+            const altBucket = bucket === 'documents' ? 'coa-documents' : 'documents';
+            const { data: fallbackData, error: fallbackError } = await supabase
+                .storage
+                .from(altBucket)
+                .createSignedUrl(relativePath, 3600);
+
+            if (fallbackError) {
+                console.error(`[DMS] Storage Error: ${fallbackError.message}`, fallbackError);
+                throw new Error(`Não foi possível localizar o ficheiro: ${fallbackError.message}`);
+            }
+            return { success: true, signedUrl: fallbackData.signedUrl };
+        }
+
+        return { success: true, signedUrl: data.signedUrl };
+    } catch (error: any) {
+        console.error("getDocumentSignedUrlAction error:", error);
+        return { success: false, error: error.message || "Erro ao gerar link do documento" };
+    }
+}

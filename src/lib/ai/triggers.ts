@@ -124,7 +124,7 @@ export async function triggerResultValidation(
         // 3. Store Insight
         // Map status to valid DB constraint
         const dbStatus = ['approved', 'warning', 'blocked', 'info'].includes(validation.status)
-            ? validation.status
+            ? validation.status as 'approved' | 'warning' | 'blocked' | 'info'
             : 'info';
 
         await supabase.from("ai_insights").insert({
@@ -136,8 +136,28 @@ export async function triggerResultValidation(
             message: validation.message,
             confidence: validation.confidence,
             raw_response: validation as any,
-            model_used: 'fast-check-v1' // or 'openai' if we used it
+            model_used: 'fast-check-v1'
         });
+
+        // 4. Propagate to Sample (Performance Optimization for Dashboard)
+        // We only upgrade the risk (blocked > warning > approved)
+        const { data: currentSample } = await supabase
+            .from("samples")
+            .select("ai_risk_status")
+            .eq("id", sampleId)
+            .single();
+
+        const riskPriority = { 'blocked': 3, 'warning': 2, 'info': 1, 'approved': 0, null: -1 };
+        const currentPrio = riskPriority[currentSample?.ai_risk_status as keyof typeof riskPriority] ?? -1;
+        const newPrio = riskPriority[dbStatus];
+
+        if (newPrio > currentPrio) {
+            await supabase.from("samples").update({
+                ai_risk_status: dbStatus,
+                ai_risk_message: validation.message,
+                updated_at: new Date().toISOString()
+            }).eq("id", sampleId);
+        }
 
     } catch (error) {
         console.error("AI Trigger Error:", error);
@@ -145,3 +165,58 @@ export async function triggerResultValidation(
     }
 }
 
+
+/**
+ * Triggers an AI analysis for a critical audit event.
+ * Fetches context (historical events) and stores the resulting insight.
+ */
+export async function triggerAuditAnalysis(
+    eventId: string,
+    entityType: string,
+    entityId: string,
+    userId: string,
+    eventType: string,
+    payload: any
+) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    try {
+        // Get Historical Audit Trail for this Entity (last 5 events)
+        const { data: history } = await supabase
+            .from('audit_events')
+            .select('*')
+            .eq('entity_id', entityId)
+            .neq('id', eventId) // Exclude current event
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        const { analyzeAuditChain } = await import("@/lib/ai/audit-analyzer");
+        const analysis = await analyzeAuditChain({
+            eventType,
+            entityType,
+            entityId,
+            userId,
+            payload,
+            historicalEvents: history || []
+        });
+
+        // Store Insight
+        await supabase.from("ai_insights").insert({
+            organization_id: user.organization_id,
+            entity_type: 'audit_events',
+            entity_id: eventId,
+            insight_type: 'audit_risk',
+            status: analysis.status,
+            message: analysis.message,
+            confidence: analysis.confidence,
+            raw_response: analysis as any,
+            model_used: 'audit-inspector-v1'
+        });
+
+        console.log(`[AI-Audit] Analysis complete for event ${eventId}: ${analysis.status}`);
+
+    } catch (error) {
+        console.error("[AI-Audit] Trigger failed:", error);
+    }
+}

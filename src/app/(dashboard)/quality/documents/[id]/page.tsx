@@ -7,6 +7,7 @@ import { PublishDocumentButton } from "../_components/publish-document-button";
 import { ApprovalWorkflow } from "../_components/approval-workflow";
 import { SubmitReviewDialog } from "../_components/submit-review-dialog";
 import { ReadingAcknowledgment } from "../_components/reading-acknowledgment";
+import { DocumentPreviewDialog } from "../_components/document-preview-dialog";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +79,7 @@ export default async function DocumentDetailPage({ params }: PageProps) {
 
                 <div className="flex flex-col md:flex-row justify-between gap-6 relative z-10">
                     <div className="flex gap-5">
-                        <Link href="/quality/manuals">
+                        <Link href="/quality/documents">
                             <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/5 text-slate-400 hover:text-white">
                                 <ArrowLeft className="h-6 w-6" />
                             </Button>
@@ -86,33 +87,44 @@ export default async function DocumentDetailPage({ params }: PageProps) {
                         <div className="space-y-2">
                             <div className="flex items-center gap-3">
                                 <Badge variant="outline" className="px-3 py-1 bg-white/5 border-white/10 text-xs font-mono tracking-widest text-slate-400 uppercase">
-                                    {document.category.code}
+                                    {document.category?.code || "DOC"}
                                 </Badge>
-                                <span className="text-sm font-mono text-slate-500 uppercase tracking-widest">
+                                <span className="text-sm font-mono text-indigo-500 uppercase tracking-[0.3em] font-black">
                                     {document.doc_number}
                                 </span>
+                                <div className="h-4 w-px bg-white/10 mx-1" />
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                                    <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">21 CFR Part 11 Compliant</span>
+                                </div>
                             </div>
-                            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
+                            <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white drop-shadow-2xl">
                                 {document.title}
                             </h1>
-                            <div className="flex items-center gap-4 text-sm text-slate-400">
+                            <div className="flex items-center gap-6 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
                                 <span className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-indigo-400" />
-                                    Atualizado: {new Date(document.updated_at).toLocaleDateString()}
+                                    <Clock className="h-3.5 w-3.5 text-indigo-400" />
+                                    Last Modified: {new Date(document.updated_at).toLocaleDateString()}
                                 </span>
-                                <div className="h-4 w-px bg-white/10 mx-1" />
                                 <span className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-emerald-400" />
-                                    Dono: {displayVersion?.created_by || 'Sistema'}
+                                    <Users className="h-3.5 w-3.5 text-emerald-400" />
+                                    Owner: {displayVersion?.created_by || 'Quality Assurance'}
+                                </span>
+                                <span className="flex items-center gap-2 text-slate-400">
+                                    <Eye className="h-3.5 w-3.5" />
+                                    Internal Control
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-3">
-                        <Badge className={cn("px-4 py-1.5 text-xs font-bold uppercase tracking-widest border border-white/5 shadow-lg", getStatusColor(displayVersion?.status))}>
-                            {displayVersion?.status || 'Rascunho'}
-                        </Badge>
+                    <div className="flex flex-col items-end gap-3 justify-center">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active State:</span>
+                            <Badge className={cn("px-4 py-1.5 text-[10px] font-black uppercase tracking-widest border border-white/5 shadow-2xl", getStatusColor(displayVersion?.status))}>
+                                {displayVersion?.status || 'Draft'}
+                            </Badge>
+                        </div>
                         <div className="flex gap-2">
                             {/* Approval Action */}
                             {pendingApproval && (
@@ -128,10 +140,14 @@ export default async function DocumentDetailPage({ params }: PageProps) {
                                 <PublishDocumentButton versionId={displayVersion.id} />
                             )}
 
-                            <Button variant="outline" className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Documento
-                            </Button>
+                            <DocumentPreviewDialog
+                                filePath={displayVersion?.file_path || null}
+                                fileName={displayVersion?.file_name || "document"}
+                                fileType={displayVersion?.file_type || null}
+                                documentTitle={document.title}
+                                versionNumber={displayVersion?.version_number || "0"}
+                                versionId={displayVersion?.id}
+                            />
 
                             {/* New Revision Action */}
                             <NewRevisionDialog
@@ -143,12 +159,37 @@ export default async function DocumentDetailPage({ params }: PageProps) {
                 </div>
             </div>
 
-            {/* 2. Metadata Grid (InfoCard Style) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <InfoCard title="Versão Atual" value={displayVersion?.version_number || "Draft"} />
-                <InfoCard title="Data Efetiva" value={displayVersion?.effective_date ? new Date(displayVersion.effective_date).toLocaleDateString() : "Pendente"} />
-                <InfoCard title="Próxima Revisão" value={displayVersion?.expiry_date ? new Date(displayVersion.expiry_date).toLocaleDateString() : "N/D"} />
-                <InfoCard title="Ciclo de Vida" value="Qualidade Geral" />
+            {/* 2. Metadata Mesh (High Density Control Panel) */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <InfoCard
+                    title="Control Version"
+                    value={`v${displayVersion?.version_number || "0.0"}`}
+                    subtitle="Document Revision"
+                    icon={<FileSignature className="h-3.5 w-3.5 text-indigo-400" />}
+                />
+                <InfoCard
+                    title="Effective Date"
+                    value={displayVersion?.effective_date ? new Date(displayVersion.effective_date).toLocaleDateString() : "Pending"}
+                    subtitle="Release Strategy"
+                    icon={<Clock className="h-3.5 w-3.5 text-emerald-400" />}
+                />
+                <InfoCard
+                    title="Next Review"
+                    value={displayVersion?.expiry_date ? new Date(displayVersion.expiry_date).toLocaleDateString() : "N/D"}
+                    subtitle="Periodic Maintenance"
+                    icon={<History className="h-3.5 w-3.5 text-amber-400" />}
+                />
+                <InfoCard
+                    title="Retention"
+                    value="5 Years"
+                    subtitle="Archival Policy"
+                    icon={<ShieldCheck className="h-3.5 w-3.5 text-slate-400" />}
+                />
+                <div className="glass-dark p-1 rounded-2xl flex flex-col justify-center gap-1 border-emerald-500/20 bg-emerald-500/5">
+                    <Button variant="ghost" className="h-full w-full rounded-xl gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+                        <Download className="h-4 w-4" /> Secure Export
+                    </Button>
+                </div>
             </div>
 
             {/* 3. Main Content Tabs */}
@@ -359,12 +400,16 @@ export default async function DocumentDetailPage({ params }: PageProps) {
     );
 }
 
-function InfoCard({ title, value }: { title: string, value: string }) {
+function InfoCard({ title, value, subtitle, icon }: { title: string, value: string, subtitle?: string, icon?: React.ReactNode }) {
     return (
-        <Card className="glass border-none shadow-lg bg-white/5 hover:bg-white/10 transition-colors">
-            <CardContent className="p-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{title}</p>
-                <p className="text-lg font-semibold text-white truncate">{value}</p>
+        <Card className="glass border-none shadow-lg bg-white/5 hover:bg-white/10 transition-colors group">
+            <CardContent className="p-4 py-3 flex items-start justify-between">
+                <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{title}</p>
+                    <p className="text-xl font-black text-white truncate drop-shadow-md tracking-tight leading-tight">{value}</p>
+                    {subtitle && <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">{subtitle}</p>}
+                </div>
+                {icon && <div className="p-2 rounded-lg bg-black/40 border border-white/5 opacity-40 group-hover:opacity-100 transition-opacity">{icon}</div>}
             </CardContent>
         </Card>
     );

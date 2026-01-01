@@ -55,7 +55,7 @@ interface ModuleCardProps {
 
 function ModuleCard({ title, description, href, icon, color, stats, alerts }: ModuleCardProps) {
     return (
-        <Card className="glass border-slate-800/50 overflow-hidden hover:border-slate-700/50 transition-all group">
+        <Card className="glass border-slate-800/50 overflow-hidden hover:border-slate-700/50 transition-all group flex flex-col h-full">
             <div className={`h-1 w-full ${color}`} />
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -71,7 +71,7 @@ function ModuleCard({ title, description, href, icon, color, stats, alerts }: Mo
                 </div>
                 <CardDescription className="text-xs">{description}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex-1 flex flex-col">
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-3">
                     {stats.map((stat, i) => (
@@ -96,11 +96,13 @@ function ModuleCard({ title, description, href, icon, color, stats, alerts }: Mo
                 )}
 
                 {/* Action */}
-                <Link href={href}>
-                    <Button variant="outline" size="sm" className="w-full glass border-slate-700 hover:bg-slate-800 text-xs">
-                        Gerir {title}
-                    </Button>
-                </Link>
+                <div className="mt-auto pt-2">
+                    <Link href={href} className="block w-full">
+                        <Button variant="outline" size="sm" className="w-full glass border-slate-700 hover:bg-slate-800 text-xs">
+                            Gerir {title}
+                        </Button>
+                    </Link>
+                </div>
             </CardContent>
         </Card>
     );
@@ -163,9 +165,13 @@ export default async function MaterialsDashboardPage() {
     }).length || 0;
 
     // === FORNECEDORES ===
-    const { data: suppliers } = await supabase.from("suppliers").select("id, approval_status");
-    const approvedSuppliers = suppliers?.filter(s => s.approval_status === 'approved').length || 0;
-    const pendingSuppliers = suppliers?.filter(s => s.approval_status === 'pending').length || 0;
+    const { data: suppliers } = await supabase.from("suppliers").select("id, status");
+    // Assuming 'active' means approved in the new schema
+    const approvedSuppliers = suppliers?.filter(s => s.status === 'active').length || 0;
+    // Assuming non-active might be pending or draft, but for now we look for explicit pending or just count non-active as pending/other
+    // If the status enum is strictly active/inactive, we might need to adjust.
+    // Based on previous data, let's assume anything not active or blocked is pending/draft
+    const pendingSuppliers = suppliers?.filter(s => s.status === 'draft' || s.status === 'pending').length || 0;
 
     // === TOTAL ALERTS ===
     const totalAlerts = expiredRawLots + lowStockReagents + pendingSuppliers;

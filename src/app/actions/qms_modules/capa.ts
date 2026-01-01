@@ -15,6 +15,7 @@ const CreateCAPASchema = z.object({
     planned_date: z.string().optional(),
     responsible_id: z.string().uuid().optional(),
     plant_id: z.string().uuid(),
+    training_required: z.boolean().default(false),
 });
 
 import { createNotificationAction } from "../notifications";
@@ -26,7 +27,8 @@ const UpdateCAPASchema = z.object({
     priority: z.enum(["low", "medium", "high", "critical"]).optional(),
     planned_date: z.string().optional(),
     responsible_id: z.string().uuid().optional(),
-    status: z.enum(["open", "in_progress", "closed", "voided"]).optional()
+    status: z.enum(["planned", "in_progress", "completed", "verified", "closed", "voided"]).optional(),
+    training_required: z.boolean().optional(),
 });
 
 const VerifyEffectivenessSchema = z.object({
@@ -49,6 +51,7 @@ export async function createCAPAAction(formData: FormData): Promise<ActionState>
             planned_date: formData.get("planned_date"),
             responsible_id: formData.get("responsible_id") || undefined,
             plant_id: formData.get("plant_id"),
+            training_required: formData.get("training_required") === "true",
         };
 
         const validation = CreateCAPASchema.safeParse(rawData);
@@ -63,7 +66,7 @@ export async function createCAPAAction(formData: FormData): Promise<ActionState>
         const { error } = await supabase.from("capa_actions").insert({
             ...validation.data,
             organization_id: user.organization_id,
-            status: 'open',
+            status: 'planned',
             created_by: user.id
         });
 
@@ -83,16 +86,54 @@ export async function updateCAPAStatusAction(formData: FormData): Promise<Action
         const id = formData.get("id") as string;
         const status = formData.get("status") as string;
 
-        // Validate status enum
-        if (!["open", "in_progress", "closed", "voided"].includes(status)) {
+        const validStatuses = ["planned", "in_progress", "completed", "verified", "closed", "voided"];
+        if (!validStatuses.includes(status)) {
             return { success: false, message: "Estado da ação inválido." };
         }
 
-        const { error } = await supabase.from("capa_actions").update({ status }).eq("id", id).eq("organization_id", user.organization_id);
+        // Training Gate: If moving to 'completed' or beyond, check if training was required
+        if (["completed", "verified", "closed"].includes(status)) {
+            const { data: capa } = await supabase
+                .from("capa_actions")
+                .select("training_required, training_module_id")
+                .eq("id", id)
+                .single();
+
+            if (capa?.training_required && !capa.training_module_id) {
+                return {
+                    success: false,
+                    message: "Esta ação requer formação obrigatória. Por favor, configure o módulo de formação antes de concluir."
+                };
+            }
+        }
+
+        const updates: any = { status, updated_at: new Date().toISOString() };
+        if (status === 'completed') updates.completed_date = new Date().toISOString();
+        if (status === 'verified') updates.verified_date = new Date().toISOString();
+        if (status === 'closed') updates.closed_date = new Date().toISOString();
+
+        const { error } = await supabase
+            .from("capa_actions")
+            .update(updates)
+            .eq("id", id)
+            .eq("organization_id", user.organization_id);
+
         if (error) return { success: false, message: error.message };
 
+        // Log to Audit trail
+        await supabase.from("qms_audit_log").insert({
+            organization_id: user.organization_id,
+            entity_type: 'capa_action',
+            entity_id: id,
+            action: 'status_update',
+            new_values: { status },
+            changed_by: user.id,
+            notes: `Status alterado para ${status}`
+        });
+
         revalidatePath("/quality/qms");
-        return { success: true, message: "Status da ação CAPA atualizado" };
+        revalidatePath(`/quality/qms/capa/${id}`);
+        return { success: true, message: `Status da ação CAPA atualizado para ${status}` };
     } catch (err: any) {
         return { success: false, message: err.message || "Erro ao atualizar status CAPA" };
     }

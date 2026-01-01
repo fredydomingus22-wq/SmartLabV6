@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
+import { RegisterCalibrationDialog } from "../../lab/assets/_components/register-calibration-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -83,10 +84,12 @@ export default async function CalibrationsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Registar Calibração
-                    </Button>
+                    <RegisterCalibrationDialog assets={calibrations.map(c => ({ id: c.id, name: c.asset_name, code: c.asset_code }))}>
+                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Registar Calibração
+                        </Button>
+                    </RegisterCalibrationDialog>
                 </div>
             </div>
 

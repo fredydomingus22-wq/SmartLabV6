@@ -33,8 +33,8 @@ export default async function ReportsPage() {
 
             {/* Quick Actions - Row 1: Core Reports */}
             <div className="grid gap-4 md:grid-cols-4">
-                <Link href="/reports/coa">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/coa" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <FileText className="h-5 w-5 text-blue-500" />
@@ -51,8 +51,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/batch">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/batch" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Package className="h-5 w-5 text-green-500" />
@@ -69,8 +69,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/micro">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/micro" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Microscope className="h-5 w-5 text-purple-500" />
@@ -85,8 +85,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/export">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/export" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Download className="h-5 w-5 text-orange-500" />
@@ -104,8 +104,8 @@ export default async function ReportsPage() {
 
             {/* Quick Actions - Row 2: Additional Reports */}
             <div className="grid gap-4 md:grid-cols-4">
-                <Link href="/reports/shift">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer border-indigo-500/30">
+                <Link href="/reports/shift" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer border-indigo-500/30 h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Clock className="h-5 w-5 text-indigo-500" />
@@ -120,8 +120,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/trending">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/trending" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <FileText className="h-5 w-5 text-cyan-500" />
@@ -136,8 +136,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/cip">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/cip" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <FileText className="h-5 w-5 text-teal-500" />
@@ -152,8 +152,8 @@ export default async function ReportsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/reports/audit">
-                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer">
+                <Link href="/reports/audit" className="block h-full">
+                    <Card className="glass hover:border-primary/50 transition-colors cursor-pointer h-full flex flex-col">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <FileText className="h-5 w-5 text-amber-500" />

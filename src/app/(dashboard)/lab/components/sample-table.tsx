@@ -21,13 +21,24 @@ interface SampleTableProps {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+    draft: { label: "Rascunho", color: "text-slate-500", bg: "bg-slate-500/10" },
     pending: { label: "Pendente", color: "text-amber-500", bg: "bg-amber-500/10" },
     collected: { label: "Colhida", color: "text-blue-400", bg: "bg-blue-400/10" },
-    in_analysis: { label: "Em Análise", color: "text-purple-400", bg: "bg-purple-400/10" },
-    reviewed: { label: "Revista", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+    in_analysis: { label: "Em Análise", color: "text-amber-400", bg: "bg-amber-400/10" },
+    under_review: { label: "Em Revisão", color: "text-purple-400", bg: "bg-purple-400/10" },
     approved: { label: "Aprovada", color: "text-green-400", bg: "bg-green-400/10" },
     rejected: { label: "Rejeitada", color: "text-rose-400", bg: "bg-rose-400/10" },
+    released: { label: "Libertada", color: "text-indigo-400", bg: "bg-indigo-400/10" },
 };
+
+const riskConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+    blocked: { label: "Crítico", color: "text-rose-500", bg: "bg-rose-500/20", icon: AlertTriangle },
+    warning: { label: "Atenção", color: "text-amber-500", bg: "bg-amber-500/20", icon: ShieldAlert },
+    approved: { label: "Seguro", color: "text-emerald-500", bg: "bg-emerald-500/20", icon: ShieldCheck },
+    info: { label: "Info", color: "text-blue-500", bg: "bg-blue-500/20", icon: Info },
+};
+
+import { ShieldCheck, ShieldAlert, AlertTriangle, Info } from "lucide-react";
 
 export function SampleTable({ samples, onEnterResults }: SampleTableProps) {
     return (
@@ -35,8 +46,9 @@ export function SampleTable({ samples, onEnterResults }: SampleTableProps) {
             <Table>
                 <TableHeader>
                     <TableRow className="hover:bg-transparent border-slate-800/50 bg-slate-900/30">
-                        <TableHead className="py-4 pl-6 text-[10px] uppercase font-black tracking-widest text-slate-500">Amostra</TableHead>
+                        <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">Amostra</TableHead>
                         <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">Tipo / Produto</TableHead>
+                        <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">IA Risco</TableHead>
                         <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">Origem</TableHead>
                         <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">Data</TableHead>
                         <TableHead className="py-4 text-[10px] uppercase font-black tracking-widest text-slate-500">Estado</TableHead>
@@ -68,6 +80,21 @@ export function SampleTable({ samples, onEnterResults }: SampleTableProps) {
                                             </span>
                                         )}
                                     </div>
+                                </TableCell>
+                                <TableCell className="py-4 text-center">
+                                    {sample.ai_risk_status ? (
+                                        <div className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-white/5 mx-auto", riskConfig[sample.ai_risk_status].bg)}>
+                                            {(() => {
+                                                const Icon = riskConfig[sample.ai_risk_status].icon;
+                                                return <Icon className={cn("h-3 w-3", riskConfig[sample.ai_risk_status].color)} />;
+                                            })()}
+                                            <span className={cn("text-[9px] font-black uppercase tracking-tight", riskConfig[sample.ai_risk_status].color)}>
+                                                {riskConfig[sample.ai_risk_status].label}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">—</span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="py-4">
                                     <div className="flex items-center gap-2">

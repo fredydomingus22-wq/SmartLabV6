@@ -154,9 +154,9 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {mode === "create" ? (
-                    <Button>
+                    <Button className="relative z-10 bg-amber-600 hover:bg-amber-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
                         <Plus className="h-4 w-4 mr-2" />
-                        New Equipment
+                        Novo Equipamento
                     </Button>
                 ) : (
                     <Button variant="outline" size="sm">
@@ -166,13 +166,13 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
             </DialogTrigger>
             <DialogContent className="max-w-xl glass border-slate-800">
                 <DialogHeader>
-                    <DialogTitle>
-                        {mode === "create" ? "Create Equipment" : "Edit Equipment"}
+                    <DialogTitle className="text-white">
+                        {mode === "create" ? "Novo Equipamento" : "Editar Equipamento"}
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="text-slate-400">
                         {mode === "create"
-                            ? "Add new equipment with metrological control."
-                            : "Update equipment metadata and calibration status."}
+                            ? "Adicione um novo equipamento com controlo metrológico."
+                            : "Atualize os metadados e estado de calibração."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -180,24 +180,24 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
                     <div className="grid gap-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name *</Label>
+                                <Label htmlFor="name" className="text-slate-300">Nome *</Label>
                                 <Input
                                     id="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    placeholder="Ex: Tank 01"
+                                    placeholder="Ex: Tanque 01"
                                     required
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="code">Code *</Label>
+                                <Label htmlFor="code" className="text-slate-300">Código *</Label>
                                 <Input
                                     id="code"
                                     value={code}
                                     onChange={(e) => setCode(e.target.value.toUpperCase())}
-                                    placeholder="Ex: TK-001"
-                                    className="font-mono glass"
+                                    placeholder="Ex: TQ-001"
+                                    className="font-mono glass text-white border-white/10"
                                     required
                                 />
                             </div>
@@ -205,25 +205,33 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="equipment_type">Type *</Label>
+                                <Label htmlFor="equipment_type" className="text-slate-300">Tipo *</Label>
                                 <SearchableSelect
                                     value={equipType}
                                     onValueChange={setEquipType}
-                                    options={EQUIPMENT_TYPES}
-                                    placeholder="Select type"
+                                    options={[
+                                        { value: "tank", label: "Tanque" },
+                                        { value: "mixer", label: "Misturador" },
+                                        { value: "pasteurizer", label: "Pasteurizador" },
+                                        { value: "filler", label: "Enchedora" },
+                                        { value: "incubator", label: "Incubadora" },
+                                        { value: "production_line", label: "Linha de Produção" },
+                                        { value: "other", label: "Outro" },
+                                    ]}
+                                    placeholder="Selecione tipo"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="status">Status</Label>
+                                <Label htmlFor="status" className="text-slate-300">Estado</Label>
                                 <SearchableSelect
                                     value={status}
                                     onValueChange={setStatus}
                                     options={[
-                                        { value: "active", label: "Active" },
-                                        { value: "maintenance", label: "Maintenance" },
-                                        { value: "decommissioned", label: "Decommissioned" },
-                                        { value: "out_of_calibration", label: "Out of Calibration" },
-                                        { value: "retired", label: "Retired" },
+                                        { value: "active", label: "Ativo" },
+                                        { value: "maintenance", label: "Em Manutenção" },
+                                        { value: "decommissioned", label: "Desativado" },
+                                        { value: "out_of_calibration", label: "Fora de Calibração" },
+                                        { value: "retired", label: "Abatido" },
                                     ]}
                                 />
                             </div>
@@ -232,118 +240,118 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
                         {/* Metrology Section */}
                         <div className="grid grid-cols-2 gap-4 mt-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="serial_number">Serial Number</Label>
+                                <Label htmlFor="serial_number" className="text-slate-300">Nº de Série</Label>
                                 <Input
                                     id="serial_number"
                                     value={serialNumber}
                                     onChange={(e) => setSerialNumber(e.target.value)}
                                     placeholder="SN-123456"
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="manufacturer">Manufacturer</Label>
+                                <Label htmlFor="manufacturer" className="text-slate-300">Fabricante</Label>
                                 <Input
                                     id="manufacturer"
                                     value={manufacturer}
                                     onChange={(e) => setManufacturer(e.target.value)}
                                     placeholder="Ex: IKA, Mettler"
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="model">Model</Label>
+                                <Label htmlFor="model" className="text-slate-300">Modelo</Label>
                                 <Input
                                     id="model"
                                     value={model}
                                     onChange={(e) => setModel(e.target.value)}
                                     placeholder="Ex: MS 3 Digital"
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="installation_date">Installation Date</Label>
+                                <Label htmlFor="installation_date" className="text-slate-300">Data Instalação</Label>
                                 <Input
                                     id="installation_date"
                                     type="date"
                                     value={installationDate}
                                     onChange={(e) => setInstallationDate(e.target.value)}
-                                    className="glass"
+                                    className="glass text-white border-white/10 [color-scheme:dark]"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="last_calibration">Last Calibration</Label>
+                                <Label htmlFor="last_calibration" className="text-slate-300">Última Calib.</Label>
                                 <Input
                                     id="last_calibration"
                                     type="date"
                                     value={lastCalibrationDate}
                                     onChange={(e) => setLastCalibrationDate(e.target.value)}
-                                    className="glass"
+                                    className="glass text-white border-white/10 [color-scheme:dark]"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="next_calibration">Next Calibration</Label>
+                                <Label htmlFor="next_calibration" className="text-slate-300">Próxima Calib.</Label>
                                 <Input
                                     id="next_calibration"
                                     type="date"
                                     value={nextCalibrationDate}
                                     onChange={(e) => setNextCalibrationDate(e.target.value)}
-                                    className="glass"
+                                    className="glass text-white border-white/10 [color-scheme:dark]"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="cal_freq">Freq (Months)</Label>
+                                <Label htmlFor="cal_freq" className="text-slate-300">Freq (Meses)</Label>
                                 <Input
                                     id="cal_freq"
                                     type="number"
                                     value={calFrequency}
                                     onChange={(e) => setCalFrequency(e.target.value)}
                                     placeholder="12"
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="criticality">Criticality</Label>
+                                <Label htmlFor="criticality" className="text-slate-300">Criticidade</Label>
                                 <SearchableSelect
                                     value={criticality}
                                     onValueChange={setCriticality}
                                     options={[
-                                        { value: "low", label: "Low" },
-                                        { value: "medium", label: "Medium" },
-                                        { value: "high", label: "High" },
+                                        { value: "low", label: "Baixa" },
+                                        { value: "medium", label: "Média" },
+                                        { value: "high", label: "Alta" },
                                     ]}
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="capacity">Capacity</Label>
+                                <Label htmlFor="capacity" className="text-slate-300">Capacidade</Label>
                                 <Input
                                     id="capacity"
                                     type="number"
                                     value={capacity}
                                     onChange={(e) => setCapacity(e.target.value)}
                                     placeholder="0"
-                                    className="glass"
+                                    className="glass text-white border-white/10"
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="capacity_unit">Unit</Label>
+                                <Label htmlFor="capacity_unit" className="text-slate-300">Unidade</Label>
                                 <SearchableSelect
                                     value={capacityUnit}
                                     onValueChange={setCapacityUnit}
                                     options={[
-                                        { value: "L", label: "Liters" },
-                                        { value: "kg", label: "Kilograms" },
-                                        { value: "m3", label: "Cubic Meters" },
-                                        { value: "gal", label: "Gallons" },
+                                        { value: "L", label: "Litros" },
+                                        { value: "kg", label: "Quilogramas" },
+                                        { value: "m3", label: "Metros Cúbicos" },
+                                        { value: "gal", label: "Galões" },
                                     ]}
                                 />
                             </div>
@@ -359,16 +367,16 @@ export function EquipmentDialog({ mode, equipment }: EquipmentDialogProps) {
                                 disabled={loading}
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
+                                Apagar
                             </Button>
                         )}
                         <div className={`flex gap-2 ${mode === "create" ? "ml-auto" : ""}`}>
-                            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="border-slate-800 text-slate-300">
-                                Cancel
+                            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="border-slate-800 text-slate-300 hover:text-white hover:bg-white/10">
+                                Cancelar
                             </Button>
-                            <Button type="submit" disabled={loading} className="glass-primary">
+                            <Button type="submit" disabled={loading} className="bg-amber-600 hover:bg-amber-500 text-white">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {mode === "create" ? "Create Equipment" : "Save Changes"}
+                                {mode === "create" ? "Criar Equipamento" : "Guardar Alterações"}
                             </Button>
                         </div>
                     </div>
