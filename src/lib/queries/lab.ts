@@ -27,13 +27,14 @@ export async function getPendingSamples(options?: {
             intermediate:intermediate_products(id, code)
         `)
         .eq("organization_id", user.organization_id)
-        .in("status", statuses);
+        .in("status", statuses)
+        .is("deleted_at", null);
 
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {
-        query = query.neq('type.test_category', 'microbiological');
+        query = query.filter('type.test_category', 'neq', 'microbiological');
     } else if (user.role === 'micro_analyst') {
-        query = query.eq('type.test_category', 'microbiological');
+        query = query.filter('type.test_category', 'eq', 'microbiological');
     }
 
     query = query.order("collected_at", { ascending: true });
@@ -77,13 +78,15 @@ export async function getDashboardSamples(options?: {
             intermediate:intermediate_products(id, code),
             sampling_point:sampling_points(name, id)
         `)
-        .eq("organization_id", user.organization_id);
+        .eq("organization_id", user.organization_id)
+        .is("deleted_at", null);
 
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {
-        query = query.neq('type.test_category', 'microbiological');
+        query = query.filter('type.test_category', 'neq', 'microbiological');
+
     } else if (user.role === 'micro_analyst') {
-        query = query.eq('type.test_category', 'microbiological');
+        query = query.filter('type.test_category', 'eq', 'microbiological');
     }
 
     query = query.order("collected_at", { ascending: false });
@@ -149,6 +152,7 @@ export async function getSampleWithResults(sampleId: string) {
     const user = await getSafeUser();
 
     // Get sample details
+    // [NC-ARCH-01] Optimized Query with Deep Joins
     const { data: sample, error: sampleError } = await supabase
         .from("samples")
         .select(`
@@ -162,11 +166,15 @@ export async function getSampleWithResults(sampleId: string) {
             ai_risk_status,
             ai_risk_message,
             type:sample_types(id, name),
-            batch:production_batches(id, code, product:products(name)),
-            intermediate:intermediate_products(id, code)
+            batch:production_batches(id, code, product_id, product:products(name)),
+            intermediate:intermediate_products(
+                id, code,
+                batch:production_batches(product_id)
+            )
         `)
         .eq("organization_id", user.organization_id)
         .eq("id", sampleId)
+        .is("deleted_at", null)
         .single();
 
     if (sampleError) throw sampleError;
@@ -191,53 +199,22 @@ export async function getSampleWithResults(sampleId: string) {
 
     if (resultsError) throw resultsError;
 
-    // Fetch Product Specifications for context
-    let productId = null;
-    const batchData: any = Array.isArray(sample?.batch) ? sample?.batch[0] : sample?.batch;
-    productId = batchData?.product?.id;
+    // [NC-ARCH-01] Simplified Context Resolution
+    // No more secondary queries or brittle fallbacks.
+    const batchData: any = Array.isArray(sample.batch) ? sample.batch[0] : sample.batch;
+    const interData: any = Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate;
 
-    if (!productId && sample?.batch && !Array.isArray(sample.batch)) {
-        productId = (sample.batch as any).product_id;
-    }
+    // Direct resolution favored: Batch Product > Intermediate Batch Product
+    const productId = batchData?.product_id || interData?.batch?.product_id;
 
-    // Fallback for intermediate
-    // Note: The original select for batch:production_batches(id, code, product:products(name)) might not have product_id if not requested
-    // Let's rely on what we have. If product ID is missing, we might need to fetch it.
-    // Actually, let's fix the sample selection to ensure we have product_id
-
-    // We can't easily change the sample selection here without re-writing, so I'll try to get it from what's available.
-    // The previous SELECT `product:products(name)` doesn't include ID.
-    // I will rely on a separate query or assume product_id is needed.
-
-    // Let's RE-FETCH implicit product_id if needed, or better, update the top query.
-    // But since I can only replace a chunk, I'll do a focused update.
-
-    // BETTER STRATEGY: Fetch specs based on the parameter IDs we found, filtering by the product if we can find it.
-    // To do this robustly, I need the product_id. 
-
-    // Let's assume the user edits might have missed `product:products(id, name)`. 
-    // I will try to fetch specs generically or just for the *parameters* if product id is missing? No, specs are product-specific.
-
-    // I will fetch the product_id from the sample relation first if I can't trust the previous select.
-    let realProductId = null;
-    if (sample.batch) {
-        const batchId = (Array.isArray(sample.batch) ? sample.batch[0] : sample.batch).id;
-        const { data: batchInfo } = await supabase.from("production_batches").select("product_id").eq("id", batchId).single();
-        realProductId = batchInfo?.product_id;
-    } else if (sample.intermediate) {
-        const intermediateId = (Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate).id;
-        const { data: ipInfo } = await supabase.from("intermediate_products").select("production_batches(product_id)").eq("id", intermediateId).single();
-        const b = Array.isArray(ipInfo?.production_batches) ? ipInfo?.production_batches[0] : ipInfo?.production_batches;
-        realProductId = b?.product_id;
-    }
 
     let specsMap: Record<string, any> = {};
-    if (realProductId) {
+    if (productId) {
         const sampleType: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
         const { data: specData } = await supabase
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical")
-            .eq("product_id", realProductId)
+            .eq("product_id", productId)
             .eq("sample_type_id", sampleType.id);
 
         specData?.forEach(s => {
@@ -270,7 +247,8 @@ export async function getResultsByBatch(batchId: string) {
         .from("samples")
         .select("id")
         .eq("organization_id", user.organization_id)
-        .eq("production_batch_id", batchId);
+        .eq("production_batch_id", batchId)
+        .is("deleted_at", null);
 
     if (samplesError) throw samplesError;
 
@@ -310,11 +288,18 @@ export async function getSampleTypes() {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("sample_types")
-        .select("id, name, code")
-        .eq("organization_id", user.organization_id)
-        .order("name");
+        .select("id, name, code, test_category");
+
+    // RBAC: Segregated Compliance (Pure Server-Side)
+    if (user.role === 'lab_analyst') {
+        query = query.filter('test_category', 'neq', 'microbiological');
+    } else if (user.role === 'micro_analyst') {
+        query = query.filter('test_category', 'eq', 'microbiological');
+    }
+
+    const { data, error } = await query.order("name");
 
     if (error) throw error;
     return data;
@@ -434,6 +419,7 @@ export async function getRecentResults(limit: number = 10) {
         `)
         .eq("organization_id", user.organization_id)
         .neq("is_valid", false)
+        .is("deleted_at", null)
         .order("analyzed_at", { ascending: false })
         .limit(limit);
 
@@ -489,7 +475,7 @@ export async function getActiveTanks() {
             batch:production_batches(id, code, product:products(id, name))
         `)
         .eq("organization_id", user.organization_id)
-        .in("status", ["pending", "approved", "in_use"])
+        .in("status", ["pending", "sampling", "in_analysis", "approved", "in_use"])
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -564,7 +550,8 @@ export async function getKanbanSamples(options?: { sampleTypeIds?: string[] }) {
                 value_text
             )
         `)
-        .eq("organization_id", user.organization_id);
+        .eq("organization_id", user.organization_id)
+        .is("deleted_at", null);
 
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {

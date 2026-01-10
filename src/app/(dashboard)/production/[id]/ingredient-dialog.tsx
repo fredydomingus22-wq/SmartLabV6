@@ -83,7 +83,7 @@ export function IngredientDialog({ intermediateId, intermediateName, availableLo
                     <div className="space-y-2">
                         <Label>Raw Material Lot</Label>
                         <SearchableSelect
-                            options={lots.map(lot => {
+                            options={availableLots.map(lot => {
                                 const material = unwrap(lot.raw_material);
                                 return {
                                     value: lot.id,
@@ -93,8 +93,8 @@ export function IngredientDialog({ intermediateId, intermediateName, availableLo
                             placeholder="Select a lot..."
                             value={selectedLot}
                             onValueChange={setSelectedLot}
-                            disabled={loading || lots.length === 0}
-                            emptyMessage={lots.length === 0 ? "No approved lots available" : "No lot found"}
+                            disabled={loading || availableLots.length === 0}
+                            emptyMessage={availableLots.length === 0 ? "No approved lots available" : "No lot found"}
                         />
                         {selectedLotData && (
                             <p className="text-xs text-muted-foreground mt-1">

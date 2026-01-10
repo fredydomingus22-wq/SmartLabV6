@@ -22,6 +22,7 @@ interface DashboardClientProps {
     tanks: any[];
     samplingPoints: any[];
     plantId: string;
+    userRole: string; // Added to fix lint and support filtering
     initialLabType?: 'FQ' | 'MICRO' | 'all';
     users: { id: string, full_name: string | null, role: string }[];
 }
@@ -35,6 +36,7 @@ export function DashboardClient({
     tanks,
     samplingPoints,
     plantId,
+    userRole,
     initialLabType = 'all',
     users
 }: DashboardClientProps) {
@@ -69,10 +71,10 @@ export function DashboardClient({
                             </div>
                             <div>
                                 <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
-                                    Controlo de Amostras
+                                    {userRole === 'lab_analyst' ? 'Laboratório FQ' : userRole === 'micro_analyst' ? 'Laboratório Micro' : 'Controlo de Amostras'}
                                 </h1>
                                 <p className="text-slate-400 font-medium">
-                                    Gestão integrada de análises Físico-Químicas e Microbiológicas
+                                    {userRole === 'lab_analyst' ? 'Gestão de Análises Físico-Químicas' : userRole === 'micro_analyst' ? 'Gestão de Análises Microbiológicas' : 'Gestão integrada de análises Físico-Químicas e Microbiológicas'}
                                 </p>
                             </div>
                         </div>
@@ -80,26 +82,28 @@ export function DashboardClient({
                         {/* Quick Filter / Mode Toggle */}
                         <div className="flex max-w-fit bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800 shadow-inner backdrop-blur-xl">
                             {[
-                                { id: 'all', label: 'Global', color: 'text-slate-200' },
-                                { id: 'FQ', label: 'Físico-Química', color: 'text-blue-400' },
-                                { id: 'MICRO', label: 'Microbiologia', color: 'text-purple-400' }
-                            ].map((mode) => (
-                                <Button
-                                    key={mode.id}
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn(
-                                        "h-9 px-6 text-xs font-bold uppercase tracking-widest rounded-xl transition-all relative overflow-hidden group",
-                                        labType === mode.id ? "bg-slate-800 text-white shadow-lg ring-1 ring-slate-700" : "text-slate-500 hover:text-slate-300"
-                                    )}
-                                    onClick={() => setLabType(mode.id as any)}
-                                >
-                                    <span className={cn("relative z-10 font-black", labType === mode.id && mode.color)}>{mode.label}</span>
-                                    {labType === mode.id && (
-                                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent" />
-                                    )}
-                                </Button>
-                            ))}
+                                { id: 'all', label: 'Global', color: 'text-slate-200', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'auditor'] },
+                                { id: 'FQ', label: 'Físico-Química', color: 'text-blue-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'lab_analyst', 'auditor'] },
+                                { id: 'MICRO', label: 'Microbiologia', color: 'text-purple-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'micro_analyst', 'auditor'] }
+                            ]
+                                .filter(m => !m.roles || m.roles.includes(userRole))
+                                .map((mode) => (
+                                    <Button
+                                        key={mode.id}
+                                        variant="ghost"
+                                        size="sm"
+                                        className={cn(
+                                            "h-9 px-6 text-xs font-bold uppercase tracking-widest rounded-xl transition-all relative overflow-hidden group",
+                                            labType === mode.id ? "bg-slate-800 text-white shadow-lg ring-1 ring-slate-700" : "text-slate-500 hover:text-slate-300"
+                                        )}
+                                        onClick={() => setLabType(mode.id as any)}
+                                    >
+                                        <span className={cn("relative z-10 font-black", labType === mode.id && mode.color)}>{mode.label}</span>
+                                        {labType === mode.id && (
+                                            <motion.div layoutId="activeTab" className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent" />
+                                        )}
+                                    </Button>
+                                ))}
                         </div>
                     </div>
 

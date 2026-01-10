@@ -82,7 +82,7 @@ export function BulkImportDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" suppressHydrationWarning>
                     <Upload className="h-4 w-4 mr-2" />
                     Importar CSV
                 </Button>

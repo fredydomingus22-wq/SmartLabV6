@@ -32,6 +32,7 @@ import { createSampleAction } from "@/app/actions/lab";
 import { CreateSampleSchema, CreateSampleFormValues } from "@/schemas/lab";
 import { isFinishedProduct, isIntermediateProduct, isRawMaterial, isUtility } from "@/lib/constants/lab";
 import { cn } from "@/lib/utils";
+import { useTankContext } from "@/hooks/useTankContext";
 
 interface Tank {
     id: string;
@@ -50,6 +51,7 @@ interface SampleType {
     id: string;
     name: string;
     code: string;
+    test_category?: string;
 }
 
 interface SamplingPoint {
@@ -100,20 +102,8 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
     // Business Logic
     const isProductSample = selectedType?.code ? (isFinishedProduct(selectedType.code) || isIntermediateProduct(selectedType.code)) : false;
 
-    // Helper to get product name from tank
-    const getProductName = (tank: Tank) => {
-        const batch = Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
-        if (!batch?.product) return "";
-        if (Array.isArray(batch.product)) {
-            return batch.product[0]?.name || "";
-        }
-        return batch.product.name || "";
-    };
-
-    // Helper to get batch from tank
-    const getBatch = (tank: Tank) => {
-        return Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
-    };
+    // Use shared context hook
+    const tankContext = useTankContext(selectedTankId || null);
 
     const onSubmit = async (data: CreateSampleFormValues) => {
         const formData = new FormData();
@@ -126,10 +116,9 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
         if (isProductSample) {
             if (data.intermediate_product_id) {
                 formData.append("intermediate_product_id", data.intermediate_product_id);
-                const tank = tanks.find(t => t.id === data.intermediate_product_id);
-                const batch = tank ? getBatch(tank) : null;
-                if (batch?.id) {
-                    formData.append("production_batch_id", batch.id);
+                // Use resolved context from hook
+                if (tankContext.batchId) {
+                    formData.append("production_batch_id", tankContext.batchId);
                 }
             }
         }
@@ -253,22 +242,22 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
                                                             <span className="text-xs font-normal text-emerald-600">Produto em Processo</span>
                                                         </FormLabel>
                                                         <SearchableSelect
-                                                            options={tanks.map(tank => ({
-                                                                value: tank.id,
-                                                                label: `${tank.code} - ${getProductName(tank)}`
-                                                            }))}
+                                                            options={tanks.map(tank => {
+                                                                const batch = Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
+                                                                const product = Array.isArray(batch?.product) ? batch?.product[0] : batch?.product;
+                                                                const productName = product?.name || "Desconhecido";
+                                                                return {
+                                                                    value: tank.id,
+                                                                    label: `${tank.code} - ${productName}`
+                                                                };
+                                                            })}
                                                             placeholder="Selecione o tanque..."
                                                             onValueChange={field.onChange}
                                                             value={field.value}
                                                         />
-                                                        {selectedTankId && (
-                                                            <div className="mt-2 text-xs p-2 bg-emerald-500/10 rounded border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                                                                <strong>Lote Associado:</strong> {(() => {
-                                                                    const t = tanks.find(t => t.id === selectedTankId);
-                                                                    return t ? getBatch(t)?.code : "-";
-                                                                })()}
-                                                            </div>
-                                                        )}
+                                                        <div className="mt-2 text-xs p-2 bg-emerald-500/10 rounded border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                                                            <strong>Lote Associado:</strong> {tankContext.isLoading ? <Loader2 className="inline h-3 w-3 animate-spin ml-1" /> : (tankContext.batchCode || "-")}
+                                                        </div>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}

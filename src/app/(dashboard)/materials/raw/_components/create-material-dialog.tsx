@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Package, Loader2 } from "lucide-react";
 import { createRawMaterialAction } from "@/app/actions/raw-materials";
 import { toast } from "sonner";
+import { SearchableSelect } from "@/components/smart/searchable-select";
 
 const formSchema = z.object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -140,11 +141,22 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                 control={form.control}
                                 name="category"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Categoria</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Ex: Cereais" {...field} className="bg-slate-900 border-slate-800" />
-                                        </FormControl>
+                                        <SearchableSelect
+                                            options={[
+                                                { label: "Cereais", value: "cereais" },
+                                                { label: "Laticínios", value: "laticinios" },
+                                                { label: "Frutas", value: "frutas" },
+                                                { label: "Aditivos", value: "aditivos" },
+                                                { label: "Embalagens", value: "embalagens" },
+                                                { label: "Outros", value: "outros" },
+                                            ]}
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            placeholder="Selecione..."
+                                            className="bg-slate-900 border-slate-800"
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}

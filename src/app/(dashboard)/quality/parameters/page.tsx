@@ -93,24 +93,27 @@ export default async function ParametersPage({ searchParams }: PageProps) {
 
     return (
         <div className="container py-8 space-y-8 animate-in fade-in duration-500">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/5 pb-6">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/10 rounded-2xl">
-                        <Activity className="h-8 w-8 text-blue-400" />
+            {/* Premium Header Section */}
+            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden mb-8">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-4 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+                            <Activity className="h-8 w-8 text-blue-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 leading-tight">
+                                Engenharia de Qualidade
+                            </h1>
+                            <p className="text-slate-400 mt-1 font-medium max-w-xl">
+                                Configuração técnica de parâmetros, especificações e infraestrutura industrial para conformidade normativa.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                            Engenharia de Qualidade
-                        </h1>
-                        <p className="text-slate-400 mt-1 font-medium">
-                            Configuração técnica de parâmetros, especificações e infraestrutura
-                        </p>
+                    <div className="flex flex-wrap gap-3">
+                        <BulkImportDialog />
+                        <ParameterDialog mode="create" />
                     </div>
-                </div>
-                <div className="flex gap-3">
-                    <BulkImportDialog />
-                    <ParameterDialog mode="create" />
                 </div>
             </div>
 

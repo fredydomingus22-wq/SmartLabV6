@@ -3,6 +3,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { requirePermission } from "@/lib/permissions.server";
+import { MicroDomainService } from "@/domain/micro/micro.service";
+
+async function getMicroService() {
+    const userData = await requirePermission('micro', 'write');
+    const supabase = await createClient();
+    return {
+        service: new MicroDomainService(supabase, {
+            organization_id: userData.organization_id!,
+            user_id: userData.id,
+            role: userData.role,
+            plant_id: userData.plant_id!,
+            correlation_id: crypto.randomUUID(),
+        }),
+        userData,
+        supabase
+    };
+}
 
 const MediaTypeSchema = z.object({
     name: z.string().min(2, "Name is required"),
@@ -34,7 +52,7 @@ export async function createMediaTypeAction(formData: FormData) {
     }
 
     const { error } = await supabase.from("micro_media_types").insert({
-        organization_id: userData?.organization_id,
+        organization_id: userData?.organization_id!,
         plant_id: validation.data.plant_id,
         name: validation.data.name,
         description: validation.data.description,
@@ -92,19 +110,19 @@ export async function updateMediaTypeAction(formData: FormData) {
 }
 
 export async function deleteMediaTypeAction(formData: FormData) {
-    const supabase = await createClient();
+    const { service } = await getMicroService();
     const id = formData.get("id") as string;
+    const reason = formData.get("reason") as string || "Eliminação por erro de registo";
 
     if (!id) return { success: false, message: "ID is required" };
 
-    const { error } = await supabase.from("micro_media_types").delete().eq("id", id);
+    try {
+        const result = await service.softDeleteEquipment('media_type', id, reason);
+        if (!result.success) return { success: false, message: "Erro ao desativar tipo de meio." };
 
-    if (error) {
-        // If related records exist (media lots), this will fail due to FK constraints
-        // We could also check error code 23503 (foreign_key_violation)
-        return { success: false, message: error.message };
+        revalidatePath("/micro/configuration/media-types");
+        return { success: true, message: "Tipo de Meio desativado com sucesso (Soft Delete)" };
+    } catch (e: any) {
+        return { success: false, message: e.message || "Falha na desativação." };
     }
-
-    revalidatePath("/micro/configuration/media-types");
-    return { success: true, message: "Media Type deleted successfully" };
 }

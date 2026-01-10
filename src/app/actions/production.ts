@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getBatchTraceabilityAction } from "./traceability";
 import { mapToEnterpriseReport } from "@/lib/reports/report-dtos";
 import { requirePermission } from "@/lib/permissions.server";
+import { IntermediateDomainService } from "@/domain/production/intermediate.service";
 
 // --- Schemas ---
 
@@ -27,6 +28,7 @@ const CreateIntermediateSchema = z.object({
     production_batch_id: z.string().uuid(),
     code: z.string().min(1), // Tank Name/Code for display
     equipment_id: z.string().uuid(), // FK to equipments
+    product_id: z.string().uuid().optional(), // Explicit snapshot link
     volume: z.coerce.number().optional(),
     unit: z.string().default("L"),
 });
@@ -85,20 +87,52 @@ export async function createGoldenBatchFromFormAction(formData: FormData): Promi
     // For now, we trust the RLS policies which limit INSERTs to user's org.
     // However, explicitly setting organization_id guarantees we don't accidentally insert into null org if RLS was loose.
 
-    const { error } = await supabase.from("production_batches").insert({
-        organization_id: plant.organization_id, // CRITICAL: Must match Plant's Org
-        plant_id: validation.data.plant_id,
+    const { data, error } = await supabase.from("production_batches").insert({
+        organization_id: plant.organization_id!,
+        plant_id: validation.data.plant_id!,
         product_id: validation.data.product_id,
         production_line_id: validation.data.production_line_id,
         code: validation.data.code,
         planned_quantity: validation.data.planned_quantity,
-        status: "planned", // EPIC 1.1: Default status is PLANNED
+        status: "planned",
         start_date: validation.data.start_date,
-    });
+    })
+        .select("id")
+        .single();
 
     if (error) {
         console.error("DB INSERT ERROR:", error);
         throw new Error(error.message);
+    }
+
+    const newBatchId = data.id;
+
+
+
+    // EPIC 1.2: Automated Intermediate Planning
+    // If the product has a parent (recipe), we must plan the intermediate usage slot.
+    const { data: productDef } = await supabase
+        .from("products")
+        .select("parent_id, parent:products!products_parent_id_fkey(name, sku)") // Self-referencing join
+        .eq("id", validation.data.product_id)
+        .single();
+
+    // If there is a parent recipe/intermediate product defined
+    if (productDef?.parent_id) {
+        console.log("Auto-planning intermediate for:", productDef.parent);
+
+        // Create a PLANNED intermediate slot (no equipment assigned yet)
+        const parentData = Array.isArray(productDef.parent) ? productDef.parent[0] : productDef.parent;
+
+        await supabase.from("intermediate_products").insert({
+            organization_id: plant.organization_id!,
+            plant_id: validation.data.plant_id!,
+            production_batch_id: error ? "" : (await supabase.from("production_batches").select("id").eq("code", validation.data.code).single()).data?.id, // Fetch ID we just made. Or better, use select() on insert.
+            product_id: productDef.parent_id, // Explicit link to the Recipe
+            code: `${(parentData as any)?.name || 'Intermediate'} (Planned)`,
+            status: 'planned',
+            approval_status: 'pending' // Lab must approve later
+        });
     }
 
     revalidatePath("/production");
@@ -111,60 +145,37 @@ export async function createIntermediateProductAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
 
-    const rawData = {
-        production_batch_id: formData.get("production_batch_id"),
-        code: formData.get("code"),
-        equipment_id: formData.get("equipment_id"),
-        volume: formData.get("volume"),
-        unit: formData.get("unit") || "L",
-    };
-
-    const validation = CreateIntermediateSchema.safeParse(rawData);
-    if (!validation.success) {
-        return { success: false, message: validation.error.issues[0].message };
-    }
-
-    // Check if equipment is currently occupied
-    const { data: occupied } = await supabase
-        .from("intermediate_products")
-        .select("id, status, code")
-        .eq("equipment_id", validation.data.equipment_id)
-        .neq("status", "consumed")
-        .maybeSingle();
-
-    if (occupied) {
-        return {
-            success: false,
-            message: `Equipment ${occupied.code} is currently occupied (Status: ${occupied.status}). Must be finalized/consumed before reuse.`
-        };
-    }
-
-    // Get batch to inherit org/plant
-    const { data: batch } = await supabase
-        .from("production_batches")
-        .select("organization_id, plant_id")
-        .eq("id", validation.data.production_batch_id)
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id, role")
+        .eq("id", user.id)
         .single();
 
-    if (!batch) return { success: false, message: "Batch not found" };
+    if (!profile) return { success: false, message: "Profile not found" };
 
-    const { error } = await supabase.from("intermediate_products").insert({
-        organization_id: batch.organization_id,
-        plant_id: batch.plant_id,
-        production_batch_id: validation.data.production_batch_id,
-        code: validation.data.code, // Keep for display/backup
-        equipment_id: validation.data.equipment_id,
-        volume: validation.data.volume || null,
-        unit: validation.data.unit,
-        status: "pending",
-        start_date: new Date().toISOString(),
-        approval_status: "pending"
+    const service = new IntermediateDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
     });
 
-    if (error) return { success: false, message: error.message };
+    const result = await service.registerIntermediate({
+        production_batch_id: formData.get("production_batch_id") as string,
+        code: formData.get("code") as string,
+        equipment_id: formData.get("equipment_id") as string,
+        volume: Number(formData.get("volume")) || undefined,
+        unit: (formData.get("unit") as string) || "L",
+        plant_id: profile.plant_id as string
+    });
 
-    revalidatePath("/production");
-    return { success: true, message: "Tank/Intermediate Created" };
+    if (result.success) {
+        revalidatePath("/production");
+        revalidatePath(`/production/${formData.get("production_batch_id")}`);
+    }
+
+    return result;
 }
 
 /**
@@ -217,8 +228,8 @@ export async function linkIngredientAction(formData: FormData) {
 
     // Insert the ingredient link
     const { error } = await supabase.from("intermediate_ingredients").insert({
-        organization_id: intermediate.organization_id,
-        plant_id: intermediate.plant_id,
+        organization_id: intermediate.organization_id!,
+        plant_id: intermediate.plant_id!,
         intermediate_product_id: validation.data.intermediate_product_id,
         raw_material_lot_id: validation.data.raw_material_lot_id || null,
         raw_material_lot_code: validation.data.raw_material_lot_code,
@@ -252,7 +263,7 @@ export async function linkIngredientAction(formData: FormData) {
 }
 
 /**
- * Update Intermediate Product Status (Approve/Reject)
+ * Update Intermediate Product Status (Finalize/Consume)
  */
 export async function updateIntermediateStatusAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
@@ -260,7 +271,7 @@ export async function updateIntermediateStatusAction(formData: FormData) {
 
     const { data: profile } = await supabase
         .from("user_profiles")
-        .select("organization_id, plant_id")
+        .select("organization_id, plant_id, role")
         .eq("id", user.id)
         .single();
 
@@ -269,21 +280,37 @@ export async function updateIntermediateStatusAction(formData: FormData) {
     const intermediate_id = formData.get("intermediate_id") as string;
     const status = formData.get("status") as string;
 
-    if (!intermediate_id || !["pending", "approved", "rejected", "in_use", "consumed"].includes(status)) {
-        return { success: false, message: "Invalid data" };
-    }
+    const service = new IntermediateDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
 
-    const updateData: any = { status };
     if (status === "consumed") {
-        updateData.end_date = new Date().toISOString();
+        const result = await service.consumeIntermediate(intermediate_id);
+        if (result.success) {
+            revalidatePath("/production");
+            revalidatePath(`/production/${formData.get("batch_id") || ''}`);
+        }
+        return result;
     }
 
+    if (status === "sampling") {
+        const result = await service.finalizeProduction(intermediate_id);
+        if (result.success) {
+            revalidatePath("/production");
+            revalidatePath(`/production/${formData.get("batch_id") || ''}`);
+        }
+        return result;
+    }
+
+    // Fallback for other status updates if needed
     const { error } = await supabase
         .from("intermediate_products")
-        .update(updateData)
-        .eq("id", intermediate_id)
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
+        .update({ status })
+        .eq("id", intermediate_id);
 
     if (error) return { success: false, message: error.message };
 
@@ -291,34 +318,72 @@ export async function updateIntermediateStatusAction(formData: FormData) {
     return { success: true, message: `Intermediate ${status}` };
 }
 
-/**
- * Approve Intermediate Product (QA Manager)
- */
 export async function approveIntermediateAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
 
     const intermediate_id = formData.get("intermediate_id") as string;
+    const password = formData.get("password") as string;
+    const batch_id = formData.get("batch_id") as string;
 
-    const { data: profile } = await supabase.from('user_profiles').select('role, organization_id, plant_id').eq('id', user.id).single();
-    if (profile?.role !== 'admin' && profile?.role !== 'manager') {
-        return { success: false, message: "Only QA Managers can approve intermediates." };
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id, role")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    const service = new IntermediateDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const result = await service.approveIntermediate(intermediate_id, password);
+    if (result.success) {
+        revalidatePath("/production");
+        if (batch_id) revalidatePath(`/production/${batch_id}`);
     }
 
-    const { error } = await supabase
-        .from("intermediate_products")
-        .update({
-            approval_status: "approved",
-            status: "in_use"
-        })
-        .eq("id", intermediate_id)
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
+    return result;
+}
 
-    if (error) return { success: false, message: error.message };
+/**
+ * Start Tank Usage (Discharge)
+ */
+export async function startUsageAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
 
-    revalidatePath("/production");
-    return { success: true, message: "Intermediate Product Approved" };
+    const intermediate_id = formData.get("intermediate_id") as string;
+    const batch_id = formData.get("batch_id") as string;
+
+    const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("organization_id, plant_id, role")
+        .eq("id", user.id)
+        .single();
+
+    if (!profile) return { success: false, message: "Profile not found" };
+
+    const service = new IntermediateDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const result = await service.startUsage(intermediate_id);
+    if (result.success) {
+        revalidatePath("/production");
+        if (batch_id) revalidatePath(`/production/${batch_id}`);
+    }
+
+    return result;
 }
 
 /**
@@ -436,6 +501,20 @@ export async function releaseBatchAction(formData: FormData) {
 
     if (!profile) return { success: false, message: "Profile not found" };
 
+    // 0. Electronic Signature (21 CFR Part 11)
+    const password = formData.get("password") as string;
+    if (password) {
+        const { ElectronicSignatureService } = await import("@/domain/lab/signature.service");
+        const signatureService = new ElectronicSignatureService(supabase, {
+            organization_id: profile.organization_id!,
+            user_id: user.id,
+            role: profile.role,
+            correlation_id: crypto.randomUUID()
+        });
+        const isValid = await signatureService.verify(password);
+        if (!isValid) return { success: false, message: "Assinatura eletrónica inválida. Ação cancelada." };
+    }
+
     // Security: Only managers/admins can release/reject
     if (!["admin", "system_owner", "manager", "qa_manager"].includes(profile.role)) {
         return { success: false, message: "Apenas Managers ou Admins podem liberar ou rejeitar lotes." };
@@ -458,6 +537,8 @@ export async function releaseBatchAction(formData: FormData) {
         }
     }
 
+    const reason = formData.get("reason") as string;
+
     // 3. Update the batch
     const status = action === "release" ? "released" : "rejected";
     const { error } = await supabase
@@ -475,30 +556,40 @@ export async function releaseBatchAction(formData: FormData) {
     if (error) return { success: false, message: error.message };
 
     // 4. Create Compliance Snapshot (ISO/FSSC Rule)
-    if (action === "release") {
-        try {
-            const traceabilityData = await getBatchTraceabilityAction(batch_id);
-            if (traceabilityData.success && traceabilityData.data) {
-                const enterpriseDTO = mapToEnterpriseReport(traceabilityData.data);
+    try {
+        const traceabilityData = await getBatchTraceabilityAction(batch_id);
+        if (traceabilityData.success && traceabilityData.data) {
+            const enterpriseDTO = mapToEnterpriseReport(traceabilityData.data);
 
-                await supabase.from("generated_reports").insert({
-                    organization_id: profile.organization_id,
-                    plant_id: profile.plant_id,
-                    report_type: "FINAL",
-                    entity_type: "batch",
-                    entity_id: batch_id,
-                    report_number: `BQR-${enterpriseDTO.header.batchCode}`,
-                    title: "Production Batch Quality Report",
-                    report_data: enterpriseDTO as any, // The JSONB Snapshot
-                    generated_by: user.id,
-                    status: "signed",
-                    signed_by: user.id,
-                    signed_at: new Date().toISOString()
-                });
-            }
-        } catch (snapError) {
-            console.error("SNAPSHOT ERROR (Non-blocking):", snapError);
+            // Inject audit reason into report metadata
+            const reportMetadata = {
+                ...enterpriseDTO,
+                audit: {
+                    action: action.toUpperCase(),
+                    performed_by: user.id,
+                    timestamp: new Date().toISOString(),
+                    justification: reason || "No justification provided (Legacy/Manual)",
+                    signed: !!password
+                }
+            };
+
+            await supabase.from("generated_reports").insert({
+                organization_id: profile.organization_id!,
+                plant_id: profile.plant_id!,
+                report_type: action === "release" ? "FINAL" : "REJECTION",
+                entity_type: "batch",
+                entity_id: batch_id,
+                report_number: `${action === "release" ? 'BQR' : 'BRJ'}-${enterpriseDTO.header.batchCode}`,
+                title: action === "release" ? "Production Batch Quality Report" : "Production Batch Rejection Report",
+                report_data: reportMetadata as any,
+                generated_by: user.id,
+                status: "signed",
+                signed_by: user.id,
+                signed_at: new Date().toISOString()
+            });
         }
+    } catch (snapError) {
+        console.error("SNAPSHOT ERROR (Non-blocking):", snapError);
     }
 
     revalidatePath("/production");

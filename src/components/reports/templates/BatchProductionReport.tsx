@@ -84,63 +84,106 @@ export const BatchProductionReport = ({
                 </View>
             </View>
 
-            {/* Phases Loop */}
-            {phases.map((phase, pIndex) => (
-                <View key={pIndex} style={{ marginTop: 20 }}>
-                    <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10, borderBottomWidth: 1 }}>
-                        Phase: {phase.name}
-                    </Text>
+            {/* Phases Loop - Grouped by Sample Type with Pivot Table */}
+            {phases.map((phase, pIndex) => {
+                // Extract all unique parameters from this phase
+                const allParams = new Set<string>();
+                phase.samples.forEach(s => s.analyses.forEach(a => allParams.add(a.parameter_name)));
+                const parameterColumns = Array.from(allParams);
 
-                    {/* Samples Loop within Phase */}
-                    {phase.samples.length === 0 ? (
-                        <Text style={{ fontSize: 10, fontStyle: 'italic', marginBottom: 10 }}>No samples recorded for this phase.</Text>
-                    ) : (
-                        phase.samples.map((sample, sIndex) => (
-                            <View key={sIndex} style={{ marginBottom: 15, paddingLeft: 10 }}>
+                // Sort samples by date and time
+                const sortedSamples = [...phase.samples].sort((a, b) =>
+                    new Date(a.collection_date).getTime() - new Date(b.collection_date).getTime()
+                );
 
-                                {/* Sample Header inside Phase */}
-                                <View style={{ flexDirection: 'row', backgroundColor: '#fafafa', padding: 5, marginBottom: 5 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: 'bold', width: '20%' }}>{sample.sample_code}</Text>
-                                    <Text style={{ fontSize: 10, width: '30%' }}>{sample.collection_date}</Text>
-                                    <Text style={{ fontSize: 10, width: '30%' }}>{sample.sample_type || 'Generic'}</Text>
-                                    <Text style={{ fontSize: 10, width: '20%', color: sample.overall_status === 'compliant' ? 'green' : 'red' }}>
-                                        {sample.overall_status}
-                                    </Text>
-                                </View>
+                // Group samples by date for separators
+                let lastDate = '';
 
-                                {/* Results Table for Sample */}
-                                <View style={styles.table}>
-                                    <View style={styles.tableRow}>
-                                        <View style={[styles.tableColHeader, { width: '40%' }]}>
-                                            <Text style={styles.tableCellHeader}>Parameter</Text>
-                                        </View>
-                                        <View style={[styles.tableColHeader, { width: '30%' }]}>
-                                            <Text style={styles.tableCellHeader}>Result</Text>
-                                        </View>
-                                        <View style={[styles.tableColHeader, { width: '30%' }]}>
-                                            <Text style={styles.tableCellHeader}>Status</Text>
-                                        </View>
+                return (
+                    <View key={pIndex} style={{ marginTop: 20 }} wrap={false}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, borderBottomWidth: 1, paddingBottom: 4 }}>
+                            {phase.name}
+                        </Text>
+
+                        {phase.samples.length === 0 ? (
+                            <Text style={{ fontSize: 9, fontStyle: 'italic', marginBottom: 10, color: '#666' }}>
+                                Sem amostras registadas nesta fase.
+                            </Text>
+                        ) : (
+                            <View style={styles.table}>
+                                {/* Table Header: Hora + Parameters */}
+                                <View style={[styles.tableRow, { backgroundColor: '#f1f5f9' }]}>
+                                    <View style={[styles.tableColHeader, { width: '12%' }]}>
+                                        <Text style={[styles.tableCellHeader, { fontSize: 7 }]}>HORA</Text>
                                     </View>
-                                    {sample.analyses.map((analysis, aIndex) => (
-                                        <View style={styles.tableRow} key={aIndex}>
-                                            <View style={[styles.tableCol, { width: '40%' }]}>
-                                                <Text style={styles.tableCell}>{analysis.parameter_name}</Text>
-                                            </View>
-                                            <View style={[styles.tableCol, { width: '30%' }]}>
-                                                <Text style={styles.tableCell}>{analysis.result} {analysis.unit}</Text>
-                                            </View>
-                                            <View style={[styles.tableCol, { width: '30%' }]}>
-                                                <Text style={styles.tableCell}>{analysis.status}</Text>
-                                            </View>
+                                    {parameterColumns.map((param, idx) => (
+                                        <View key={idx} style={[styles.tableColHeader, { width: `${88 / parameterColumns.length}%` }]}>
+                                            <Text style={[styles.tableCellHeader, { fontSize: 7 }]}>{param}</Text>
                                         </View>
                                     ))}
                                 </View>
 
+                                {/* Table Body */}
+                                {sortedSamples.map((sample, sIndex) => {
+                                    // Parse date for separator logic
+                                    const dateObj = new Date(sample.collection_date);
+                                    const dateStr = dateObj.toLocaleDateString('pt-PT');
+                                    const timeStr = dateObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+                                    const showDateSeparator = dateStr !== lastDate;
+                                    lastDate = dateStr;
+
+                                    // Map parameter results to columns
+                                    const paramResults: Record<string, { value: string; status: string }> = {};
+                                    sample.analyses.forEach(a => {
+                                        paramResults[a.parameter_name] = {
+                                            value: `${a.result} ${a.unit}`,
+                                            status: a.status
+                                        };
+                                    });
+
+                                    return (
+                                        <React.Fragment key={sIndex}>
+                                            {/* Date Separator Row */}
+                                            {showDateSeparator && (
+                                                <View style={[styles.tableRow, { backgroundColor: '#e2e8f0' }]}>
+                                                    <View style={{ width: '100%', padding: 3 }}>
+                                                        <Text style={{ fontSize: 8, fontWeight: 'bold', textAlign: 'center' }}>
+                                                            📅 {dateStr}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            )}
+                                            {/* Sample Data Row */}
+                                            <View style={styles.tableRow}>
+                                                <View style={[styles.tableCol, { width: '12%' }]}>
+                                                    <Text style={[styles.tableCell, { fontSize: 8, fontWeight: 'bold' }]}>{timeStr}</Text>
+                                                </View>
+                                                {parameterColumns.map((param, idx) => {
+                                                    const result = paramResults[param];
+                                                    return (
+                                                        <View key={idx} style={[styles.tableCol, { width: `${88 / parameterColumns.length}%` }]}>
+                                                            <Text style={[
+                                                                styles.tableCell,
+                                                                {
+                                                                    fontSize: 7,
+                                                                    color: result?.status === 'compliant' ? '#059669' :
+                                                                        result?.status === 'non_compliant' ? '#dc2626' : '#000'
+                                                                }
+                                                            ]}>
+                                                                {result?.value || '—'}
+                                                            </Text>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        </React.Fragment>
+                                    );
+                                })}
                             </View>
-                        ))
-                    )}
-                </View>
-            ))}
+                        )}
+                    </View>
+                );
+            })}
 
             {/* Footer */}
             <View style={styles.footer}>

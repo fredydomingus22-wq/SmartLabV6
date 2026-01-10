@@ -95,9 +95,11 @@ export async function getBatchTraceabilityAction(batchId: string) {
         intermediatesResult,
         supervisorResult,
         qaResult,
+        creatorResult,
         specsResult,
         equipmentResult,
-        cipResult
+        cipResult,
+        packagingResult
     ] = await Promise.all([
         supabase
             .from("generated_reports")
@@ -116,21 +118,26 @@ export async function getBatchTraceabilityAction(batchId: string) {
             .select(`
                 id, code, status, equipment_id
             `).in("id", finalIntermediateIds),
+        batch.created_by ? supabase
+            .from("user_profiles")
+            .select("full_name, role, signature_url")
+            .eq("id", batch.created_by)
+            .single() : { data: null },
         batch.supervisor_approved_by ? supabase
             .from("user_profiles")
-            .select("full_name, role")
+            .select("full_name, role, signature_url")
             .eq("id", batch.supervisor_approved_by)
             .single() : { data: null },
         batch.qa_approved_by ? supabase
             .from("user_profiles")
-            .select("full_name, role")
+            .select("full_name, role, signature_url")
             .eq("id", batch.qa_approved_by)
             .single() : { data: null },
         supabase
             .from("product_specifications")
             .select(`
                 *,
-                parameter:qa_parameters(id, name, unit, code)
+                parameter:qa_parameters!product_specifications_qa_parameter_id_fkey(id, name, unit, code)
             `)
             .eq("product_id", batch.product_id),
         equipmentIds.length > 0 ? supabase
@@ -143,7 +150,17 @@ export async function getBatchTraceabilityAction(batchId: string) {
                 id, equipment_uid, start_time, validation_status,
                 program:cip_programs(name)
             `)
-            .in("id", cipIds) : { data: [] }
+            .in("id", cipIds) : { data: [] },
+        supabase
+            .from("batch_packaging_usage")
+            .select(`
+                *,
+                lot:packaging_lots(
+                    lot_code,
+                    material:packaging_materials(name, code)
+                )
+            `)
+            .eq("production_batch_id", batchId)
     ]);
 
     // FETCH SAMPLES (Explicitly separated to avoid .or() bugs)
@@ -151,10 +168,11 @@ export async function getBatchTraceabilityAction(batchId: string) {
         .from("samples")
         .select(`
             id, code, status, collected_at,
-            sample_type:sample_types(name, test_category, code),
-            analysis:lab_analysis(
-                id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id, equipment_id,
-                parameter:qa_parameters(name, unit, code)
+            sample_type:sample_types!samples_sample_type_id_fkey(name, test_category, code),
+            analysis:lab_analysis!lab_analysis_sample_id_fkey(
+                *,
+                parameter:qa_parameters!lab_analysis_qa_parameter_id_fkey(name, unit, code),
+                analyst:user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name, role, signature_url)
             )
         `)
         .eq("production_batch_id", batchId);
@@ -165,10 +183,11 @@ export async function getBatchTraceabilityAction(batchId: string) {
             .from("samples")
             .select(`
                 id, code, status, collected_at,
-                sample_type:sample_types(name, test_category, code),
-                analysis:lab_analysis(
-                    id, value_numeric, value_text, is_conforming, analyzed_at, analyzed_by, qa_parameter_id, equipment_id,
-                    parameter:qa_parameters(name, unit, code)
+                sample_type:sample_types!samples_sample_type_id_fkey(name, test_category, code),
+                analysis:lab_analysis!lab_analysis_sample_id_fkey(
+                    *,
+                    parameter:qa_parameters!lab_analysis_qa_parameter_id_fkey(name, unit, code),
+                    analyst:user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name, role, signature_url)
                 )
             `)
             .in("intermediate_product_id", finalIntermediateIds);
@@ -231,10 +250,12 @@ export async function getBatchTraceabilityAction(batchId: string) {
     const processIntermediates = intermediatesResult.data || [];
     const supervisor = supervisorResult.data;
     const qa = qaResult.data;
+    const creator = creatorResult.data;
     const specifications = specsResult.data || [];
     const cips = (cipResult as any).data || [];
+    const packaging = (packagingResult as any).data || [];
 
-    const batchWithProfiles = { ...batch, supervisor, qa, specifications };
+    const batchWithProfiles = { ...batch, supervisor, qa, creator, specifications };
 
     const ingredients = allLinks
         ?.filter(l => l.source_type === 'raw_material_lot' || l.source_type === 'raw_material')
@@ -293,7 +314,8 @@ export async function getBatchTraceabilityAction(batchId: string) {
             ingredients,
             tanks,
             samples,
-            reports
+            reports,
+            packaging
         }
     };
 }

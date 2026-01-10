@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/form";
 import { Loader2, TestTube2 } from "lucide-react";
 import { createSampleAction } from "@/app/actions/lab";
+import { createMicroSampleAction } from "@/app/actions/micro";
 import { CreateSampleSchema } from "@/schemas/lab";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
@@ -96,33 +97,29 @@ export function CreateIntermediateSampleDialog({
         if (data.plant_id) formData.append("plant_id", data.plant_id);
         if (data.sampling_point_id) formData.append("sampling_point_id", data.sampling_point_id);
 
-        // Explicitly set the intermediate ID
         formData.append("intermediate_product_id", intermediateId);
 
-        // We know the intermediate logic in the server action handles linking to the batch 
-        // if we pass intermediate_product_id.
-        // However, the server action might expect 'production_batch_id' explicitly 
-        // if the logic is "if intermediate, find batch and set it".
-        // Let's rely on the server action's logic or pass it if available?
-        // In the original dialog, it fetched the batch from the intermediate object.
-        // Here we don't have the batch ID in props explicitly? Oh wait we have batchCode.
-        // The server action 'createSampleAction' should handle the lookup if we pass intermediate_id.
-        // Let's trust the server action or check it later. 
-        // Based on `create-sample-dialog.tsx`, it manually appended `production_batch_id`.
-        // I should probably ensure the server action can handle it.
-        // For now, I will just submit.
-
-        const result = await createSampleAction(formData);
+        let result;
+        if (category === 'MICRO') {
+            result = await createMicroSampleAction(formData);
+        } else {
+            result = await createSampleAction(formData);
+        }
 
         if (result.success) {
-            toast.success("Sample Registered", {
-                description: `Sample for ${intermediateCode} created successfully.`
+            toast.success(category === 'MICRO' ? "Amostra Micro Registada" : "Sample Registered", {
+                description: `Amostra para ${intermediateCode} criada com sucesso.`
             });
             setOpen(false);
             form.reset();
-            router.refresh();
+
+            if (category === 'MICRO') {
+                router.push("/micro/incubators");
+            } else {
+                router.refresh();
+            }
         } else {
-            toast.error("Registration Failed", {
+            toast.error("Erro no Registo", {
                 description: result.message
             });
         }

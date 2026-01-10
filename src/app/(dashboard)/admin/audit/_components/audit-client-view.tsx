@@ -37,14 +37,32 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
+import { AuditEvent } from "@/domain/audit/audit.repository";
+
 interface AuditClientViewProps {
-    initialEvents: any[];
+    initialEvents: AuditEvent[];
     total: number;
 }
 
 export function AuditClientView({ initialEvents, total }: AuditClientViewProps) {
-    const [events, setEvents] = useState(initialEvents);
+    const [events] = useState<AuditEvent[]>(initialEvents);
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+    const categories = ["SAMPLES", "DOCUMENTS", "PRODUCTION", "ASSETS", "TRAINING"];
+
+    const filteredEvents = events.filter(event => {
+        const userName = event.user?.full_name || 'System';
+        const matchesSearch =
+            event.event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.entity_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.entity_id.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesCategory = !selectedCategory || event.entity_type.toUpperCase() === selectedCategory;
+
+        return matchesSearch && matchesCategory;
+    });
 
     const getEventColor = (type: string) => {
         if (type.includes('CREATED') || type.includes('REGISTERED')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -57,31 +75,61 @@ export function AuditClientView({ initialEvents, total }: AuditClientViewProps) 
     return (
         <div className="space-y-4">
             {/* Filters Bar */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between pb-2">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="relative w-full md:w-80 group">
+            <div className="flex flex-col gap-6 items-start justify-between pb-2">
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+                    <div className="relative w-full md:w-96 group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
                         <Input
-                            placeholder="Procurar por Entidade ou User..."
+                            placeholder="Procurar por Evento, Entidade ou Técnico..."
                             className="pl-10 h-11 bg-black/40 border-white/5 focus:border-indigo-500/50 rounded-xl transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" className="h-11 border-white/5 bg-white/5 gap-2 px-4 rounded-xl text-slate-400 hover:text-white">
-                        <Filter className="h-4 w-4" />
-                        <span>Filtros</span>
-                    </Button>
+
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedCategory(null)}
+                            className={cn(
+                                "text-[10px] font-bold uppercase tracking-widest px-4 rounded-lg border transition-all",
+                                !selectedCategory ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "text-slate-500 border-transparent hover:text-white"
+                            )}
+                        >
+                            Todos
+                        </Button>
+                        {categories.map(cat => (
+                            <Button
+                                key={cat}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedCategory(cat)}
+                                className={cn(
+                                    "text-[10px] font-bold uppercase tracking-widest px-4 rounded-lg border transition-all",
+                                    selectedCategory === cat ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "text-slate-500 border-transparent hover:text-white"
+                                )}
+                            >
+                                {cat}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white">
-                        Últimos 7 Dias
-                    </Button>
-                    <div className="h-4 w-px bg-white/5" />
-                    <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white">
-                        Este Mês
-                    </Button>
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-white h-7">
+                            Últimos 7 Dias
+                        </Button>
+                        <div className="h-3 w-px bg-white/5" />
+                        <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-white h-7">
+                            Este Mês
+                        </Button>
+                    </div>
+
+                    <div className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+                        Total Filtrado: <span className="text-white font-black">{filteredEvents.length}</span>
+                    </div>
                 </div>
             </div>
 
@@ -99,8 +147,8 @@ export function AuditClientView({ initialEvents, total }: AuditClientViewProps) 
                         </GlassTableRow>
                     </GlassTableHeader>
                     <tbody>
-                        {events.length > 0 ? (
-                            events.map((event) => (
+                        {filteredEvents.length > 0 ? (
+                            filteredEvents.map((event) => (
                                 <GlassTableRow key={event.id} className="hover:bg-white/[0.03] transition-colors group">
                                     <GlassTableCell className="font-mono text-[11px] text-slate-400 tracking-tight">
                                         <div className="flex items-center gap-2">
@@ -116,9 +164,6 @@ export function AuditClientView({ initialEvents, total }: AuditClientViewProps) 
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-slate-200">
                                                     {event.user?.full_name || 'System / Batch'}
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-mono">
-                                                    {event.user?.email || 'automated@system'}
                                                 </span>
                                             </div>
                                         </div>
@@ -197,7 +242,7 @@ export function AuditClientView({ initialEvents, total }: AuditClientViewProps) 
                             ))
                         ) : (
                             <GlassTableRow>
-                                <GlassTableCell colSpan={5} className="py-20">
+                                <GlassTableCell colSpan={6} className="py-20">
                                     <div className="flex flex-col items-center justify-center text-slate-500 gap-4">
                                         <Activity className="h-10 w-10 text-slate-800" />
                                         <p className="text-sm font-bold uppercase tracking-[0.2em]">Nenhum evento registado</p>
@@ -211,7 +256,7 @@ export function AuditClientView({ initialEvents, total }: AuditClientViewProps) 
 
             <div className="flex justify-between items-center px-4 py-2">
                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                    Página 1 de {Math.ceil(total / 50)} • Mostrando {events.length} registos
+                    Página 1 de {Math.ceil(total / 50) || 1} • Mostrando {filteredEvents.length} registos
                 </span>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" disabled className="h-8 border-white/5 bg-black/20 text-slate-600 px-4 rounded-lg">Anterior</Button>

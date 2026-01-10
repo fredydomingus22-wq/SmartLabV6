@@ -72,6 +72,7 @@ export async function updateLabAssetAction(id: string, data: CreateLabAssetFormV
             status: assetData.status,
             last_calibration_date: assetData.calibration_date ? new Date(assetData.calibration_date).toISOString() : null,
             next_calibration_date: assetData.next_calibration_date ? new Date(assetData.next_calibration_date).toISOString() : null,
+            verification_config: (data as any).verification_config || undefined,
             // plant_id updates: usually we might allow moving assets, so let's allow it if provided
             ...(assetData.plant_id ? { plant_id: assetData.plant_id } : {})
         })

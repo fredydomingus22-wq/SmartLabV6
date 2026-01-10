@@ -29,7 +29,8 @@ export async function getTanksAction() {
 }
 
 /**
- * Get a single tank with its current content (intermediate product)
+ * Get a single tank with its current content (intermediate product),
+ * quality samples, recent CIP history, and usage metrics.
  */
 export async function getTankWithContentAction(id: string) {
     const supabase = await createClient();
@@ -42,18 +43,67 @@ export async function getTankWithContentAction(id: string) {
 
     if (error) return { success: false, message: error.message, data: null };
 
-    // Get current content
+    // Get current content (intermediate product) - status in pending, approved, in_use
     const { data: content } = await supabase
         .from("intermediate_products")
         .select(`
-            id, code, status, volume, unit,
-            batch:production_batches(id, code, product:products(id, name))
+            id, code, status, volume, unit, created_at,
+            batch:production_batches(
+                id, code, 
+                product:products(id, name, sku)
+            ),
+            product:products(id, name, sku)
         `)
         .eq("equipment_id", id)
         .in("status", ["pending", "approved", "in_use"])
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    return { success: true, data: { ...tank, currentContent: content } };
+    // Get historical preparations (all intermediate products for this tank)
+    const { data: preparations, count: usageCount } = await supabase
+        .from("intermediate_products")
+        .select(`
+            id, code, status, volume, unit, created_at,
+            product:products(name),
+            batch:production_batches(code)
+        `, { count: "exact" })
+        .eq("equipment_id", id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+    // Get quality samples related to this intermediate product
+    const { data: samples } = await supabase
+        .from("samples")
+        .select("id, code, status, collected_at, ai_risk_status, ai_risk_message")
+        .eq("intermediate_product_id", content?.id || "")
+        .order("collected_at", { ascending: false })
+        .limit(5);
+
+    // Get recent CIP executions for this equipment
+    // Use equipment_uid for the UUID match
+    const { data: cipHistory } = await supabase
+        .from("cip_executions")
+        .select(`
+            id, status, start_time, end_time, 
+            operator:user_profiles(full_name),
+            program:cip_programs(name)
+        `)
+        .eq("equipment_uid", id)
+        .order("start_time", { ascending: false })
+        .limit(5);
+
+    return {
+        success: true,
+        data: {
+            ...tank,
+            currentContent: content,
+            preparations: preparations || [],
+            usageCount: usageCount || 0,
+            samples: samples || [],
+            cipHistory: cipHistory || []
+        }
+    };
 }
 
 /**

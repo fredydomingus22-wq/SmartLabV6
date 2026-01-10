@@ -56,14 +56,14 @@ export default async function LabPage(props: {
         getLabStats(),
         getSampleTypes(),
         getActiveTanks(),
-        getSamplingPoints(user.organization_id),
+        getSamplingPoints(user.organization_id!),
         (async () => {
             try {
                 const supabase = await createClient();
                 const { data, error } = await supabase
                     .from("user_profiles")
                     .select("id, full_name, role")
-                    .eq("organization_id", user.organization_id)
+                    .eq("organization_id", user.organization_id!)
                     .order("full_name");
                 if (error) console.error("LabPage users fetch error:", error);
                 return data || [];
@@ -83,7 +83,8 @@ export default async function LabPage(props: {
                     sampleTypes={sampleTypes || []}
                     tanks={tanks as any[] || []}
                     samplingPoints={samplingPoints || []}
-                    plantId={user.plant_id}
+                    plantId={user.plant_id!}
+                    userRole={user.role}
                     initialLabType={labType}
                     users={users as any[] || []}
                 />

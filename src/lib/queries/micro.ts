@@ -10,7 +10,8 @@ export async function getMicroKPIs() {
         .from("micro_test_sessions")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", user.organization_id)
-        .eq("status", "in_progress");
+        .eq("status", "in_progress")
+        .is("deleted_at", null);
 
     // 2. Pending Reading: Complex calculation
     // Sessions 'in_progress' where (started_at + media_type.incubation_hours_min) < now
@@ -32,7 +33,8 @@ export async function getMicroKPIs() {
             )
         `)
         .eq("organization_id", user.organization_id)
-        .eq("status", "in_progress");
+        .eq("status", "in_progress")
+        .is("deleted_at", null);
 
     let pendingReadingCount = 0;
     if (activeSessions) {
@@ -64,6 +66,7 @@ export async function getMicroKPIs() {
         .from("micro_results")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .gte("created_at", new Date().toISOString().split('T')[0]);
 
     if (err1 || err2 || err3) {
@@ -92,6 +95,7 @@ export async function getRecentMicroActivities() {
             started_by
         `)
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(5);
 

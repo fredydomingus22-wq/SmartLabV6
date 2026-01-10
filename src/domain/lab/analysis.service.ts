@@ -3,6 +3,17 @@ import { DomainResponse } from "../shared/industrial.context";
 import { AnalysisFSM, AnalysisStatus } from "./analysis.fsm";
 import { generateAnalysisHash } from "@/lib/utils/crypto";
 
+export interface SaveResultDTO {
+    analysisId?: string;
+    sampleId: string;
+    parameterId?: string;
+    value: string | number | null;
+    is_conforming?: boolean;
+    notes?: string;
+    equipmentId?: string;
+    password?: string;
+}
+
 export class AnalysisDomainService extends BaseDomainService {
 
     /**
@@ -80,6 +91,17 @@ export class AnalysisDomainService extends BaseDomainService {
 
             if (fetchError || !analysis) return this.failure("Analysis not found.");
 
+            // Security: Immutability Check
+            const { data: sample } = await this.supabase
+                .from("samples")
+                .select("status")
+                .eq("id", analysis.sample_id)
+                .single();
+
+            if (!sample || ['approved', 'rejected', 'released', 'archived'].includes(sample.status)) {
+                return this.failure(`IMMUTABILITY VIOLATION: Parent sample is ${sample?.status || 'missing'}. Record is locked.`);
+            }
+
             // 2. Role-Based Segregation Check
             const param: any = Array.isArray(analysis.parameter) ? analysis.parameter[0] : analysis.parameter;
             const category = param?.category;
@@ -132,8 +154,16 @@ export class AnalysisDomainService extends BaseDomainService {
     /**
      * Invalidates an analysis and handles retest logic.
      */
-    async invalidateAnalysis(analysisId: string, reason: string): Promise<DomainResponse> {
+    async invalidateAnalysis(analysisId: string, reason: string, password?: string): Promise<DomainResponse> {
+        // Security: Authority Check
+        this.enforceRole(['lab_analyst', 'micro_analyst', 'qa_manager', 'qc_supervisor', 'qc_technician', 'admin']);
+
         try {
+            // 0. Signature Verification (21 CFR Part 11)
+            if (password) {
+                const isValid = await this.verifyElectronicSignature(password);
+                if (!isValid) return this.failure("Assinatura eletrónica inválida.");
+            }
             const { data: original, error: fetchError } = await this.supabase
                 .from("lab_analysis")
                 .select("*")
@@ -141,6 +171,17 @@ export class AnalysisDomainService extends BaseDomainService {
                 .single();
 
             if (fetchError || !original) return this.failure("Analysis not found.");
+
+            // Security: Immutability Check
+            const { data: sample } = await this.supabase
+                .from("samples")
+                .select("status")
+                .eq("id", original.sample_id)
+                .single();
+
+            if (!sample || ['approved', 'rejected', 'released', 'archived'].includes(sample.status)) {
+                return this.failure(`IMMUTABILITY VIOLATION: Cannot invalidate analysis for sample in '${sample?.status || 'missing'}' state.`);
+            }
 
             // 1. Mark as Invalidated
             const { error: invalidateError } = await this.supabase
@@ -182,7 +223,10 @@ export class AnalysisDomainService extends BaseDomainService {
 
             if (retestError) throw retestError;
 
-            await this.auditAction('ANALYSIS_INVALIDATED', 'analysis', analysisId, { reason });
+            await this.auditAction('ANALYSIS_INVALIDATED', 'analysis', analysisId, {
+                reason,
+                signed: !!password
+            });
             return this.success({ id: analysisId, status: 'invalidated' });
 
         } catch (error: any) {
@@ -201,6 +245,117 @@ export class AnalysisDomainService extends BaseDomainService {
         } catch (error) {
             console.error("[AnalysisService] Signature verification error:", error);
             return false;
+        }
+    }
+
+    /**
+     * Batch save results with strict security locks.
+     * Ported from ResultDomainService for unification.
+     */
+    async saveResultsBatch(params: {
+        sampleId: string;
+        results: SaveResultDTO[];
+        notes?: string;
+        password?: string;
+        attachmentUrl?: string;
+    }): Promise<DomainResponse> {
+        const { sampleId, results, notes, password, attachmentUrl } = params;
+
+        // Security: Enforce RBAC
+        this.enforceRole(['lab_analyst', 'micro_analyst', 'admin', 'qa_manager', 'system_owner', 'qc_supervisor', 'quality']);
+
+        try {
+            // 1. Immutability Check
+            const { data: sampleStatus } = await this.supabase
+                .from("samples")
+                .select("status")
+                .eq("id", sampleId)
+                .single();
+
+            if (!sampleStatus || ['approved', 'rejected', 'released', 'archived'].includes(sampleStatus.status)) {
+                return this.failure(`IMMUTABILITY VIOLATION: Cannot edit sample in '${sampleStatus?.status || 'missing'}' state.`);
+            }
+
+            // 2. Electronic Signature Check (MANDATORY 21 CFR PART 11)
+            if (!password) {
+                return this.failure("SECURITY BLOCK: Assinatura eletrónica é obrigatória para submeter resultados.");
+            }
+
+            const isValid = await this.verifyElectronicSignature(password);
+            if (!isValid) return this.failure("ASSINATURA INVÁLIDA: Credenciais incorretas.");
+
+            const signatureHashBase = "SIGNED";
+
+            // 3. Batch Execution Traceability
+            for (const res of results) {
+                // Determine if we have analysisId or need to find it by parameter
+                let targetAnalysisId = res.analysisId;
+                if (!targetAnalysisId && res.parameterId) {
+                    const { data: found } = await this.supabase
+                        .from("lab_analysis")
+                        .select("id")
+                        .eq("sample_id", sampleId)
+                        .eq("qa_parameter_id", res.parameterId)
+                        .single();
+                    targetAnalysisId = found?.id;
+                }
+
+                if (!targetAnalysisId) continue;
+
+                // Segregation + OOS Validation
+                const { data: analysis } = await this.supabase
+                    .from("lab_analysis")
+                    .select("qa_parameter_id, parameter:qa_parameters(category)")
+                    .eq("id", targetAnalysisId)
+                    .single();
+
+                const category = (analysis?.parameter as any)?.category;
+                if (this.context.role === 'lab_analyst' && category === 'microbiological') {
+                    return this.failure(`ERRO DE SEGREGAÇÃO: Análise microbiológica (ID ${targetAnalysisId}) não autorizada.`);
+                }
+
+                if (res.is_conforming === false && !res.notes) {
+                    return this.failure("JUSTIFICAÇÃO OBRIGATÓRIA: Resultados fora de especificação exigem um comentário técnico.");
+                }
+
+                // Persistence
+                const numericValue = typeof res.value === 'string'
+                    ? (res.value.trim() === '' ? null : parseFloat(res.value))
+                    : res.value;
+
+                await this.supabase.from("lab_analysis").update({
+                    value_numeric: numericValue,
+                    value_text: typeof res.value === 'string' && isNaN(parseFloat(res.value)) ? res.value : null,
+                    is_conforming: res.is_conforming ?? null,
+                    notes: res.notes || null,
+                    equipment_id: res.equipmentId || null,
+                    status: 'completed',
+                    analyzed_by: this.context.user_id,
+                    analyzed_at: new Date().toISOString(),
+                    signed_transaction_hash: signatureHashBase ? generateAnalysisHash({
+                        analysisId: targetAnalysisId,
+                        sampleId,
+                        parameterId: analysis?.qa_parameter_id || '',
+                        value: res.value,
+                        userId: this.context.user_id,
+                        timestamp: new Date().toISOString()
+                    }) : null
+                }).eq("id", targetAnalysisId);
+            }
+
+            // 4. Update Sample Metadata
+            if (notes !== undefined || attachmentUrl !== undefined) {
+                const updateData: any = {};
+                if (notes !== undefined) updateData.notes = notes;
+                if (attachmentUrl !== undefined) updateData.attachment_url = attachmentUrl;
+                await this.supabase.from("samples").update(updateData).eq("id", sampleId);
+            }
+
+            await this.auditAction('LAB_RESULTS_SAVED_UNIFIED', 'samples', sampleId, { count: results.length });
+            return this.success();
+
+        } catch (error: any) {
+            return this.failure("Erro ao salvar lote de resultados (Unified).", error);
         }
     }
 }

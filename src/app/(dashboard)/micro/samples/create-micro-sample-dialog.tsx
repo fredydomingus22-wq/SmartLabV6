@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/smart/searchable-select";
 import { Plus, Loader2, Microscope, ArrowRight } from "lucide-react";
 import { createMicroSampleAction } from "@/app/actions/micro";
+import { useTankContext } from "@/hooks/useTankContext";
 
 interface Tank {
     id: string;
@@ -57,6 +58,9 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
     const [selectedSamplingPoint, setSelectedSamplingPoint] = useState<string>("");
     const router = useRouter();
 
+    // Use shared context hook
+    const tankContext = useTankContext(selectedTank || null);
+
     // Auto-open if create=true is in URL
     useEffect(() => {
         if (searchParams.get("create") === "true") {
@@ -69,22 +73,11 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
     }, [searchParams, router]);
 
     // Filter only microbiological sample types
+
+    // Filter only microbiological sample types
     const microSampleTypes = sampleTypes.filter(t =>
         t.test_category === "microbiological" || t.test_category === "both"
     );
-
-    const getProductName = (tank: Tank) => {
-        const batch = Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
-        if (!batch?.product) return "";
-        if (Array.isArray(batch.product)) {
-            return batch.product[0]?.name || "";
-        }
-        return batch.product.name || "";
-    };
-
-    const getBatch = (tank: Tank) => {
-        return Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
-    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -93,10 +86,11 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
         const formData = new FormData(e.currentTarget);
         formData.set("plant_id", plantId);
 
-        const tank = tanks.find(t => t.id === selectedTank);
-        const batch = tank ? getBatch(tank) : null;
-        if (batch?.id) {
-            formData.set("production_batch_id", batch.id);
+        formData.set("plant_id", plantId);
+
+        // Use resolved context from hook
+        if (tankContext.batchId) {
+            formData.set("production_batch_id", tankContext.batchId);
         }
         if (selectedTank) {
             formData.set("intermediate_product_id", selectedTank);
@@ -185,10 +179,16 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
                                 value={selectedTank}
                                 onValueChange={setSelectedTank}
                                 placeholder="Selecionar tanque..."
-                                options={tanks.map((tank) => ({
-                                    label: `${tank.code} - ${getProductName(tank)} (${getBatch(tank)?.code || 'S/ Lote'})`,
-                                    value: tank.id
-                                }))}
+                                options={tanks.map((tank) => {
+                                    const batch = Array.isArray(tank.batch) ? tank.batch[0] : tank.batch;
+                                    const product = Array.isArray(batch?.product) ? batch?.product[0] : batch?.product;
+                                    const productName = product?.name || "";
+                                    const batchCode = batch?.code || "S/ Lote";
+                                    return {
+                                        label: `${tank.code} - ${productName} (${batchCode})`,
+                                        value: tank.id
+                                    };
+                                })}
                             />
                         </div>
 

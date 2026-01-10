@@ -19,7 +19,7 @@ interface AppSidebarProps {
 }
 
 import { menuItems, MenuItem } from "@/config/navigation";
-import { hasAccess } from "@/lib/permissions";
+import { hasAccess, Module } from "@/lib/permissions";
 
 export function AppSidebar({ user }: AppSidebarProps) {
     const pathname = usePathname();
@@ -123,20 +123,25 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
                                     {!isCollapsed && isExpanded && (
                                         <div className="ml-4 border-l border-slate-800/50 pl-2 space-y-1 animate-in fade-in slide-in-from-left-1 duration-200">
-                                            {item.children.map((child: { href: string; label: string }) => (
-                                                <Link
-                                                    key={child.href}
-                                                    href={child.href}
-                                                    className={cn(
-                                                        "block rounded-lg px-3 py-2 text-sm transition-all hover:bg-slate-900/50 font-normal",
-                                                        pathname === child.href
-                                                            ? "bg-slate-900/80 text-emerald-400 font-bold"
-                                                            : "text-slate-300 hover:text-slate-100"
-                                                    )}
-                                                >
-                                                    {child.label}
-                                                </Link>
-                                            ))}
+                                            {item.children.map((child: { href: string; label: string; module?: Module }) => {
+                                                // Child-level permission check
+                                                if (child.module && !hasAccess(user.role, child.module)) return null;
+
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className={cn(
+                                                            "block rounded-lg px-3 py-2 text-sm transition-all hover:bg-slate-900/50 font-normal",
+                                                            pathname === child.href
+                                                                ? "bg-slate-900/80 text-emerald-400 font-bold"
+                                                                : "text-slate-300 hover:text-slate-100"
+                                                        )}
+                                                    >
+                                                        {child.label}
+                                                    </Link>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>

@@ -21,13 +21,6 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +28,7 @@ import { Plus, Layers, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { receiveLotAction } from "@/app/actions/raw-materials";
 import { FileUpload } from "@/components/smart/file-upload";
 import { toast } from "sonner";
+import { SearchableSelect } from "@/components/smart/searchable-select";
 
 const formSchema = z.object({
     raw_material_id: z.string().uuid("Seleccione uma matéria-prima"),
@@ -136,28 +130,18 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                 control={form.control}
                                 name="raw_material_id"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Matéria-Prima</FormLabel>
-                                        <Select
+                                        <SearchableSelect
+                                            options={materials.map(m => ({ label: `${m.name} (${m.code})`, value: m.id }))}
+                                            value={field.value}
                                             onValueChange={(val) => {
                                                 field.onChange(val);
                                                 onMaterialChange(val);
                                             }}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger className="bg-slate-900 border-slate-800">
-                                                    <SelectValue placeholder="Seleccione..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-slate-900 border-slate-800">
-                                                {materials.map(m => (
-                                                    <SelectItem key={m.id} value={m.id}>
-                                                        {m.name} ({m.code})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            placeholder="Seleccione..."
+                                            className="bg-slate-900 border-slate-800"
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -166,22 +150,15 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                 control={form.control}
                                 name="supplier_id"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Fornecedor</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="bg-slate-900 border-slate-800">
-                                                    <SelectValue placeholder="Seleccione..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-slate-900 border-slate-800">
-                                                {suppliers.map(s => (
-                                                    <SelectItem key={s.id} value={s.id}>
-                                                        {s.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <SearchableSelect
+                                            options={suppliers.map(s => ({ label: s.name, value: s.id }))}
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            placeholder="Seleccione..."
+                                            className="bg-slate-900 border-slate-800"
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}

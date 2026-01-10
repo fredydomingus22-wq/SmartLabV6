@@ -1,4 +1,7 @@
-import { CyberBackground } from "@/components/auth/cyber-background";
+import { ModernBackground } from "@/components/backgrounds/modern-background";
+import { GeometricScatteredBackground } from "@/components/backgrounds/geometric-scattered";
+import { PrismField } from "@/components/backgrounds/prism-field";
+import { FloatingSymbols } from "@/components/backgrounds/floating-symbols";
 
 export default function AuthLayout({
     children,
@@ -6,9 +9,12 @@ export default function AuthLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen flex relative overflow-hidden">
-            {/* Futuristic Animated Background */}
-            <CyberBackground />
+        <div className="min-h-screen flex relative overflow-hidden bg-slate-950">
+            {/* 3D Background Stack */}
+            <ModernBackground />
+            <GeometricScatteredBackground />
+            <PrismField />
+            <FloatingSymbols />
 
             {/* LEFT SIDE: System Description */}
             <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-8 xl:p-16 relative z-10">

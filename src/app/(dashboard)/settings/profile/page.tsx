@@ -20,21 +20,35 @@ export default async function ProfilePage() {
     const user = await getSafeUser();
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            {/* Profile Header Card */}
+        <div className="container py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden mb-8">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
+                <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-2">
+                        <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+                            <User className="h-6 w-6 text-blue-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                O Seu Perfil
+                            </h1>
+                            <p className="text-slate-400 font-medium">Gerencie suas informações pessoais e de segurança.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <Card className="glass border-slate-800/50 overflow-hidden">
-                <div className="h-32 bg-gradient-to-r from-emerald-600/20 via-blue-600/20 to-emerald-600/20 border-b border-slate-800/50" />
                 <CardContent className="relative px-8 pb-8">
                     <div className="flex flex-col md:flex-row items-end gap-6 -mt-12">
                         <Avatar className="h-28 w-28 border-4 border-slate-950 shadow-2xl">
-                            <AvatarImage src="" alt={user.full_name} />
+                            <AvatarImage src="" alt={user.full_name || "Utilizador"} />
                             <AvatarFallback className="bg-slate-900 text-slate-200 text-2xl font-bold uppercase tracking-tighter">
-                                {user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                {(user.full_name || "Utilizador").split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 space-y-1 pb-1">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">{user.full_name}</h1>
+                                <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">{user.full_name || "Utilizador"}</h1>
                                 <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 uppercase text-[10px] font-bold tracking-widest px-3 py-1">
                                     Conta Ativa
                                 </Badge>
@@ -149,7 +163,7 @@ export default async function ProfilePage() {
                     </Card>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

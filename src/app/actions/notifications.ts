@@ -22,25 +22,46 @@ export async function createNotificationAction(params: CreateNotificationParams)
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
-        .from("app_notifications")
-        .insert({
-            organization_id: user.organization_id,
-            plant_id: params.plantId || user.plant_id,
-            title: params.title,
-            content: params.content,
-            type: params.type || 'info',
-            severity: params.severity || 'low',
-            link: params.link,
-            target_role: params.targetRole,
-            target_user_id: params.targetUserId,
-            created_by: user.id
-        })
-        .select()
-        .single();
+    try {
+        const { data, error } = await supabase
+            .from("app_notifications")
+            .insert({
+                organization_id: user.organization_id,
+                plant_id: params.plantId || user.plant_id,
+                title: params.title,
+                content: params.content,
+                type: params.type || 'info',
+                severity: params.severity || 'low',
+                link: params.link,
+                target_role: params.targetRole,
+                target_user_id: params.targetUserId,
+                created_by: user.id
+            })
+            .select()
+            .single();
 
-    if (error) throw error;
-    return data;
+        if (error) throw error;
+
+        // Log Success (Optional, can be verbose. Let's log only failures to keep it clean, or keep it standard)
+        // For DLQ we usually care about failures.
+
+        return data;
+    } catch (err: any) {
+        // [NC-OPS-01] Dead Letter Queue Logic
+        console.error("Notification Failed. Logging to DLQ:", err);
+
+        await supabase.from("notification_logs").insert({
+            organization_id: user.organization_id,
+            target_role: params.targetRole || 'unknown',
+            title: params.title,
+            status: 'failed',
+            error_message: err.message || JSON.stringify(err),
+            metadata: { params }
+        });
+
+        // We do NOT throw here, allowing the calling transaction to proceed.
+        return null;
+    }
 }
 
 export async function getNotificationsAction() {

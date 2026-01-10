@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
     Package,
+    PackageCheck,
     Factory,
     Beaker,
     History,
@@ -176,6 +177,34 @@ export function BatchDossier({ data, batchId: propBatchId }: BatchDossierProps) 
                             ))
                         ) : (
                             <p className="text-[10px] text-muted-foreground italic px-2">Nenhum equipamento rastreado.</p>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2 px-2 pt-6">
+                        <PackageCheck className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="text-xs font-bold uppercase tracking-[0.2em]">Materiais de Embalagem</h4>
+                    </div>
+                    <div className="space-y-3">
+                        {data.packaging && data.packaging.length > 0 ? (
+                            data.packaging.map((pkg: any, idx: number) => {
+                                const lot = pkg.lot;
+                                const material = lot?.material;
+                                const materialName = Array.isArray(material) ? material[0]?.name : material?.name;
+
+                                return (
+                                    <div key={idx} className="flex items-center justify-between p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold uppercase tracking-tight">{materialName || "Material"}</span>
+                                            <span className="text-[9px] font-mono text-muted-foreground">Lote: {lot?.lot_code}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-bold">{pkg.quantity_used} {pkg.unit}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <p className="text-[10px] text-muted-foreground italic px-2">Nenhuma embalagem rastreada.</p>
                         )}
                     </div>
                 </div>

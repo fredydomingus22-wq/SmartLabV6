@@ -342,7 +342,7 @@ export function AuditDashboardCharts({
 interface ChartCardProps {
     title: string;
     subtitle?: string;
-    icon: React.ElementType;
+    icon: any;
     iconColor: string;
     iconBg: string;
     className?: string;

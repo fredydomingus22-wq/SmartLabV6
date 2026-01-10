@@ -24,6 +24,17 @@ export type LabAssetDetail = {
         id: string;
         name: string;
     } | null;
+    verification_config?: {
+        unit: string;
+        validity_hours?: number;
+        daily_verification_enabled?: boolean;
+        standards: {
+            id: string;
+            name: string;
+            nominal: number;
+            tolerance: number;
+        }[];
+    } | null;
 };
 
 export type CalibrationCert = {
@@ -74,12 +85,22 @@ export async function getLabAssetById(id: string): Promise<LabAssetDetail | null
     return data as LabAssetDetail;
 }
 
+export type AssetDocument = {
+    id: string;
+    name: string;
+    path: string;
+    file_type: string | null;
+    size: number | null;
+    created_at: string;
+    uploaded_by: string;
+};
+
 export async function getAssetHistory(id: string) {
     const supabase = await createClient();
     const user = await getSafeUser();
 
     // Parallel fetch for history items
-    const [calibrationsResult, maintenanceResult] = await Promise.all([
+    const [calibrationsResult, maintenanceResult, documentsResult] = await Promise.all([
         supabase
             .from("calibration_certificates")
             .select("*")
@@ -91,7 +112,12 @@ export async function getAssetHistory(id: string) {
             .select("*")
             .eq("equipment_id", id)
             .eq("organization_id", user.organization_id)
-            .order("performed_at", { ascending: false })
+            .order("performed_at", { ascending: false }),
+        supabase
+            .from("lab_asset_documents")
+            .select("*")
+            .eq("asset_id", id)
+            .order("created_at", { ascending: false })
     ]);
 
     if (calibrationsResult.error) {
@@ -102,8 +128,14 @@ export async function getAssetHistory(id: string) {
         console.error("Error fetching maintenance:", maintenanceResult.error);
     }
 
+    if (documentsResult.error) {
+        console.error("Error fetching documents:", documentsResult.error);
+    }
+
     return {
         calibrations: (calibrationsResult.data || []) as CalibrationCert[],
-        maintenance: (maintenanceResult.data || []) as MaintenanceLog[]
+        maintenance: (maintenanceResult.data || []) as MaintenanceLog[],
+        documents: (documentsResult.data || []) as AssetDocument[]
     };
 }
+

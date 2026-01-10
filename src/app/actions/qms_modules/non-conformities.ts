@@ -70,6 +70,7 @@ export async function createNCFromFailedResult(params: {
     parameterName: string;
     value: string | number;
     sampleId: string;
+    analysisId?: string; // NEW: Direct link
     organizationId: string;
     plantId: string;
     userId: string;
@@ -81,6 +82,7 @@ export async function createNCFromFailedResult(params: {
             description: `O parâmetro ${params.parameterName} falhou com o valor ${params.value}. (Amostra: ${params.sampleId})`,
             severity: 'critical',
             type: 'process',
+            source_analysis_id: params.analysisId, // Traceability link
             organization_id: params.organizationId,
             plant_id: params.plantId,
             status: 'open',

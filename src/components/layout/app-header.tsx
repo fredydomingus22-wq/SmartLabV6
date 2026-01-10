@@ -60,7 +60,7 @@ export function AppHeader({ user }: AppHeaderProps) {
             <div className="flex items-center gap-4">
                 <div className="hidden md:block">
                     <h2 className="text-lg font-bold tracking-tight text-slate-100">
-                        {greeting}, <span className="text-slate-300 font-medium">{user.full_name.split(' ')[0]}</span>
+                        {greeting}, <span className="text-slate-300 font-medium">{(user.full_name || "Utilizador").split(' ')[0]}</span>
                     </h2>
                     <p className="text-xs text-slate-400 font-mono">
                         {currentTime.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -98,13 +98,13 @@ export function AppHeader({ user }: AppHeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative flex items-center gap-2 pl-2 pr-1 h-10 hover:bg-slate-900/50 text-slate-200">
                             <Avatar className="h-8 w-8 border border-slate-600">
-                                <AvatarImage src="" alt={user.full_name} />
+                                <AvatarImage src="" alt={user.full_name || "User"} />
                                 <AvatarFallback className="bg-slate-800 text-slate-300 text-xs font-bold uppercase">
-                                    {user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                    {(user.full_name || "Utilizador").split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="hidden lg:flex flex-col items-start gap-0.5 pr-2">
-                                <span className="text-xs font-bold text-slate-100 leading-none">{user.full_name}</span>
+                                <span className="text-xs font-bold text-slate-100 leading-none">{user.full_name || "Utilizador"}</span>
                                 <span className="text-[10px] text-slate-400 leading-none uppercase tracking-widest font-semibold">{user.role}</span>
                             </div>
                             <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -113,7 +113,7 @@ export function AppHeader({ user }: AppHeaderProps) {
                     <DropdownMenuContent className="w-56 bg-slate-950 border-slate-800 glass" align="end">
                         <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none text-slate-100">{user.full_name}</p>
+                                <p className="text-sm font-medium leading-none text-slate-100">{user.full_name || "Utilizador"}</p>
                                 <p className="text-xs leading-none text-slate-400">{user.email}</p>
                             </div>
                         </DropdownMenuLabel>

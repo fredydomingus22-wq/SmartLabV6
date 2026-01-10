@@ -1,7 +1,14 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { EnterpriseBatchReportDTO, Signature } from "@/lib/reports/report-dtos";
 import { styles as commonStyles } from '../styles';
+
+/**
+ * MicroReportTemplate - Microbiological Quality Report
+ * 
+ * STRICT SEGREGATION: This template ONLY receives and displays 
+ * data from the 'microbiological' category. FQ data is never mixed here.
+ */
 
 const styles = StyleSheet.create({
     ...commonStyles,
@@ -196,11 +203,14 @@ const SectionTitle = ({ title }: { title: string }) => (
 
 const SignatureBlock = ({ signature, compact }: { signature: Signature, compact?: boolean }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: compact ? 0 : 1, borderColor: '#e2e8f0', padding: compact ? 0 : 8, borderRadius: 6 }}>
+        {signature.signatureUrl && (
+            <Image src={signature.signatureUrl} style={{ width: 40, height: 20, marginRight: 8 }} />
+        )}
         <View>
             <Text style={{ fontSize: compact ? 8 : 9, fontWeight: 'bold', textTransform: 'uppercase' }}>{signature.name}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', minWidth: compact ? 0 : 150 }}>
                 <Text style={{ fontSize: compact ? 6 : 7, color: '#94a3b8', fontWeight: 'medium', textTransform: 'uppercase' }}>{signature.role}</Text>
-                <Text style={{ fontSize: compact ? 6 : 7, color: '#94a3b8', fontStyle: 'italic', marginLeft: 10 }}>{new Date(signature.date).toLocaleDateString()}</Text>
+                <Text style={{ fontSize: compact ? 6 : 7, color: '#94a3b8', fontStyle: 'italic', marginLeft: 10 }}>{new Date(signature.date).toLocaleDateString('pt-PT')}</Text>
             </View>
         </View>
     </View>

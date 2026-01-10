@@ -37,14 +37,20 @@ interface CoATemplateProps {
     sample: SampleData;
     analyses: AnalysisResult[];
     organization: OrganizationData;
+    plant?: {
+        name: string;
+        code: string;
+        address?: string;
+    };
     approver?: {
         name: string;
         role: string;
         signatureUrl?: string; // URL or base64
+        signedAt?: string; // ISO timestamp
     };
 }
 
-export const CertificateOfAnalysis = ({ sample, analyses, organization, approver }: CoATemplateProps) => (
+export const CertificateOfAnalysis = ({ sample, analyses, organization, plant, approver }: CoATemplateProps) => (
     <Document>
         <Page size="A4" style={styles.page}>
 
@@ -58,8 +64,9 @@ export const CertificateOfAnalysis = ({ sample, analyses, organization, approver
                     )}
                 </View>
                 <View style={styles.companyInfo}>
-                    <Text style={styles.companyName}>{organization.name}</Text>
-                    <Text>{organization.address}</Text>
+                    <Text style={styles.companyName}>{plant?.name || organization.name}</Text>
+                    <Text style={{ fontSize: 9 }}>{organization.name}</Text>
+                    {plant?.address && <Text style={{ fontSize: 8 }}>{plant.address}</Text>}
                 </View>
             </View>
 
@@ -143,12 +150,15 @@ export const CertificateOfAnalysis = ({ sample, analyses, organization, approver
             {/* Signatures */}
             <View style={styles.signatureSection}>
                 <View style={styles.signatureBox}>
-                    <Text>Released By:</Text>
+                    <Text>Liberado Por:</Text>
                     {approver?.signatureUrl && (
                         <Image src={approver.signatureUrl} style={styles.signatureImage} />
                     )}
-                    <Text style={{ fontWeight: 'bold' }}>{approver?.name || '________________'}</Text>
-                    <Text>{approver?.role || 'Quality Manager'}</Text>
+                    <Text style={{ fontWeight: 'bold', marginTop: 4 }}>{approver?.name || '________________'}</Text>
+                    <Text style={{ fontSize: 9 }}>{approver?.role || 'Quality Manager'}</Text>
+                    {approver?.signedAt && (
+                        <Text style={{ fontSize: 8, marginTop: 2 }}>{new Date(approver.signedAt).toLocaleString('pt-PT')}</Text>
+                    )}
                 </View>
             </View>
 

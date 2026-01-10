@@ -15,8 +15,10 @@ import { PDFDownloadButton } from "@/components/reports/PDFDownloadButton";
 import { CertificateOfAnalysis } from "@/components/reports/templates/CertificateOfAnalysis";
 import { cn } from "@/lib/utils";
 import { AiInsightsCard } from "@/components/lab/ai-insights-card";
-import { approveSampleAction, reviewSampleAction } from "@/app/actions/lab_modules/approvals";
+import { reviewSampleAction } from "@/app/actions/lab_modules/approvals";
 import { getSafeUser } from "@/lib/auth.server";
+import { SampleStepper } from "./_components/sample-stepper";
+import { ReleaseDialog } from "./_components/release-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
                 analyzed_by,
                 analyzed_at,
                 status,
+                notes,
                 qa_parameter_id,
                 parameter: qa_parameters!inner(
                     id, name, code, unit, category
@@ -148,8 +151,17 @@ export default async function SampleDetailPage({ params }: PageProps) {
         : { data: null };
     const validatedByName = validatedUser?.full_name || "Unknown";
 
-    // Resolve Product ID for Spec Lookup (Handles both Standard & Intermediate Samples)
-    const productId = sample.batch?.product?.id || sample.intermediate_product?.batch?.product?.id;
+    // Level 2 - Technical Storage Info (Separate fetch due to missing DB FK)
+    const { data: ipEquipment } = sample.intermediate_product?.equipment_id
+        ? await supabase.from("equipments").select("id, name, code").eq("id", sample.intermediate_product.equipment_id).single()
+        : { data: null };
+
+    // Resolve Product Authority (Strict Scoping)
+    // If it's a Tank/Intermediate sample, follow the tank's recipe.
+    const isIntermediate = !!sample.intermediate_product_id;
+    const productId = isIntermediate
+        ? sample.intermediate_product?.product_id
+        : (sample.batch?.product?.id || sample.intermediate_product?.batch?.product?.id);
 
     let specs: Record<string, {
         min_value?: number;
@@ -158,8 +170,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
         haccp?: { is_pcc?: boolean; category?: string }
     }> = {};
 
-    // Fetch product specs strictly filtered by product + sample_type OR just sample_type (fallback)
-    // We use a conditional filter to avoid errors if productId is null
+    // Fetch product specs strictly filtered by product context
     let specQuery = supabase
         .from("product_specifications")
         .select(`
@@ -168,6 +179,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
             max_value, 
             target_value, 
             sample_type_id,
+            product_id,
             haccp_hazard_id,
             haccp_hazard:haccp_hazards(is_pcc, hazard_category),
             parameter:qa_parameters!inner(category)
@@ -181,8 +193,10 @@ export default async function SampleDetailPage({ params }: PageProps) {
     }
 
     if (productId) {
-        specQuery = specQuery.or(`product_id.eq.${productId},sample_type_id.eq.${sample.sample_type_id}`);
+        // Path A: Product-guided spec
+        specQuery = specQuery.eq("product_id", productId);
     } else {
+        // Path B: General spec (Environment/Plant)
         specQuery = specQuery.eq("sample_type_id", sample.sample_type_id);
     }
 
@@ -212,16 +226,16 @@ export default async function SampleDetailPage({ params }: PageProps) {
     });
 
     const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            draft: "bg-slate-100 text-slate-700",
-            registered: "bg-blue-100 text-blue-700 border-blue-200",
-            collected: "bg-cyan-100 text-cyan-700 border-cyan-200",
-            in_analysis: "bg-amber-100 text-amber-700 border-amber-200",
-            under_review: "bg-purple-100 text-purple-700 border-purple-200",
-            approved: "bg-emerald-100 text-emerald-700 border-emerald-200",
-            rejected: "bg-rose-100 text-rose-700 border-rose-200",
-            released: "bg-indigo-100 text-indigo-700 border-indigo-200",
-            archived: "bg-gray-100 text-gray-700 border-gray-200",
+        const variants: Record<string, any> = {
+            draft: "outline",
+            registered: "active",
+            collected: "active",
+            in_analysis: "in_analysis",
+            under_review: "under_review",
+            approved: "approved",
+            rejected: "rejected",
+            released: "approved",
+            archived: "outline",
         };
         const label: Record<string, string> = {
             draft: "Rascunho",
@@ -234,7 +248,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
             released: "Libertado",
             archived: "Arquivado",
         };
-        return <Badge variant="outline" className={cn("font-bold tracking-tight px-3 py-1 rounded-full border shadow-sm", styles[status] || "bg-gray-100 text-gray-700")}>{label[status] || status}</Badge>;
+        return <Badge variant={variants[status] || "outline"} className="font-bold tracking-tight px-3 py-1 rounded-full border shadow-sm">{label[status] || status}</Badge>;
     };
 
     const isLocked = ['under_review', 'approved', 'rejected', 'released', 'archived'].includes(sample.status);
@@ -255,113 +269,118 @@ export default async function SampleDetailPage({ params }: PageProps) {
             <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
 
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
-                    <div className="space-y-6">
-                        <Link href="/lab">
-                            <Button variant="ghost" size="sm" className="pl-0 text-slate-400 hover:text-white -ml-2 mb-2 group">
-                                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                                Voltar ao Laboratório
-                            </Button>
-                        </Link>
+                <div className="space-y-6 relative z-10">
+                    <SampleStepper currentStatus={sample.status} className="mb-2" />
 
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="p-4 rounded-3xl bg-blue-500/20 border border-blue-500/30 shadow-inner">
-                                    <FlaskConical className="h-8 w-8 text-blue-400" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                            {sample.code}
-                                        </h1>
-                                        {getStatusBadge(sample.status)}
-                                        {sample.ai_risk_status && (
-                                            <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
-                                                {(() => {
-                                                    const Icon = riskConfig[sample.ai_risk_status].icon;
-                                                    return <Icon className="h-3 w-3 inline mr-1" />;
-                                                })()}
-                                                IA: {riskConfig[sample.ai_risk_status].label}
-                                            </div>
-                                        )}
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
+                        <div className="space-y-4">
+                            <Link href="/lab">
+                                <Button variant="ghost" size="sm" className="pl-0 text-slate-400 hover:text-white -ml-2 mb-2 group">
+                                    <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                                    Voltar ao Laboratório
+                                </Button>
+                            </Link>
+
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-4 rounded-3xl bg-blue-500/20 border border-blue-500/30 shadow-inner">
+                                        <FlaskConical className="h-8 w-8 text-blue-400" />
                                     </div>
-                                    <p className="text-lg text-slate-400 font-medium tracking-wide">
-                                        {sample.type?.name || "Tipo Desconhecido"}
-                                    </p>
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                                {sample.code}
+                                            </h1>
+                                            {getStatusBadge(sample.status)}
+                                            {sample.ai_risk_status && (
+                                                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
+                                                    {(() => {
+                                                        const Icon = riskConfig[sample.ai_risk_status].icon;
+                                                        return <Icon className="h-3 w-3 inline mr-1" />;
+                                                    })()}
+                                                    IA: {riskConfig[sample.ai_risk_status].label}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-lg text-slate-400 font-medium tracking-wide">
+                                            {sample.type?.name || "Tipo Desconhecido"}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex flex-col items-end gap-4">
-                        <div className="flex flex-wrap justify-end gap-3">
-                            {/* FSM: Review Action */}
-                            {sample.status === 'in_analysis' && (
-                                <form action={async () => {
-                                    "use server";
-                                    await reviewSampleAction(sample.id);
-                                }}>
-                                    <Button
-                                        type="submit"
-                                        className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20"
-                                        disabled={!canValidate}
-                                    >
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Submeter p/ Revisão Técnica
-                                    </Button>
-                                </form>
-                            )}
+                        <div className="flex flex-col items-end gap-4">
+                            <div className="flex flex-wrap justify-end gap-3">
+                                {/* FSM: Review Action */}
+                                {sample.status === 'in_analysis' && (
+                                    <form action={async () => {
+                                        "use server";
+                                        await reviewSampleAction(sample.id);
+                                    }}>
+                                        <Button
+                                            type="submit"
+                                            className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20"
+                                            disabled={!canValidate}
+                                        >
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Submeter p/ Revisão Técnica
+                                        </Button>
+                                    </form>
+                                )}
 
-                            {/* Decision Dialog for Quality Review */}
-                            {sample.status === 'under_review' && (
-                                <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
-                            )}
-
-                            {isValidated ? (
-                                <>
-                                    <PDFDownloadButton
-                                        document={
-                                            <CertificateOfAnalysis
-                                                sample={{
-                                                    id: sample.id,
-                                                    sample_code: sample.code || 'N/A',
-                                                    product_name: sample.batch?.product?.name || 'Unknown Product',
-                                                    batch_code: sample.batch?.code || 'N/A',
-                                                    collection_date: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
-                                                    description: sample.description || undefined
-                                                }}
-                                                analyses={filteredAnalyses.map(a => ({
-                                                    parameter_name: a.parameter?.name || 'Unknown Parameter',
-                                                    method_name: a.parameter?.code,
-                                                    result: a.final_value?.toString() || 'Pending',
-                                                    unit: a.parameter?.unit || '',
-                                                    min_limit: specs[a.qa_parameter_id]?.min_value,
-                                                    max_limit: specs[a.qa_parameter_id]?.max_value,
-                                                    status: a.is_conforming === true ? 'compliant' : a.is_conforming === false ? 'non_compliant' : 'pending'
-                                                }))}
-                                                organization={{
-                                                    name: "SmartLab Enterprise",
-                                                    address: "123 Quality Street, Innovation City",
-                                                }}
-                                                approver={{
-                                                    name: validatedByName,
-                                                    role: "Quality Manager"
-                                                }}
-                                            />
-                                        }
-                                        fileName={`CoA_${sample.code || sample.id}.pdf`}
-                                        label="Certificado"
-                                    />
-                                    <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold shadow-lg shadow-emerald-500/10">
-                                        <CheckCircle className="h-5 w-5" />
-                                        <span>Validado</span>
-                                    </div>
-                                </>
-                            ) : (
-                                canValidate && (
+                                {/* Decision Dialog for Technical Review (Level 2) */}
+                                {sample.status === 'under_review' && (
                                     <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
-                                )
-                            )}
+                                )}
+
+                                {/* Decision Dialog for Quality Release (Level 3) */}
+                                {sample.status === 'approved' && (
+                                    <ReleaseDialog sampleId={sample.id} sampleCode={sample.code} />
+                                )}
+
+                                {sample.status === 'released' ? (
+                                    <>
+                                        <PDFDownloadButton
+                                            document={
+                                                <CertificateOfAnalysis
+                                                    sample={{
+                                                        id: sample.id,
+                                                        sample_code: sample.code || 'N/A',
+                                                        product_name: sample.batch?.product?.name || 'Unknown Product',
+                                                        batch_code: sample.batch?.code || 'N/A',
+                                                        collection_date: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
+                                                        description: sample.description || undefined
+                                                    }}
+                                                    analyses={filteredAnalyses.map(a => ({
+                                                        parameter_name: a.parameter?.name || 'Unknown Parameter',
+                                                        method_name: a.parameter?.code,
+                                                        result: a.final_value?.toString() || 'Pending',
+                                                        unit: a.parameter?.unit || '',
+                                                        min_limit: specs[a.qa_parameter_id]?.min_value,
+                                                        max_limit: specs[a.qa_parameter_id]?.max_value,
+                                                        status: a.is_conforming === true ? 'compliant' : a.is_conforming === false ? 'non_compliant' : 'pending'
+                                                    }))}
+                                                    organization={{
+                                                        name: "SmartLab Enterprise",
+                                                        address: "123 Quality Street, Innovation City",
+                                                    }}
+                                                    approver={{
+                                                        name: validatedByName,
+                                                        role: "Quality Manager"
+                                                    }}
+                                                />
+                                            }
+                                            fileName={`CoA_${sample.code || sample.id}.pdf`}
+                                            label="Certificado"
+                                        />
+                                        <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold shadow-lg shadow-emerald-500/10">
+                                            <CheckCircle className="h-5 w-5" />
+                                            <span>Validado</span>
+                                        </div>
+                                    </>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -447,21 +466,41 @@ export default async function SampleDetailPage({ params }: PageProps) {
             {/* Intermediate Product Info */}
             {
                 sample.intermediate_product && (
-                    <div className="glass p-4 rounded-2xl border-slate-800/60 bg-slate-900/30 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                        <div className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                            Produto Intermédio
+                    <div className="glass p-5 rounded-2xl border-slate-800/60 bg-slate-900/30 flex flex-col sm:flex-row sm:items-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-700 ring-1 ring-white/5">
+                        <div className="flex items-center gap-4">
+                            <div className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400">
+                                Produto Intermédio
+                            </div>
+                            <div className="flex flex-col">
+                                <div className="font-mono text-slate-100 font-bold text-lg leading-none mb-1">
+                                    {sample.intermediate_product.code}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
+                                    {sample.intermediate_product.batch?.product?.name || "Produto N/D"}
+                                </div>
+                            </div>
                         </div>
-                        <div className="font-mono text-slate-300 font-bold">
-                            {sample.intermediate_product.code}
-                        </div>
-                        {sample.intermediate_product.equipment && (
-                            <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
-                                <span className="opacity-50">Armazenado em:</span>
-                                <span className="text-slate-200 font-bold">{sample.intermediate_product.equipment.name}</span>
-                                <span className="font-mono text-xs opacity-50">({sample.intermediate_product.equipment.code})</span>
+
+                        {ipEquipment && (
+                            <div className="sm:ml-auto flex items-center gap-3 text-sm">
+                                <div className="p-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                                    <MapPin className="h-4 w-4 text-slate-400" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Armazenado em</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-100 font-bold">{ipEquipment.name}</span>
+                                        <span className="font-mono text-xs text-slate-500">({ipEquipment.code})</span>
+                                    </div>
+                                </div>
                             </div>
                         )}
-                        <Badge className="ml-4 bg-slate-800 text-slate-300 border-slate-700">{sample.intermediate_product.status}</Badge>
+
+                        <div className="flex items-center gap-3">
+                            <Badge className="bg-slate-800 text-slate-300 border-slate-700 py-1 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                {sample.intermediate_product.status}
+                            </Badge>
+                        </div>
                     </div>
                 )
             }
@@ -583,6 +622,18 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                                         {format(new Date(a.analyzed_at), "dd MMM yyyy, HH:mm", { locale: pt })}
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* Analysis Notes / Justification */}
+                                        {a.notes && (
+                                            <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg relative z-10">
+                                                <div className="flex items-start gap-2">
+                                                    <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                                                    <p className="text-[10px] text-slate-300 italic leading-relaxed">
+                                                        "{a.notes}"
+                                                    </p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

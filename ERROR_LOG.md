@@ -50,3 +50,22 @@
 - **Causa Raiz**: Uso da variante `warning` no componente `Badge`, que não existe na definição do design system shadcn (apenas `default`, `secondary`, `destructive`, `outline`).
 - **Solução Aplicada**: Substituído por `secondary` com adição de classes Tailwind customizadas (bg-amber-500/20) para manter o visual amarelo de aviso.
 - **Validação**: Código compilado e verificado visualmente.
+
+---
+
+# ERROR LOG - 2026-01-05
+
+## Audit Trail Fetch Failure (PGRST200 & 42703)
+
+- **Data**: 2026-01-05
+- **Módulo**: Admin / Audit Trail
+- **Severidade**: HIGH
+- **Causa Raiz**: 
+    1. Erro `PGRST200`: Falta de relação (FK) entre `audit_events` e `user_profiles`/`ai_insights` para realizar o `join`.
+    2. Erro `42703`: Tentativa de selecionar a coluna `email` inexistente em `user_profiles`.
+- **Solução Aplicada**: 
+    1. Criada migração para estabelecer FK para `user_profiles`.
+    2. Refatorado `getAuditEvents` para carregamento secundário de `ai_insights` (Secondary Enrichment), desacoplando o join polimórfico falho do PostgREST.
+    3. Removido campo `email` do join e da UI.
+- **Validação**: Verificação da integridade do esquema e logs do sistema.
+- **Frase de Segurança**: “Cada erro não corrigido corretamente vira um defeito crítico em produção.”

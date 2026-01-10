@@ -63,7 +63,7 @@ export default async function FoodSafetyPerformancePage() {
         id: i.id,
         insight_type: i.insight_type as any,
         content: i.message,
-        severity: i.confidence > 0.8 ? "high" : i.confidence > 0.5 ? "medium" : "low",
+        severity: (i.confidence > 0.8 ? "high" : i.confidence > 0.5 ? "medium" : "low") as "low" | "medium" | "high",
         created_at: i.created_at
     })) || [];
 

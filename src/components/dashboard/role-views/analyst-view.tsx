@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, Clock, FlaskConical, Microscope, Beaker, Factory, RefreshCw, ShieldAlert, Plus, ArrowRight } from "lucide-react";
+import { ClipboardCheck, Clock, FlaskConical, Microscope, Beaker, Factory, RefreshCw, ShieldAlert, Plus, ArrowRight, Package } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -129,9 +129,11 @@ export function AnalystView({ user, stats, assignments, activity }: AnalystViewP
                                 <div className="flex items-center gap-4">
                                     <div className={cn(
                                         "p-2 rounded-lg",
-                                        task.type === 'micro' ? "bg-purple-500/10" : "bg-blue-500/10"
+                                        task.type === 'micro' ? "bg-purple-500/10" :
+                                            task.type === 'batch' ? "bg-emerald-500/10" : "bg-blue-500/10"
                                     )}>
-                                        {task.type === 'micro' ? <Microscope className="h-4 w-4 text-purple-400" /> : <Beaker className="h-4 w-4 text-blue-400" />}
+                                        {task.type === 'micro' ? <Microscope className="h-4 w-4 text-purple-400" /> :
+                                            task.type === 'batch' ? <Package className="h-4 w-4 text-emerald-400" /> : <Beaker className="h-4 w-4 text-blue-400" />}
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className="font-bold text-slate-100">{task.title}</span>

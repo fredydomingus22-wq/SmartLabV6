@@ -184,34 +184,8 @@ export async function updateSpecificationAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Create history record
-    const { error: historyError } = await supabase
-        .from("specification_history")
-        .insert({
-            organization_id: currentSpec.organization_id,
-            plant_id: currentSpec.plant_id,
-            specification_id: id,
-            product_id: currentSpec.product_id,
-            sample_type_id: currentSpec.sample_type_id,
-            sampling_point_id: currentSpec.sampling_point_id,
-            qa_parameter_id: currentSpec.qa_parameter_id,
-            version: currentSpec.version || 1,
-            min_value: currentSpec.min_value,
-            max_value: currentSpec.max_value,
-            target_value: currentSpec.target_value,
-            text_value_expected: currentSpec.text_value_expected,
-            is_critical: currentSpec.is_critical,
-            sampling_frequency: currentSpec.sampling_frequency,
-            status: currentSpec.status || 'active',
-            effective_date: currentSpec.effective_date || new Date().toISOString().split('T')[0],
-            superseded_at: new Date().toISOString(),
-            changed_by: user.id,
-            change_reason: changeReason,
-        });
-
-    if (historyError) {
-        console.error("Failed to create history:", historyError);
-    }
+    // History creation is now handled by database trigger handle_spec_history
+    // which automatically archives the old version when version increments
 
     // Update with incremented version
     const newVersion = (currentSpec.version || 1) + 1;

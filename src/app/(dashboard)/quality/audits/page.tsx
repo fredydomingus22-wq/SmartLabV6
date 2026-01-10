@@ -349,7 +349,7 @@ function KPICard({
     title: string;
     value: string | number;
     subtitle: string;
-    icon: React.ElementType;
+    icon: any;
     color: "emerald" | "rose" | "amber" | "blue" | "slate";
     highlight?: boolean;
 }) {
@@ -393,7 +393,7 @@ function QuickAction({
 }: {
     href: string;
     label: string;
-    icon: React.ElementType;
+    icon: any;
     badge?: string;
     badgeColor?: "rose" | "amber" | "emerald";
 }) {

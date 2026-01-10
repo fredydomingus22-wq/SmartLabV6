@@ -277,3 +277,31 @@ export async function approveHaccpPlanVersionAction(formData: FormData) {
     revalidatePath("/haccp/hazards");
     return { success: true, message: "Plano HACCP Aprovado." };
 }
+
+/**
+ * Rapidly creates a hazard from other modules (e.g. Quality Specs)
+ */
+export async function createQuickHazardAction(description: string, category: string, isPcc: boolean) {
+    const user = await getSafeUser();
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from("haccp_hazards")
+        .insert({
+            organization_id: user.organization_id,
+            plant_id: user.plant_id,
+            process_step: "Especificação de Qualidade",
+            hazard_description: description,
+            hazard_category: category as any,
+            is_pcc: isPcc,
+            status: "active",
+            risk_probability: 3,
+            risk_severity: 3,
+            is_significant: true
+        })
+        .select("id")
+        .single();
+
+    if (error) return { success: false, message: error.message };
+    return { success: true, hazardId: data.id };
+}

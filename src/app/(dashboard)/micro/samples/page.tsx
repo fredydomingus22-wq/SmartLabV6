@@ -84,7 +84,7 @@ export default async function MicroSamplesPage() {
                             sampleTypes={sampleTypes || []}
                             tanks={tanks || []}
                             samplingPoints={samplingPoints || []}
-                            plantId={plantId}
+                            plantId={plantId!}
                         />
                     </div>
                 </div>

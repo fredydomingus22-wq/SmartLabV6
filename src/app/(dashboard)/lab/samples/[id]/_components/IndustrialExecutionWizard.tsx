@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IndustrialAnalysisForm } from "./IndustrialAnalysisForm";
+import { IndustrialOOSDialog } from "@/components/shared/industrial-oos-dialog";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +42,7 @@ export function IndustrialExecutionWizard({ open, onOpenChange, analyses, specs,
     const [isFinalStep, setIsFinalStep] = useState(false);
     const [password, setPassword] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [oosOpen, setOosOpen] = useState(false);
 
     // Local state for all results (The "Batch Cache")
     const [localResults, setLocalResults] = useState<Record<string, {
@@ -73,7 +75,50 @@ export function IndustrialExecutionWizard({ open, onOpenChange, analyses, specs,
     // Get correct spec for active parameter
     const activeSpec = activeAnalysis?.parameter ? specs[activeAnalysis.parameter.id] : {};
 
+    const checkConformity = (val: string, spec: any) => {
+        const num = parseFloat(val);
+        if (isNaN(num)) return true; // Assume text is complying or handled elsewhere
+        if (spec.min_value !== undefined && spec.min_value !== null && num < spec.min_value) return false;
+        if (spec.max_value !== undefined && spec.max_value !== null && num > spec.max_value) return false;
+        return true;
+    };
+
     const handleNext = () => {
+        if (isFinalStep) return;
+
+        if (!activeAnalysis) return;
+        const currentResult = localResults[activeAnalysis.id];
+        const isConforming = checkConformity(currentResult.value, activeSpec);
+
+        // If OOS and no notes, FORCE Dialog
+        if (!isConforming && !currentResult.notes) {
+            setOosOpen(true);
+            return;
+        }
+
+        if (currentIndex < analyses.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        } else {
+            setIsFinalStep(true);
+        }
+    };
+
+    const handleOOSConfirm = async (reason: string) => {
+        if (!activeAnalysis) return;
+        // Update local result with reason
+        setLocalResults(prev => ({
+            ...prev,
+            [activeAnalysis.id]: {
+                ...prev[activeAnalysis.id],
+                notes: reason,
+                deviationType: "real_oos" // Default classification for now
+            }
+        }));
+        setOosOpen(false);
+
+        // Proceed to next step after state update
+        // We use setTimeout to allow state to settle, or just rely on user clicking Next again? 
+        // Better UX: Auto-advance.
         if (currentIndex < analyses.length - 1) {
             setCurrentIndex(prev => prev + 1);
         } else {
@@ -171,15 +216,36 @@ export function IndustrialExecutionWizard({ open, onOpenChange, analyses, specs,
                 {/* Main Execution Area */}
                 <div className="flex-1 overflow-y-auto p-8 bg-black/20">
                     {!isFinalStep ? (
-                        activeAnalysis && (
-                            <IndustrialAnalysisForm
-                                key={activeAnalysis.id}
-                                analysis={activeAnalysis}
-                                sample={sample}
-                                spec={activeSpec}
-                                data={localResults[activeAnalysis.id]}
-                                onChange={(newData) => handleFormChange(activeAnalysis.id, newData)}
-                            />
+                        analyses.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-500">
+                                <div className="p-4 rounded-full bg-slate-900 border border-slate-800">
+                                    <AlertTriangle className="h-10 w-10 text-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-xl font-bold text-white uppercase tracking-tight">Nenhuma Análise Pendente</h3>
+                                    <p className="text-slate-500 max-w-md mx-auto text-sm">
+                                        Não existem parâmetros de análise registados para esta amostra que correspondam ao seu perfil ou especificações do produto.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => onOpenChange(false)}
+                                    className="border-slate-800 text-slate-400 hover:text-white"
+                                >
+                                    Fechar Ambiente
+                                </Button>
+                            </div>
+                        ) : (
+                            activeAnalysis && (
+                                <IndustrialAnalysisForm
+                                    key={activeAnalysis.id}
+                                    analysis={activeAnalysis}
+                                    sample={sample}
+                                    spec={activeSpec}
+                                    data={localResults[activeAnalysis.id]}
+                                    onChange={(newData) => handleFormChange(activeAnalysis.id, newData)}
+                                />
+                            )
                         )
                     ) : (
                         <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -246,15 +312,17 @@ export function IndustrialExecutionWizard({ open, onOpenChange, analyses, specs,
                             <div className="hidden md:flex flex-col items-end">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Próxima Atividade</span>
                                 <span className="text-sm font-bold text-slate-300">
-                                    {currentIndex < analyses.length - 1 ? analyses[currentIndex + 1].parameter.name : "Finalização & Assinatura"}
+                                    {currentIndex < analyses.length - 1 && analyses[currentIndex + 1]?.parameter
+                                        ? analyses[currentIndex + 1].parameter.name
+                                        : "Finalização & Assinatura"}
                                 </span>
                             </div>
                             <Button
                                 onClick={handleNext}
-                                disabled={!localResults[activeAnalysis.id]?.isValid}
+                                disabled={!activeAnalysis || !localResults[activeAnalysis.id]?.isValid}
                                 className={cn(
                                     "h-12 px-8 font-bold uppercase tracking-widest transition-all",
-                                    !localResults[activeAnalysis.id]?.isValid
+                                    !activeAnalysis || !localResults[activeAnalysis.id]?.isValid
                                         ? "bg-slate-800 text-slate-500 border-slate-700"
                                         : "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]"
                                 )}
@@ -268,6 +336,20 @@ export function IndustrialExecutionWizard({ open, onOpenChange, analyses, specs,
                     )}
                 </div>
             </DialogContent>
+
+            {activeAnalysis && (
+                <IndustrialOOSDialog
+                    isOpen={oosOpen}
+                    onClose={() => setOosOpen(false)}
+                    onConfirm={handleOOSConfirm}
+                    measuredValue={activeAnalysis ? localResults[activeAnalysis.id]?.value : ""}
+                    specMin={activeSpec?.min_value}
+                    specMax={activeSpec?.max_value}
+                    unit={activeAnalysis.parameter?.unit}
+                    productName={sample?.code}
+                    testName={activeAnalysis.parameter?.name}
+                />
+            )}
         </Dialog>
     );
 }

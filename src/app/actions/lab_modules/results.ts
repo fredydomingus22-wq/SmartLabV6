@@ -6,9 +6,8 @@ import { z } from "zod";
 import { getSafeUser } from "@/lib/auth.server";
 import { generateAnalysisHash } from "@/lib/utils/crypto";
 import { createAuditEvent } from "@/domain/audit/audit.service";
-import { ResultDomainService } from "@/domain/lab/result.service";
+import { AnalysisDomainService, SaveResultDTO } from "@/domain/lab/analysis.service";
 import { SampleDomainService } from "@/domain/lab/sample.service";
-import { AnalysisDomainService } from "@/domain/lab/analysis.service";
 import { SampleStatus } from "@/domain/lab/sample.fsm";
 
 interface AnalysisResultEntry {
@@ -55,7 +54,7 @@ export async function registerResultAction(formData: FormData) {
 
     if (analysisId) {
         const service = new AnalysisDomainService(supabase, {
-            organization_id: user.organization_id,
+            organization_id: user.organization_id!,
             user_id: user.id,
             role: user.role,
             correlation_id: crypto.randomUUID()
@@ -73,14 +72,24 @@ export async function registerResultAction(formData: FormData) {
         if (!result.success) return { success: false, message: result.message };
     } else {
         // Fallback for legacy calls WITHOUT analysis_id
-        const resService = new ResultDomainService(supabase, {
-            organization_id: user.organization_id,
-            plant_id: user.plant_id,
+        const service = new AnalysisDomainService(supabase, {
+            organization_id: user.organization_id!,
             user_id: user.id,
             role: user.role,
             correlation_id: crypto.randomUUID()
         });
-        const result = await resService.registerResult(validation.data);
+        const result = await service.saveResultsBatch({
+            sampleId: validation.data.sample_id,
+            results: [{
+                parameterId: validation.data.qa_parameter_id,
+                sampleId: validation.data.sample_id,
+                value: validation.data.value_numeric ?? validation.data.value_text ?? null,
+                is_conforming: validation.data.is_conforming,
+                notes: validation.data.notes,
+                equipmentId: validation.data.equipment_id,
+                password: validation.data.password
+            }]
+        });
         if (!result.success) return { success: false, message: result.message };
     }
 
@@ -93,7 +102,7 @@ export async function startAnalysisAction(analysisId: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
     const service = new AnalysisDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
@@ -123,9 +132,8 @@ export async function signAndSaveResultsAction(
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    const service = new ResultDomainService(supabase, {
-        organization_id: user.organization_id,
-        plant_id: user.plant_id,
+    const service = new AnalysisDomainService(supabase, {
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
@@ -133,7 +141,7 @@ export async function signAndSaveResultsAction(
 
     const result = await service.saveResultsBatch({
         sampleId,
-        results,
+        results: results.map(r => ({ ...r, sampleId })),
         notes,
         password,
         attachmentUrl
@@ -143,7 +151,7 @@ export async function signAndSaveResultsAction(
 
     // Automatic progression
     const sampleService = new SampleDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
@@ -171,15 +179,15 @@ export async function validateSampleAction(sampleId: string, password?: string) 
     const supabase = await createClient();
 
     const service = new SampleDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
     });
 
-    const result = await service.approveSample({
+    const result = await service.technicalReview({
         sampleId,
-        status: 'approved',
+        decision: 'approved',
         password
     });
 
@@ -190,18 +198,17 @@ export async function validateSampleAction(sampleId: string, password?: string) 
     return { success: true, message: "Amostra aprovada com sucesso" };
 }
 
-export async function requestRetestAction(analysisId: string, reason: string) {
+export async function requestRetestAction(analysisId: string, reason: string, password?: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
-
     const service = new AnalysisDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
     });
 
-    const result = await service.invalidateAnalysis(analysisId, reason);
+    const result = await service.invalidateAnalysis(analysisId, reason, password);
     if (!result.success) return result;
 
     revalidatePath("/lab");
@@ -215,39 +222,33 @@ export async function registerRetestResultAction(formData: FormData) {
     if (res.success) res.message = "Resultado de Reteste Registado";
     return res;
 }
-export async function saveMasterWorksheetAction(payload: AnalysisResultEntry[]) {
+export async function saveMasterWorksheetAction(payload: { sampleId: string; results: AnalysisResultEntry[] }[]) {
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    // Batch update results
-    for (const res of payload) {
-        await supabase.from("lab_analysis").update({
-            value_numeric: typeof res.value === 'number' ? res.value : null,
-            value_text: typeof res.value === 'string' ? res.value : null,
-            notes: res.notes,
-            equipment_id: res.equipmentId,
-            analyzed_by: user.id,
-            updated_at: new Date().toISOString()
-        }).eq("id", res.analysisId).eq("organization_id", user.organization_id);
-    }
-
-    // Industrial Audit Trail
-    await createAuditEvent({
-        eventType: 'MASTER_WORKSHEET_SAVED',
-        entityType: 'samples',
-        entityId: 'multiple',
-        payload: { resultCount: payload.length }
+    const service = new AnalysisDomainService(supabase, {
+        organization_id: user.organization_id!,
+        user_id: user.id,
+        role: user.role,
+        correlation_id: crypto.randomUUID()
     });
 
+    for (const group of payload) {
+        await service.saveResultsBatch({
+            sampleId: group.sampleId,
+            results: group.results.map(r => ({ ...r, sampleId: group.sampleId }))
+        });
+    }
+
     revalidatePath("/lab");
-    return { success: true, message: "Folha de obra guardada com sucesso" };
+    return { success: true, message: "Folha de obra guardada (Secure Unified Path)" };
 }
 export async function bulkValidateSamplesAction(sampleIds: string[], password?: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
 
     const service = new SampleDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
@@ -255,9 +256,9 @@ export async function bulkValidateSamplesAction(sampleIds: string[], password?: 
 
     const results = [];
     for (const id of sampleIds) {
-        const res = await service.approveSample({
+        const res = await service.technicalReview({
             sampleId: id,
-            status: 'approved',
+            decision: 'approved',
             password
         });
         results.push(res);

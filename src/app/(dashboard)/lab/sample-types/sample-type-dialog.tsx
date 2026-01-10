@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -27,19 +26,24 @@ interface SampleType {
     name: string;
     code: string;
     test_category?: string;
+    retention_time_days?: number;
+    default_sla_minutes?: number;
 }
 
 interface SampleTypeDialogProps {
     mode: "create" | "edit";
     sampleType?: SampleType;
+    trigger?: React.ReactNode;
 }
 
-export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
+export function SampleTypeDialog({ mode, sampleType, trigger }: SampleTypeDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState(sampleType?.name || "");
     const [code, setCode] = useState(sampleType?.code || "");
     const [testCategory, setTestCategory] = useState(sampleType?.test_category || "physico_chemical");
+    const [retentionDays, setRetentionDays] = useState(sampleType?.retention_time_days?.toString() || "30");
+    const [slaMinutes, setSlaMinutes] = useState(sampleType?.default_sla_minutes?.toString() || "2880");
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -50,6 +54,8 @@ export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
         formData.set("name", name);
         formData.set("code", code);
         formData.set("test_category", testCategory);
+        formData.set("retention_time_days", retentionDays);
+        formData.set("default_sla_minutes", slaMinutes);
 
         if (mode === "edit" && sampleType) {
             formData.set("id", sampleType.id);
@@ -67,6 +73,8 @@ export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
                 setName("");
                 setCode("");
                 setTestCategory("physico_chemical");
+                setRetentionDays("30");
+                setSlaMinutes("2880");
             }
             router.refresh();
         } else {
@@ -97,7 +105,7 @@ export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {mode === "create" ? (
+                {trigger || (mode === "create" ? (
                     <Button>
                         <Plus className="h-4 w-4 mr-2" />
                         New Type
@@ -106,7 +114,7 @@ export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
                     <Button variant="outline" size="sm">
                         <Pencil className="h-4 w-4" />
                     </Button>
-                )}
+                ))}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
@@ -156,6 +164,34 @@ export function SampleTypeDialog({ mode, sampleType }: SampleTypeDialogProps) {
                                     { value: "both", label: "Ambos" },
                                 ]}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="retention">Retention (Days)</Label>
+                                <Input
+                                    id="retention"
+                                    type="number"
+                                    min="0"
+                                    value={retentionDays}
+                                    onChange={(e) => setRetentionDays(e.target.value)}
+                                    placeholder="30"
+                                    required
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="sla">Default SLA (Min)</Label>
+                                <Input
+                                    id="sla"
+                                    type="number"
+                                    min="0"
+                                    step="60"
+                                    value={slaMinutes}
+                                    onChange={(e) => setSlaMinutes(e.target.value)}
+                                    placeholder="2880"
+                                    required
+                                />
+                            </div>
                         </div>
                     </div>
 

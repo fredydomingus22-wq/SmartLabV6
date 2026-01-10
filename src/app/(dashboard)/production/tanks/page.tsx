@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Container, Droplets, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { TankDialog } from "./_components/tank-dialog";
+import { TankUX } from "./tank-ux";
+import { ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -59,142 +61,45 @@ export default async function TanksPage() {
     });
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                        <Container className="h-8 w-8 text-blue-400" />
-                        Gestão de Tanques
-                    </h1>
-                    <p className="text-slate-400 mt-1">
-                        Vista geral de tanques de armazenamento e seu conteúdo atual.
-                    </p>
+        <div className="flex-1 flex flex-col min-h-screen bg-[#020617] text-slate-100 selection:bg-blue-500/30">
+            {/* 🌊 PREMIUM TANK MONITORING HEADER */}
+            <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-8 py-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1700px] mx-auto">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Link href="/production">
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-full border border-white/5">
+                                    <ArrowLeft className="h-3 w-3 mr-1" />
+                                    Production Area
+                                </Button>
+                            </Link>
+                            <Badge variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-tighter bg-blue-500/10 text-blue-400 border-blue-500/20 rounded-full animate-pulse-slow">
+                                Real-time Telemetry
+                            </Badge>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tighter uppercase flex items-center gap-4">
+                            <div className="h-10 w-1 pt-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full" />
+                            Tank <span className="text-slate-500">Monitoring</span>
+                        </h1>
+                        <p className="text-sm text-slate-400 font-medium tracking-tight flex items-center gap-2">
+                            <Droplets className="h-4 w-4 text-blue-500/50" />
+                            Live visualization of storage capacity, contents, and industrial batches.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <TankDialog />
+                    </div>
                 </div>
-                <TankDialog />
-            </div>
+            </header>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-slate-100">{tanks?.length || 0}</div>
-                        <div className="text-xs text-slate-500 mt-1">Total de Tanques</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-emerald-400">
-                            {tanks?.filter(t => t.status === 'active').length || 0}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Ativos</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-blue-400">
-                            {contentMap.size}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Com Conteúdo</div>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-slate-800">
-                    <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-amber-400">
-                            {tanks?.filter(t => t.status === 'maintenance').length || 0}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">Em Manutenção</div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Tanks Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {tanks?.map((tank: Tank) => {
-                    const content = contentMap.get(tank.id);
-                    const batch = Array.isArray(content?.batch) ? content.batch[0] : content?.batch;
-                    const product = Array.isArray(batch?.product) ? batch.product[0] : batch?.product;
-
-                    return (
-                        <Card key={tank.id} className="glass overflow-hidden border-slate-800/50 hover:border-blue-500/30 transition-all group">
-                            <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Container className="h-4 w-4 text-blue-400" />
-                                            {tank.name}
-                                        </CardTitle>
-                                        <CardDescription className="font-mono text-[10px] uppercase tracking-wider mt-1">
-                                            {tank.code}
-                                        </CardDescription>
-                                    </div>
-                                    <Badge className={statusColors[tank.status] || statusColors.active}>
-                                        {tank.status}
-                                    </Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {/* Capacity */}
-                                {tank.capacity && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Droplets className="h-4 w-4 text-slate-500" />
-                                        <span className="text-slate-400">Capacidade:</span>
-                                        <span className="font-bold text-slate-200">
-                                            {tank.capacity.toLocaleString()} {tank.capacity_unit || 'L'}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Current Content */}
-                                {content ? (
-                                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                                        <div className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-1">
-                                            Conteúdo Atual
-                                        </div>
-                                        <div className="font-bold text-slate-100">
-                                            {product?.name || "Produto Desconhecido"}
-                                        </div>
-                                        <div className="text-xs text-slate-400 mt-1">
-                                            Lote: <span className="font-mono text-blue-300">{batch?.code || content.code}</span>
-                                            {content.volume && (
-                                                <span className="ml-2">• {content.volume} {content.unit || 'L'}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-center">
-                                        <span className="text-xs text-slate-500 italic">Vazio</span>
-                                    </div>
-                                )}
-
-                                {/* Actions */}
-                                <div className="flex gap-2 pt-2">
-                                    <Link href={`/production/tanks/${tank.id}`} className="flex-1">
-                                        <Button variant="outline" size="sm" className="w-full glass border-slate-700">
-                                            <Settings2 className="h-3 w-3 mr-1" />
-                                            Detalhes
-                                        </Button>
-                                    </Link>
-                                    <TankDialog
-                                        tank={tank}
-                                        trigger={
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-white">
-                                                <Settings2 className="h-4 w-4" />
-                                            </Button>
-                                        }
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
-
-            {(!tanks || tanks.length === 0) && (
-                <div className="text-center py-20 bg-slate-900/40 rounded-3xl border border-dashed border-slate-800">
-                    <Container className="h-12 w-12 text-slate-700 mx-auto mb-4 opacity-20" />
-                    <p className="text-slate-500 italic">Nenhum tanque configurado.</p>
-                </div>
-            )}
+            <main className="flex-1 p-8 max-w-[1700px] mx-auto w-full">
+                <TankUX
+                    tanks={tanks || []}
+                    contentMap={contentMap}
+                    statusColors={statusColors}
+                />
+            </main>
         </div>
     );
 }

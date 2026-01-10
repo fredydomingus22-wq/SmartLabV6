@@ -3,6 +3,8 @@ import { CreateBatchDialog } from "./create-batch-dialog";
 import { ProductionCharts } from "./production-charts";
 import { ProductionPageClient } from "./production-page-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Clock, Activity, CheckCircle2, ShieldAlert, BrainCircuit, BarChart3, TrendingUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -96,75 +98,110 @@ export default async function ProductionPage() {
     };
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Fila de Produção</h1>
-                    <p className="text-muted-foreground">Gestão de lotes e execução industrial.</p>
-                </div>
-                <CreateBatchDialog
-                    products={products || []}
-                    lines={lines || []}
-                    plantId={plant_id}
-                />
-            </div>
+        <div className="flex-1 flex flex-col min-h-screen bg-[#020617] text-slate-100 selection:bg-blue-500/30">
+            {/* 🏙️ PREMIUM HEADER */}
+            <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-8 py-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1600px] mx-auto">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-tighter bg-blue-500/10 text-blue-400 border-blue-500/20 rounded-full animate-pulse-slow">
+                                MES Operator Station
+                            </Badge>
+                            <Badge variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-400 border-emerald-500/20 rounded-full">
+                                Plant {profile.plant_id || 'Alpha'}
+                            </Badge>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tighter uppercase flex items-center gap-4">
+                            <div className="h-10 w-1 pt-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full" />
+                            Production <span className="text-slate-500">Queue</span>
+                        </h1>
+                        <p className="text-sm text-slate-400 font-medium tracking-tight flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-blue-500/50" />
+                            Batch management and industrial execution logic.
+                        </p>
+                    </div>
 
-            {/* Industrial KPI Cards - Professional Grid */}
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-                {[
-                    { label: "Planeados", val: stats.planned, color: "blue", icon: Clock },
-                    { label: "Em Processo", val: stats.inProcess, color: "amber", icon: Activity },
-                    { label: "Finalizados", val: stats.completed, color: "purple", icon: CheckCircle2 },
-                    { label: "Bloqueados", val: stats.blocked, color: "rose", icon: ShieldAlert },
-                    { label: "Liberados", val: stats.released, color: "emerald", icon: CheckCircle2 },
-                    { label: "Taxa Qualidade", val: `${stats.qualityRate}%`, color: "indigo", icon: BrainCircuit },
-                ].map((kpi, i) => (
-                    <div key={i} className={cn(
-                        "p-5 glass rounded-3xl border transition-all hover:scale-[1.02] relative overflow-hidden group",
-                        `border-${kpi.color}-500/20 bg-${kpi.color}-500/5`
-                    )}>
-                        <div className={cn("absolute top-0 right-0 w-16 h-16 blur-[40px] -mr-8 -mt-8 rounded-full opacity-20 transition-all group-hover:opacity-40", `bg-${kpi.color}-500`)} />
-                        <div className="flex flex-col gap-2 relative z-10">
-                            <div className="flex items-center justify-between">
-                                <p className={cn("text-[9px] font-black uppercase tracking-widest opacity-60", `text-${kpi.color}-400`)}>{kpi.label}</p>
-                                <kpi.icon className={cn("h-3 w-3", `text-${kpi.color}-400`)} />
+                    <div className="flex items-center gap-3">
+                        <CreateBatchDialog
+                            products={products || []}
+                            lines={lines || []}
+                            plantId={plant_id}
+                        />
+                    </div>
+                </div>
+            </header>
+
+            <main className="flex-1 p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+                {/* 📊 INDUSTRIAL KPI GRID */}
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                    {[
+                        { label: "Planned", val: stats.planned, color: "blue", icon: Clock },
+                        { label: "In Process", val: stats.inProcess, color: "amber", icon: Activity },
+                        { label: "Finalized", val: stats.completed, color: "purple", icon: CheckCircle2 },
+                        { label: "Blocked", val: stats.blocked, color: "rose", icon: ShieldAlert },
+                        { label: "Released", val: stats.released, color: "emerald", icon: CheckCircle2 },
+                        { label: "Quality Rate", val: `${stats.qualityRate}%`, color: "indigo", icon: BrainCircuit },
+                    ].map((kpi, i) => (
+                        <div key={i} className="group relative glass border border-white/5 rounded-3xl overflow-hidden transition-all duration-500 hover:border-white/10 p-5">
+                            <div className={cn(
+                                "absolute -top-12 -right-12 h-24 w-24 blur-[40px] opacity-10 group-hover:opacity-25 transition-opacity duration-700 rounded-full",
+                                `bg-${kpi.color}-500`
+                            )} />
+
+                            <div className="relative z-10 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", `text-${kpi.color}-400`)}>{kpi.label}</p>
+                                    <kpi.icon className={cn("h-3 w-3", `text-${kpi.color}-400`)} />
+                                </div>
+                                <p className="text-3xl font-black tracking-tighter text-slate-100">{kpi.val}</p>
                             </div>
-                            <p className={cn("text-3xl font-black tracking-tighter", `text-${kpi.color}-200`)}>{kpi.val}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 📈 STRATEGIC OVERLAYS */}
+                <div className="grid gap-6 md:grid-cols-3">
+                    {[
+                        { label: "Industrial Yield", val: `${stats.yieldRate}%`, icon: "Y", color: "emerald", desc: "Release vs Planned ratio" },
+                        { label: "Average TAT", val: `${stats.avgTAT}h`, icon: "T", color: "blue", desc: "Mean turnaround time" },
+                        { label: "Rejected Batches", val: stats.rejected, icon: "R", color: "rose", desc: "Non-compliant assets" },
+                    ].map((kpi, i) => (
+                        <div key={i} className="flex items-center gap-5 p-6 glass border border-white/5 rounded-[2.5rem] relative overflow-hidden group">
+                            <div className={cn("absolute -left-12 -bottom-12 h-24 w-24 blur-[50px] opacity-5 group-hover:opacity-10 transition-opacity rounded-full", `bg-${kpi.color}-500`)} />
+
+                            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-xl border", `bg-${kpi.color}-500/10 border-${kpi.color}-500/20 text-${kpi.color}-400`)}>
+                                {kpi.icon}
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{kpi.label}</p>
+                                <p className="text-2xl font-black tracking-tighter text-slate-100">{kpi.val}</p>
+                                <p className="text-[9px] font-medium text-slate-400 italic mt-0.5">{kpi.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 📉 VISUAL ANALYTICS */}
+                <div className="glass border border-white/5 rounded-[2.5rem] p-8 overflow-hidden shadow-2xl relative">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
+                                <TrendingUp className="h-5 w-5 text-indigo-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black tracking-tighter uppercase">Trend Analytics</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Real-time production throughput</p>
+                            </div>
                         </div>
                     </div>
-                ))}
-            </div>
+                    <ProductionCharts batches={batchesList} />
+                </div>
 
-            {/* Strategic KPI Overlay */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="glass border-none shadow-sm flex items-center p-4 gap-4">
-                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">Y</div>
-                    <div>
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Yield Industrial</p>
-                        <p className="text-xl font-bold">{stats.yieldRate}%</p>
-                    </div>
-                </Card>
-                <Card className="glass border-none shadow-sm flex items-center p-4 gap-4">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">T</div>
-                    <div>
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Tempo Médio (TAT)</p>
-                        <p className="text-xl font-bold">{stats.avgTAT}h</p>
-                    </div>
-                </Card>
-                <Card className="glass border-none shadow-sm flex items-center p-4 gap-4">
-                    <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 font-bold">R</div>
-                    <div>
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Lotes Rejeitados</p>
-                        <p className="text-xl font-bold text-rose-600">{stats.rejected}</p>
-                    </div>
-                </Card>
-            </div>
-
-            <ProductionCharts batches={batchesList} />
-
-            <div className="glass rounded-2xl p-6 border-none shadow-sm">
-                <ProductionPageClient batches={batchesList} />
-            </div>
+                {/* 📑 PRODUCTION QUEUE TABLE */}
+                <div className="glass border border-white/5 rounded-[2.5rem] p-4 shadow-2xl overflow-hidden">
+                    <ProductionPageClient batches={batchesList} />
+                </div>
+            </main>
         </div>
     );
 }

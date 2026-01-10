@@ -4,331 +4,232 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Warehouse, Package, Beaker, Truck, AlertTriangle,
-    ArrowRight, TrendingUp, Calendar, Box, ShieldCheck
+    ArrowRight, TrendingUp, Calendar, Box, ShieldCheck,
+    Search, Filter
 } from "lucide-react";
 import Link from "next/link";
 import { differenceInDays, format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-interface KPICardProps {
-    title: string;
-    value: string | number;
-    subtitle?: string;
-    icon: React.ReactNode;
-    trend?: "up" | "down" | "neutral";
-    alert?: boolean;
-    href?: string;
-}
+function StatCard({ title, value, subtitle, icon, color = "cyan", href }: any) {
+    const colorClasses: Record<string, string> = {
+        cyan: "text-cyan-400 bg-cyan-950/30 border-cyan-500/20",
+        emerald: "text-emerald-400 bg-emerald-950/30 border-emerald-500/20",
+        amber: "text-amber-400 bg-amber-950/30 border-amber-500/20",
+        violet: "text-violet-400 bg-violet-950/30 border-violet-500/20",
+    };
 
-function KPICard({ title, value, subtitle, icon, alert, href }: KPICardProps) {
-    const content = (
-        <Card className={`glass border-slate-800/50 hover:border-slate-700/50 transition-all ${href ? 'cursor-pointer hover:scale-[1.02]' : ''} ${alert ? 'border-amber-500/30' : ''}`}>
-            <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{title}</p>
-                        <p className={`text-3xl font-bold mt-1 ${alert ? 'text-amber-400' : 'text-slate-100'}`}>{value}</p>
-                        {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
-                    </div>
-                    <div className={`p-2 rounded-lg ${alert ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
-                        {icon}
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
+    const scheme = colorClasses[color] || colorClasses.cyan;
 
-    return href ? <Link href={href}>{content}</Link> : content;
-}
-
-interface ModuleCardProps {
-    title: string;
-    description: string;
-    href: string;
-    icon: React.ReactNode;
-    color: string;
-    stats: { label: string; value: string | number }[];
-    alerts?: { message: string; type: "warning" | "error" }[];
-}
-
-function ModuleCard({ title, description, href, icon, color, stats, alerts }: ModuleCardProps) {
     return (
-        <Card className="glass border-slate-800/50 overflow-hidden hover:border-slate-700/50 transition-all group flex flex-col h-full">
-            <div className={`h-1 w-full ${color}`} />
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        {icon}
-                        {title}
-                    </CardTitle>
-                    <Link href={href}>
-                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                            <ArrowRight className="h-4 w-4" />
-                        </Button>
-                    </Link>
+        <Link href={href || "#"}>
+            <div className="glass hover:bg-slate-800/50 transition-all duration-300 p-6 rounded-2xl border border-slate-800 group relative overflow-hidden">
+                <div className={`absolute top-0 right-0 p-3 rounded-bl-2xl border-b border-l ${scheme} transition-all`}>
+                    {icon}
                 </div>
-                <CardDescription className="text-xs">{description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 flex-1 flex flex-col">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    {stats.map((stat, i) => (
-                        <div key={i} className="bg-slate-900/50 rounded-lg p-2 text-center">
-                            <div className="text-lg font-bold text-slate-100">{stat.value}</div>
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</div>
-                        </div>
-                    ))}
+                <div className="relative z-10">
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{title}</p>
+                    <h3 className="text-3xl font-bold text-slate-100 group-hover:scale-105 transition-transform origin-left">
+                        {value}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 font-mono">{subtitle}</p>
                 </div>
+            </div>
+        </Link>
+    );
+}
 
-                {/* Alerts */}
-                {alerts && alerts.length > 0 && (
-                    <div className="space-y-2">
-                        {alerts.map((alert, i) => (
-                            <div key={i} className={`p-2 rounded-lg text-xs flex items-center gap-2 ${alert.type === 'error' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
-                                }`}>
-                                <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                                {alert.message}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Action */}
-                <div className="mt-auto pt-2">
-                    <Link href={href} className="block w-full">
-                        <Button variant="outline" size="sm" className="w-full glass border-slate-700 hover:bg-slate-800 text-xs">
-                            Gerir {title}
-                        </Button>
-                    </Link>
+function QuickActionCard({ title, icon, href, color }: any) {
+    return (
+        <Link href={href}>
+            <div className="bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800 hover:border-slate-700 p-4 rounded-xl flex items-center gap-4 transition-all group">
+                <div className={`p-2 rounded-lg ${color === 'cyan' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                    {icon}
                 </div>
-            </CardContent>
-        </Card>
+                <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">{title}</h4>
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+            </div>
+        </Link>
     );
 }
 
 export default async function MaterialsDashboardPage() {
     const supabase = await createClient();
+    const user = await getCurrentUser();
     const today = new Date();
+    const greeting = today.getHours() < 12 ? "Bom dia" : today.getHours() < 18 ? "Boa tarde" : "Boa noite";
 
-    // === MATÉRIAS-PRIMAS ===
+    // === DATA FETCHING ===
+    // Matérias-Primas
     const { count: rawMaterialsCount } = await supabase.from("raw_materials").select("*", { count: "exact", head: true });
-    const { data: rawMaterialLots } = await supabase
-        .from("raw_material_lots")
-        .select("id, expiry_date, status")
-        .in("status", ["approved", "in_use", "quarantine"]);
+    const { data: rawMaterialLots } = await supabase.from("raw_material_lots").select("id, expiry_date, status").in("status", ["approved", "in_use", "quarantine"]);
+    const expiringRawLots = rawMaterialLots?.filter(l => l.expiry_date && differenceInDays(new Date(l.expiry_date), today) <= 30 && differenceInDays(new Date(l.expiry_date), today) >= 0).length || 0;
 
-    const expiringRawLots = rawMaterialLots?.filter(l => {
-        if (!l.expiry_date) return false;
-        const days = differenceInDays(new Date(l.expiry_date), today);
-        return days <= 30 && days >= 0;
-    }).length || 0;
-
-    const expiredRawLots = rawMaterialLots?.filter(l => {
-        if (!l.expiry_date) return false;
-        return differenceInDays(new Date(l.expiry_date), today) < 0;
-    }).length || 0;
-
-    // === EMBALAGEM ===
+    // Embalagem
     const { count: packagingCount } = await supabase.from("packaging_materials").select("*", { count: "exact", head: true });
-    const { data: packagingLots } = await supabase
-        .from("packaging_lots")
-        .select("id, expiry_date, status")
-        .in("status", ["approved", "in_use"]);
-
+    const { data: packagingLots } = await supabase.from("packaging_lots").select("id").in("status", ["active"]);
     const activePackagingLots = packagingLots?.length || 0;
 
-    // === REAGENTES ===
+    // Reagentes
     const { data: reagents } = await supabase.from("reagents").select("id, name, min_stock_level");
-    const { data: movements } = await supabase
-        .from("reagent_movements")
-        .select("reagent_id, quantity, movement_type, expiry_date");
-
-    // Calculate stock
+    const { data: movements } = await supabase.from("reagent_movements").select("reagent_id, quantity, movement_type");
+    // Simple stock calc
     const stockMap = new Map<string, number>();
     movements?.forEach(m => {
         const qty = Number(m.quantity);
-        const current = stockMap.get(m.reagent_id) || 0;
-        stockMap.set(m.reagent_id, m.movement_type === 'out' ? current - qty : current + qty);
+        stockMap.set(m.reagent_id, (stockMap.get(m.reagent_id) || 0) + (m.movement_type === 'out' ? -qty : qty));
     });
+    const lowStockReagents = reagents?.filter(r => (stockMap.get(r.id) || 0) < (r.min_stock_level || 0)).length || 0;
 
-    const lowStockReagents = reagents?.filter(r => {
-        const stock = stockMap.get(r.id) || 0;
-        return stock < (r.min_stock_level || 0);
-    }).length || 0;
+    // Fornecedores
+    const { count: suppliersCount } = await supabase.from("suppliers").select("*", { count: "exact", head: true });
 
-    const expiringReagents = movements?.filter(m => {
-        if (!m.expiry_date || m.movement_type !== 'in') return false;
-        const days = differenceInDays(new Date(m.expiry_date), today);
-        return days <= 30 && days >= 0;
-    }).length || 0;
-
-    // === FORNECEDORES ===
-    const { data: suppliers } = await supabase.from("suppliers").select("id, status");
-    // Assuming 'active' means approved in the new schema
-    const approvedSuppliers = suppliers?.filter(s => s.status === 'active').length || 0;
-    // Assuming non-active might be pending or draft, but for now we look for explicit pending or just count non-active as pending/other
-    // If the status enum is strictly active/inactive, we might need to adjust.
-    // Based on previous data, let's assume anything not active or blocked is pending/draft
-    const pendingSuppliers = suppliers?.filter(s => s.status === 'draft' || s.status === 'pending').length || 0;
-
-    // === TOTAL ALERTS ===
-    const totalAlerts = expiredRawLots + lowStockReagents + pendingSuppliers;
 
     return (
-        <div className="container py-8 space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="container max-w-7xl mx-auto py-8 space-y-8">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                        <Warehouse className="h-8 w-8 text-purple-400" />
-                        Gestão de Materiais
+                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Sistema Operacional
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                        {greeting}, {user?.full_name?.split(' ')[0] || 'Utilizador'}
                     </h1>
-                    <p className="text-slate-400 mt-1">
-                        Vista centralizada de matérias-primas, embalagem, reagentes e fornecedores.
+                    <p className="text-slate-400 mt-2 text-lg">
+                        Visão Geral de Materiais & Inventário
                     </p>
                 </div>
-                {totalAlerts > 0 && (
-                    <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-sm px-3 py-1">
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        {totalAlerts} alertas ativos
-                    </Badge>
-                )}
+
+                <div className="flex items-center gap-3">
+                    <div className="relative hidden md:block">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                        <input
+                            type="text"
+                            placeholder="Pesquisar lotes..."
+                            className="bg-slate-900/50 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 w-64"
+                        />
+                    </div>
+                    <Button className="bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg shadow-cyan-900/20">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <span>Filtros</span>
+                    </Button>
+                </div>
             </div>
 
-            {/* Top KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KPICard
+            {/* Main Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
                     title="Matérias-Primas"
                     value={rawMaterialsCount || 0}
-                    subtitle={`${rawMaterialLots?.length || 0} lotes ativos`}
+                    subtitle={`${rawMaterialLots?.length || 0} Lotes Ativos`}
                     icon={<Package className="h-5 w-5" />}
+                    color="cyan"
                     href="/materials/raw"
                 />
-                <KPICard
+                <StatCard
                     title="Embalagem"
                     value={packagingCount || 0}
-                    subtitle={`${activePackagingLots} lotes`}
+                    subtitle={`${activePackagingLots} Lotes Disponíveis`}
                     icon={<Box className="h-5 w-5" />}
+                    color="emerald"
                     href="/materials/packaging"
                 />
-                <KPICard
+                <StatCard
                     title="Reagentes"
                     value={reagents?.length || 0}
-                    subtitle={lowStockReagents > 0 ? `${lowStockReagents} stock baixo` : "Stock OK"}
+                    subtitle={`${lowStockReagents} Stock Baixo`}
                     icon={<Beaker className="h-5 w-5" />}
-                    alert={lowStockReagents > 0}
+                    color="violet"
                     href="/materials/reagents"
                 />
-                <KPICard
+                <StatCard
                     title="Fornecedores"
-                    value={suppliers?.length || 0}
-                    subtitle={`${approvedSuppliers} aprovados`}
+                    value={suppliersCount || 0}
+                    subtitle="Base qualificada"
                     icon={<Truck className="h-5 w-5" />}
-                    alert={pendingSuppliers > 0}
+                    color="amber"
                     href="/materials/suppliers"
                 />
             </div>
 
-            {/* Module Cards */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <ModuleCard
-                    title="Matérias-Primas"
-                    description="Catálogo e lotes de MP"
-                    href="/materials/raw"
-                    icon={<Package className="h-5 w-5 text-blue-400" />}
-                    color="bg-gradient-to-r from-blue-500 to-blue-600"
-                    stats={[
-                        { label: "No Catálogo", value: rawMaterialsCount || 0 },
-                        { label: "Lotes Ativos", value: rawMaterialLots?.length || 0 },
-                    ]}
-                    alerts={[
-                        ...(expiringRawLots > 0 ? [{ message: `${expiringRawLots} lotes a expirar (<30d)`, type: "warning" as const }] : []),
-                        ...(expiredRawLots > 0 ? [{ message: `${expiredRawLots} lotes expirados`, type: "error" as const }] : []),
-                    ]}
-                />
-                <ModuleCard
-                    title="Embalagem"
-                    description="Materiais de embalagem"
-                    href="/materials/packaging"
-                    icon={<Box className="h-5 w-5 text-emerald-400" />}
-                    color="bg-gradient-to-r from-emerald-500 to-emerald-600"
-                    stats={[
-                        { label: "Tipos", value: packagingCount || 0 },
-                        { label: "Lotes Ativos", value: activePackagingLots },
-                    ]}
-                    alerts={[]}
-                />
-                <ModuleCard
-                    title="Reagentes"
-                    description="Stock químico do lab"
-                    href="/materials/reagents"
-                    icon={<Beaker className="h-5 w-5 text-purple-400" />}
-                    color="bg-gradient-to-r from-purple-500 to-purple-600"
-                    stats={[
-                        { label: "Reagentes", value: reagents?.length || 0 },
-                        { label: "Stock Baixo", value: lowStockReagents },
-                    ]}
-                    alerts={[
-                        ...(lowStockReagents > 0 ? [{ message: `${lowStockReagents} abaixo do mínimo`, type: "warning" as const }] : []),
-                        ...(expiringReagents > 0 ? [{ message: `${expiringReagents} a expirar`, type: "warning" as const }] : []),
-                    ]}
-                />
-                <ModuleCard
-                    title="Fornecedores"
-                    description="Qualificação e avaliação"
-                    href="/materials/suppliers"
-                    icon={<Truck className="h-5 w-5 text-amber-400" />}
-                    color="bg-gradient-to-r from-amber-500 to-amber-600"
-                    stats={[
-                        { label: "Total", value: suppliers?.length || 0 },
-                        { label: "Aprovados", value: approvedSuppliers },
-                    ]}
-                    alerts={[
-                        ...(pendingSuppliers > 0 ? [{ message: `${pendingSuppliers} aguardam aprovação`, type: "warning" as const }] : []),
-                    ]}
-                />
-            </div>
+            {/* Quick Actions & Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {/* Quality Compliance Section */}
-            <Card className="glass border-slate-800/50">
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-emerald-400" />
-                        Conformidade de Qualidade
-                    </CardTitle>
-                    <CardDescription>Indicadores críticos para controlo de qualidade</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-                            <div className={`text-2xl font-bold ${expiredRawLots === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {expiredRawLots === 0 ? '✓' : expiredRawLots}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">Lotes MP Expirados</div>
+                {/* Shortcuts */}
+                <Card className="glass border-slate-800 col-span-1">
+                    <CardHeader>
+                        <CardTitle className="text-lg text-white font-semibold flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-cyan-400" />
+                            Acesso Rápido
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <QuickActionCard title="Receber Matéria-Prima" icon={<Package className="h-4 w-4" />} href="/materials/raw" color="cyan" />
+                        <QuickActionCard title="Registar Embalagem" icon={<Box className="h-4 w-4" />} href="/materials/packaging" color="emerald" />
+                        <QuickActionCard title="Gestão de Stock" icon={<Beaker className="h-4 w-4" />} href="/materials/reagents" color="violet" />
+                    </CardContent>
+                </Card>
+
+                {/* Alerts Panel */}
+                <Card className="glass border-slate-800 col-span-1 lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-lg text-white font-semibold flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-400" />
+                            Painel de Alertas
+                        </CardTitle>
+                        <CardDescription>
+                            Monitorização em tempo real de não-conformidades e prazos.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {expiringRawLots > 0 && (
+                                <div className="flex items-center gap-4 p-4 rounded-xl bg-amber-950/20 border border-amber-900/30">
+                                    <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Calendar className="h-5 w-5 text-amber-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-amber-100">Lotes a Expirar</h4>
+                                        <p className="text-xs text-amber-400/80">{expiringRawLots} lotes de matéria-prima expiram nos próximos 30 dias.</p>
+                                    </div>
+                                    <Button size="sm" variant="ghost" className="ml-auto text-amber-400 hover:text-amber-300 hover:bg-amber-950/50">
+                                        Ver <ArrowRight className="h-4 w-4 ml-1" />
+                                    </Button>
+                                </div>
+                            )}
+
+                            {lowStockReagents > 0 && (
+                                <div className="flex items-center gap-4 p-4 rounded-xl bg-rose-950/20 border border-rose-900/30">
+                                    <div className="h-10 w-10 rounded-full bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Beaker className="h-5 w-5 text-rose-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-rose-100">Stock Crítico de Reagentes</h4>
+                                        <p className="text-xs text-rose-400/80">{lowStockReagents} reagentes abaixo do nível mínimo de segurança.</p>
+                                    </div>
+                                    <Button size="sm" variant="ghost" className="ml-auto text-rose-400 hover:text-rose-300 hover:bg-rose-950/50">
+                                        Repor <ArrowRight className="h-4 w-4 ml-1" />
+                                    </Button>
+                                </div>
+                            )}
+
+                            {expiringRawLots === 0 && lowStockReagents === 0 && (
+                                <div className="text-center py-8 text-slate-500">
+                                    <ShieldCheck className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                                    <p>Tudo operacional. Sem alertas ativos.</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-                            <div className={`text-2xl font-bold ${lowStockReagents === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                {lowStockReagents === 0 ? '✓' : lowStockReagents}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">Reagentes Stock Baixo</div>
-                        </div>
-                        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-                            <div className={`text-2xl font-bold ${pendingSuppliers === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                {pendingSuppliers === 0 ? '✓' : pendingSuppliers}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">Fornec. Pendentes</div>
-                        </div>
-                        <div className="text-center p-4 bg-slate-900/50 rounded-xl">
-                            <div className="text-2xl font-bold text-blue-400">
-                                {format(today, "dd MMM", { locale: pt })}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">Última Atualização</div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

@@ -17,8 +17,8 @@ export async function submitAnalysisAction(analysisId: string, payload: {
     const supabase = await createClient();
 
     const service = new AnalysisExecutionService(supabase, {
-        organization_id: user.organization_id,
-        plant_id: user.plant_id,
+        organization_id: user.organization_id!,
+        plant_id: user.plant_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
@@ -39,14 +39,29 @@ export async function getExecutionContextAction(analysisId: string) {
     const supabase = await createClient();
 
     const service = new AnalysisExecutionService(supabase, {
-        organization_id: user.organization_id,
-        plant_id: user.plant_id,
+        organization_id: user.organization_id!,
+        plant_id: user.plant_id!,
         user_id: user.id,
         role: user.role,
         correlation_id: crypto.randomUUID()
     });
 
     return await service.getExecutionBadge(analysisId);
+}
+
+export async function getIndustrialExecutionContextAction(sampleId: string) {
+    const user = await getSafeUser();
+    const supabase = await createClient();
+
+    const service = new AnalysisExecutionService(supabase, {
+        organization_id: user.organization_id!,
+        plant_id: user.plant_id!,
+        user_id: user.id,
+        role: user.role,
+        correlation_id: crypto.randomUUID()
+    });
+
+    return await service.getBatchExecutionContext(sampleId);
 }
 
 export async function finalizeBatchAnalysisAction(
@@ -64,9 +79,9 @@ export async function finalizeBatchAnalysisAction(
     const supabase = await createClient();
 
     const service = new AnalysisExecutionService(supabase, {
-        organization_id: user.organization_id,
-        plant_id: user.plant_id,
-        user_id: user.id,
+        organization_id: user.organization_id!,
+        plant_id: user.plant_id!,
+        user_id: user.id, // User context preserved for audit
         role: user.role,
         correlation_id: crypto.randomUUID()
     });

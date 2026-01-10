@@ -10,17 +10,20 @@ const SampleTypeSchema = z.object({
     code: z.string().min(1, "Código é obrigatório").toUpperCase(),
     description: z.string().optional(),
     test_category: z.enum(["physico_chemical", "microbiological", "both"]).default("physico_chemical"),
+    retention_time_days: z.coerce.number().min(0, "Deve ser positivo").default(30),
+    default_sla_minutes: z.coerce.number().min(0, "Deve ser positivo").default(2880),
 });
 
 /**
- * Get all sample types for the current tenant
+ * Get all sample types (Global System Types)
  */
 export async function getSampleTypesAction() {
     const supabase = await createClient();
 
+    // No organization filter needed as sample_types are now global
     const { data, error } = await supabase
         .from("sample_types")
-        .select("*")
+        .select("id, name, code, description, test_category, retention_time_days, default_sla_minutes")
         .order("name");
 
     if (error) return { success: false, message: error.message, data: [] };
@@ -28,7 +31,7 @@ export async function getSampleTypesAction() {
 }
 
 /**
- * Create a new Sample Type
+ * Create a new Sample Type (Global - Restricted)
  */
 export async function createSampleTypeAction(formData: FormData) {
     const supabase = await createClient();
@@ -37,17 +40,24 @@ export async function createSampleTypeAction(formData: FormData) {
 
     const { data: profile } = await supabase
         .from("user_profiles")
-        .select("organization_id, plant_id")
+        .select("role")
         .eq("id", user.id)
         .single();
 
-    if (!profile) return { success: false, message: "Profile not found" };
+    // Only System Owners or Admins should create global types (Strictly speaking, maybe only System Owner?)
+    // User requested "Global for everyone", so creation modifies system master data.
+    // Let's allow admins for now but they affect everyone.
+    if (profile?.role !== 'system_owner' && profile?.role !== 'admin') {
+        return { success: false, message: "Permission denied. Only Admins can manage Global Sample Types." };
+    }
 
     const rawData = {
         name: formData.get("name"),
         code: formData.get("code"),
         description: formData.get("description") || undefined,
         test_category: formData.get("test_category") || "physico_chemical",
+        retention_time_days: formData.get("retention_time_days"),
+        default_sla_minutes: formData.get("default_sla_minutes"),
     };
 
     const validation = SampleTypeSchema.safeParse(rawData);
@@ -55,30 +65,30 @@ export async function createSampleTypeAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Check for duplicate code
+    // Check for duplicate code (Global check)
     const { data: existing } = await supabase
         .from("sample_types")
         .select("id")
         .eq("code", validation.data.code)
-        .eq("organization_id", profile.organization_id)
         .maybeSingle();
 
     if (existing) {
         return { success: false, message: `Tipo de amostra com código ${validation.data.code} já existe` };
     }
 
+    // Insert Global Type (No Org ID)
     const { error } = await supabase.from("sample_types").insert({
-        organization_id: profile.organization_id,
-        plant_id: profile.plant_id,
         name: validation.data.name,
         code: validation.data.code,
         test_category: validation.data.test_category,
+        retention_time_days: validation.data.retention_time_days,
+        default_sla_minutes: validation.data.default_sla_minutes,
     });
 
     if (error) return { success: false, message: error.message };
 
     revalidatePath("/lab/sample-types");
-    return { success: true, message: "Tipo de amostra criado com sucesso" };
+    return { success: true, message: "Tipo de amostra global criado com sucesso" };
 }
 
 /**
@@ -97,6 +107,8 @@ export async function updateSampleTypeAction(formData: FormData) {
         code: formData.get("code"),
         description: formData.get("description") || undefined,
         test_category: formData.get("test_category") || "physico_chemical",
+        retention_time_days: formData.get("retention_time_days"),
+        default_sla_minutes: formData.get("default_sla_minutes"),
     };
 
     const validation = SampleTypeSchema.safeParse(rawData);
@@ -110,6 +122,8 @@ export async function updateSampleTypeAction(formData: FormData) {
             name: validation.data.name,
             code: validation.data.code,
             test_category: validation.data.test_category,
+            retention_time_days: validation.data.retention_time_days,
+            default_sla_minutes: validation.data.default_sla_minutes,
         })
         .eq("id", id);
 

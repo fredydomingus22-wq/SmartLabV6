@@ -26,6 +26,7 @@ export async function getBatches(options?: {
             line:production_lines(id, name, code)
         `)
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
     if (options?.status) {
@@ -65,6 +66,7 @@ export async function getBatchGenealogy(batchId: string) {
         `)
         .eq("organization_id", user.organization_id)
         .eq("id", batchId)
+        .is("deleted_at", null)
         .single();
 
     if (batchError) throw batchError;
@@ -82,6 +84,7 @@ export async function getBatchGenealogy(batchId: string) {
         `)
         .eq("organization_id", user.organization_id)
         .eq("production_batch_id", batchId)
+        .is("deleted_at", null)
         .order("created_at");
 
     if (intError) throw intError;
@@ -118,7 +121,8 @@ export async function getBatchGenealogy(batchId: string) {
             sample_type:sample_types(name)
         `)
         .eq("organization_id", user.organization_id)
-        .eq("production_batch_id", batchId);
+        .eq("production_batch_id", batchId)
+        .is("deleted_at", null);
 
     if (samplesError) throw samplesError;
 
@@ -157,6 +161,7 @@ export async function getIntermediateProducts(batchId: string) {
         `)
         .eq("organization_id", user.organization_id)
         .eq("production_batch_id", batchId)
+        .is("deleted_at", null)
         .order("created_at");
 
     if (error) throw error;
@@ -173,7 +178,8 @@ export async function getBatchStats() {
     const { data: allBatches, error } = await supabase
         .from("production_batches")
         .select("id, status")
-        .eq("organization_id", user.organization_id);
+        .eq("organization_id", user.organization_id)
+        .is("deleted_at", null);
 
     if (error) throw error;
 
@@ -217,6 +223,7 @@ export async function getProducts() {
         .select("id, name, sku, status")
         .eq("organization_id", user.organization_id)
         .eq("status", "active")
+        .is("deleted_at", null)
         .order("name");
 
     if (error) throw error;

@@ -58,7 +58,9 @@ export function EnterpriseBatchReportTemplate({ data }: { data: EnterpriseBatchR
                             <span className="font-bold text-slate-400 uppercase text-[10px] w-32 inline-block">Final Batch Status:</span>
                             <span className={cn(
                                 "px-2 py-0.5 rounded text-[10px] font-black tracking-widest border",
-                                data.overview.finalStatus === 'RELEASED' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                                data.overview.finalStatus === 'RELEASED' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                    data.overview.finalStatus === 'BLOCKED' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                        "bg-amber-50 text-amber-700 border-amber-200"
                             )}>
                                 {data.overview.finalStatus}
                             </span>
@@ -106,8 +108,15 @@ export function EnterpriseBatchReportTemplate({ data }: { data: EnterpriseBatchR
                         <tr className="border-t-2 border-slate-100">
                             <td colSpan={5} className="py-4 text-right">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase mr-3">Overall Quality Status:</span>
-                                <span className="text-sm font-black uppercase tracking-tighter text-slate-900 border-b-4 border-slate-900">
-                                    {data.overview.finalStatus === 'RELEASED' ? "APPROVED" : "BLOCKED"}
+                                <span className={cn(
+                                    "text-sm font-black uppercase tracking-tighter border-b-4",
+                                    data.overview.finalStatus === 'RELEASED' ? "text-emerald-600 border-emerald-600" :
+                                        data.overview.finalStatus === 'BLOCKED' ? "text-rose-600 border-rose-600" :
+                                            "text-amber-600 border-amber-600"
+                                )}>
+                                    {data.overview.finalStatus === 'RELEASED' ? "APPROVED / RELEASED" :
+                                        data.overview.finalStatus === 'BLOCKED' ? "BLOCKED / REJECTED" :
+                                            "PENDING FINAL RELEASE"}
                                 </span>
                             </td>
                         </tr>
@@ -117,44 +126,44 @@ export function EnterpriseBatchReportTemplate({ data }: { data: EnterpriseBatchR
 
             {/* 4️⃣ SECTION 3 — Physicochemical Analysis */}
             {data.fqAnalysis.map((section, idx) => (
-                <AnalyticalSectionTemplate key={idx} index={3} title="Final Product – Physicochemical Analysis" section={section} />
+                <AnalyticalSectionPivotTemplate key={idx} index={3} title="Final Product – Physicochemical Analysis" section={section} />
             ))}
 
             {/* 5️⃣ SECTION 4 — Microbiological Analysis */}
             {data.microAnalysis.map((section, idx) => (
-                <AnalyticalSectionTemplate key={idx} index={4} title="Final Product – Microbiological Analysis" section={section} />
+                <AnalyticalSectionPivotTemplate key={idx} index={4} title="Final Product – Microbiological Analysis" section={section} />
             ))}
 
-            {/* 6️⃣ SECTION 5 — Final Batch Release */}
+            {/* 6️⃣ SECTION 5 — Electronic Approval & Certification Matrix */}
             <section className="mt-12 mb-10 bg-slate-50 p-8 rounded-3xl border border-slate-100">
                 <div className="flex items-center gap-2 mb-6">
                     <div className="h-5 w-1 bg-slate-900" />
-                    <h2 className="text-sm font-black uppercase tracking-tight">5. Final Batch Release Decision</h2>
+                    <h2 className="text-sm font-black uppercase tracking-tight">5. Electronic Approval & Certification Matrix</h2>
                 </div>
 
-                <div className="grid grid-cols-2 gap-12 items-end">
-                    <div className="space-y-6">
-                        <p className="text-xs text-slate-600 italic">Based on the analytical results presented in this report, the production batch {data.header.batchCode} is:</p>
-                        <div className="flex gap-8">
-                            <div className="flex items-center gap-3">
-                                <div className={cn("h-5 w-5 rounded border-2 flex items-center justify-center", data.releaseDecision.status === 'RELEASED' ? "bg-slate-900 border-slate-900" : "border-slate-200")}>
-                                    {data.releaseDecision.status === 'RELEASED' && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
-                                </div>
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-900">RELEASED</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className={cn("h-5 w-5 rounded border-2 flex items-center justify-center", data.releaseDecision.status === 'BLOCKED' ? "bg-rose-600 border-rose-600" : "border-slate-200")}>
-                                    {data.releaseDecision.status === 'BLOCKED' && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
-                                </div>
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-900">BLOCKED</span>
-                            </div>
-                        </div>
-                    </div>
-
+                <div className="grid grid-cols-2 gap-12">
                     <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Authorized Release Signature</p>
-                        <SignatureBox signature={data.releaseDecision.approver} showHash />
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">1. Technical Review (QC Supervisor)</p>
+                        <SignatureBox signature={data.signatures.review} compact showHash />
                     </div>
+                    <div className="space-y-4">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">2. Final QA Certification (QA Manager)</p>
+                        <SignatureBox signature={data.signatures.certification} compact showHash />
+                    </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-200 flex items-center gap-4">
+                    <div className={cn(
+                        "h-8 px-4 flex items-center rounded-full text-[10px] font-black tracking-widest border",
+                        data.overview.finalStatus === 'RELEASED' ? "bg-emerald-600 text-white border-emerald-700" :
+                            data.overview.finalStatus === 'BLOCKED' ? "bg-rose-600 text-white border-rose-700" :
+                                "bg-amber-600 text-white border-amber-700"
+                    )}>
+                        BATCH FINAL DISPOSITION: {data.overview.finalStatus}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-medium max-w-md italic">
+                        The signatures above constitute electronic identification equivalent to a handwritten signature as per 21 CFR Part 11 and ISO 17025 standards.
+                    </p>
                 </div>
             </section>
 
@@ -163,14 +172,25 @@ export function EnterpriseBatchReportTemplate({ data }: { data: EnterpriseBatchR
                 <p>This document was generated electronically by SmartLab Enterprise. Any modification invalidates this report.</p>
                 <div className="flex items-center gap-2">
                     <Fingerprint className="h-3 w-3" />
-                    <span>SECURE DOCUMENT ID: {data.releaseDecision.approver.signatureId || "AUDIT-TRAIL-ENABLED"}</span>
+                    <span>SECURE DOCUMENT ID: {data.signatures.certification.hash?.split(':')[1] || "AUDIT-TRAIL-ENABLED"}</span>
                 </div>
             </footer>
         </div>
     );
 }
 
-function AnalyticalSectionTemplate({ index, title, section }: { index: number, title: string, section: AnalyticalSection }) {
+function AnalyticalSectionPivotTemplate({ index, title, section }: { index: number, title: string, section: AnalyticalSection }) {
+    // 1. Get unique parameters (Columns)
+    const allParameters = Array.from(new Set(
+        section.samples.flatMap(s => s.records.map(r => r.parameter))
+    ));
+
+    // 2. Get unit/limit info for header if consistent (optional beauty)
+    const getParamHeaderDetails = (paramName: string) => {
+        const record = section.samples.flatMap(s => s.records).find(r => r.parameter === paramName);
+        return { unit: record?.unit || "", limit: record?.limit || "" };
+    };
+
     return (
         <section className="mb-10 page-break">
             <div className="flex items-center gap-2 mb-2">
@@ -179,62 +199,80 @@ function AnalyticalSectionTemplate({ index, title, section }: { index: number, t
             </div>
             <p className="text-[10px] text-slate-400 font-bold mb-4 ml-3">Specification: {section.specTitle} {section.specVersion}</p>
 
-            {section.samples.map((sample, sIdx) => (
-                <div key={sIdx} className="mb-8 pl-3 border-l-2 border-slate-50 space-y-4">
-                    <div className="flex justify-between items-end border-b border-slate-100 pb-2">
-                        <div className="text-[11px] font-black uppercase tracking-tighter">Sample ID: <span className="text-slate-500 font-mono tracking-normal">{sample.sampleId}</span></div>
-                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Analysis Date: {new Date(sample.analysisDate).toLocaleDateString()}</div>
-                    </div>
-
-                    <table className="w-full border-collapse text-[11px]">
-                        <thead>
-                            <tr className="bg-slate-50 text-slate-400 text-[9px] font-black uppercase tracking-widest text-left">
-                                <th className="py-2 px-3">Parameter</th>
-                                <th className="py-2 px-3 text-center">Result</th>
-                                <th className="py-2 px-3 text-center">Spec Limit</th>
-                                <th className="py-2 px-3 text-center">Unit</th>
-                                <th className="py-2 px-3 text-center">Method</th>
-                                <th className="py-2 px-3 text-center">Critical</th>
-                                <th className="py-2 px-3 text-right">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 border-b border-slate-100">
-                            {sample.records.map((r, rIdx) => (
-                                <tr key={rIdx} className="group">
-                                    <td className="py-2.5 px-3 font-bold text-slate-700">{r.parameter}</td>
-                                    <td className="py-2.5 px-3 text-center font-black">{r.result}</td>
-                                    <td className="py-2.5 px-3 text-center text-slate-500">{r.limit}</td>
-                                    <td className="py-2.5 px-3 text-center font-mono text-slate-400">{r.unit}</td>
-                                    <td className="py-2.5 px-3 text-center text-slate-400 italic text-[9px]">{r.method}</td>
-                                    <td className="py-2.5 px-3 text-center">
-                                        {r.isCritical && <span className="h-2 w-2 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-200" />}
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right">
-                                        <span className={cn(
-                                            "text-[8px] font-black px-1.5 py-0.5 rounded",
-                                            r.status === 'PASS' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                                        )}>
-                                            {r.status}
+            <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm mx-3">
+                <table className="w-full border-collapse text-[10px]">
+                    <thead>
+                        <tr className="bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest">
+                            <th className="py-3 px-3 text-left border-r border-slate-700 w-28">Date / Time</th>
+                            {allParameters.map((p, i) => (
+                                <th key={i} className="py-3 px-2 text-center border-l border-slate-700 min-w-24">
+                                    <p className="leading-tight">{p}</p>
+                                    <p className="text-[7px] text-slate-400 font-medium normal-case mt-0.5">
+                                        {getParamHeaderDetails(p).unit}
+                                        <span className="block italic opacity-60">
+                                            ({getParamHeaderDetails(p).limit})
                                         </span>
+                                    </p>
+                                </th>
+                            ))}
+                            <th className="py-3 px-3 text-right">Analyst</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 italic">
+                        {section.samples.map((sample, sIdx) => {
+                            return (
+                                <tr key={sIdx} className="hover:bg-slate-50 transition-colors">
+                                    <td className="py-3 px-3 text-left border-r border-slate-100 font-black text-slate-500 tabular-nums leading-tight">
+                                        {sample.analysisDate && sample.analysisDate !== "-"
+                                            ? new Date(sample.analysisDate).toLocaleString('pt-PT', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })
+                                            : "--/-- --:--"}
+                                    </td>
+                                    {allParameters.map((p, pIdx) => {
+                                        const record = sample.records.find(r => r.parameter === p);
+                                        return (
+                                            <td key={pIdx} className="py-3 px-2 text-center border-l border-slate-50">
+                                                {record ? (
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <span className={cn(
+                                                            "font-black text-[11px]",
+                                                            record.status === 'FAIL' ? "text-rose-600" : "text-slate-900"
+                                                        )}>
+                                                            {record.result}
+                                                        </span>
+                                                        {record.status === 'FAIL' && (
+                                                            <span className="h-1 w-1 rounded-full bg-rose-500" />
+                                                        )}
+                                                    </div>
+                                                ) : <span className="text-slate-200">-</span>}
+                                            </td>
+                                        );
+                                    })}
+                                    <td className="py-3 px-3 text-right text-[8px] font-bold text-slate-400">
+                                        {(() => {
+                                            const parts = sample.analyst.name.split(' ');
+                                            return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]}` : parts[0];
+                                        })()}
                                     </td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
 
-                    <div className="grid grid-cols-2 gap-8 pt-4">
-                        <div className="space-y-3">
-                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Analysed by:</p>
-                            <SignatureBox signature={sample.analyst} compact />
-                        </div>
-                        <div className="space-y-3">
-                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Reviewed by:</p>
-                            <SignatureBox signature={sample.reviewer} compact />
-                        </div>
-                    </div>
+            <div className="mt-4 ml-3 p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-[8px] text-slate-400 uppercase font-black tracking-widest">
+                <p>System Note: All samples in this section are sorted chronologically by collection time.</p>
+                <div className="flex gap-4">
+                    <span>LEGEND: ( ) = Specification Limit</span>
+                    <span>(*) = Critical Parameter</span>
                 </div>
-            ))}
-        </section>
+            </div>
+        </section >
     );
 }
 
@@ -242,20 +280,24 @@ function SignatureBox({ signature, compact, showHash }: { signature: Signature, 
     return (
         <div className={cn("flex items-center gap-3", !compact && "bg-white p-4 rounded-2xl border border-slate-100 shadow-sm")}>
             <div className={cn(
-                "rounded-full border flex items-center justify-center",
-                compact ? "h-6 w-6 border-slate-200" : "h-10 w-10 border-slate-900 bg-slate-900 text-white"
+                "rounded-full border flex items-center justify-center overflow-hidden",
+                compact ? "h-8 w-8 border-slate-200" : "h-12 w-12 border-slate-900 bg-slate-900 text-white"
             )}>
-                {compact ? <User className="h-3 w-3 text-slate-300" /> : <ShieldCheck className="h-5 w-5" />}
+                {signature.signatureUrl ? (
+                    <img src={signature.signatureUrl} alt="Signature" className="h-full w-full object-contain" />
+                ) : (
+                    compact ? <User className="h-4 w-4 text-slate-300" /> : <ShieldCheck className="h-6 w-6" />
+                )}
             </div>
             <div className="flex-1 space-y-0.5">
                 <p className={cn("font-bold uppercase tracking-tight", compact ? "text-[10px]" : "text-xs")}>{signature.name}</p>
-                <div className="flex items-center justify-between">
-                    <p className="text-[9px] text-slate-400 uppercase font-medium">{signature.role}</p>
-                    <p className="text-[9px] text-slate-400 font-mono italic">{new Date(signature.date).toLocaleString()}</p>
+                <div className="flex flex-col">
+                    <p className="text-[9px] text-slate-400 uppercase font-medium leading-tight">{signature.role}</p>
+                    <p className="text-[8px] text-slate-400 font-mono italic leading-tight mt-1">{signature.date ? new Date(signature.date).toLocaleString('pt-PT') : 'Pending'}</p>
                 </div>
                 {showHash && signature.hash && (
-                    <p className="text-[7px] font-mono text-slate-300 break-all leading-tight border-t border-slate-50 pt-1 mt-1">
-                        SECURE_SIG_HASH: {signature.hash}
+                    <p className="text-[6px] font-mono text-slate-300 break-all leading-tight border-t border-slate-50 pt-1 mt-1">
+                        SIG_HASH: {signature.hash}
                     </p>
                 )}
             </div>
@@ -273,7 +315,7 @@ export function AnalyticalFQReportTemplate({ data }: { data: EnterpriseBatchRepo
         <div className="report-container font-sans text-slate-900 bg-white">
             <ReportHeader data={data} title="Analytical Physicochemical Report (R2)" />
             {data.fqAnalysis.map((section, idx) => (
-                <AnalyticalSectionTemplate key={idx} index={1} title="Physicochemical Results" section={section} />
+                <AnalyticalSectionPivotTemplate key={idx} index={idx + 1} title="Physicochemical Results" section={section} />
             ))}
             <ComplianceFooter data={data} />
         </div>
@@ -288,7 +330,7 @@ export function AnalyticalMicroReportTemplate({ data }: { data: EnterpriseBatchR
         <div className="report-container font-sans text-slate-900 bg-white">
             <ReportHeader data={data} title="Analytical Microbiological Report (R3)" />
             {data.microAnalysis.map((section, idx) => (
-                <AnalyticalSectionTemplate key={idx} index={1} title="Microbiological Results" section={section} />
+                <AnalyticalSectionPivotTemplate key={idx} index={idx + 1} title="Microbiological Results" section={section} />
             ))}
             <ComplianceFooter data={data} />
         </div>
@@ -316,7 +358,7 @@ export function CoAReportTemplate({ data }: { data: EnterpriseBatchReportDTO }) 
                     <p><span className="font-bold text-slate-400 uppercase text-[9px] w-24 inline-block">Status:</span>
                         <span className="ml-2 font-black text-emerald-600">CERTIFIED CONFORM</span>
                     </p>
-                    <p><span className="font-bold text-slate-400 uppercase text-[9px] w-24 inline-block">Release Date:</span> {new Date(data.releaseDecision.approver.date).toLocaleDateString()}</p>
+                    <p><span className="font-bold text-slate-400 uppercase text-[9px] w-24 inline-block">Release Date:</span> {data.signatures.certification.date ? new Date(data.signatures.certification.date).toLocaleDateString() : 'N/A'}</p>
                 </div>
             </section>
 
@@ -349,7 +391,7 @@ export function CoAReportTemplate({ data }: { data: EnterpriseBatchReportDTO }) 
                 </div>
                 <div className="w-64 text-center">
                     <div className="h-1 bg-slate-900 mb-2" />
-                    <p className="font-black text-[10px] uppercase">{data.releaseDecision.approver.name}</p>
+                    <p className="font-black text-[10px] uppercase">{data.signatures.certification.name}</p>
                     <p className="text-[9px] text-slate-400 uppercase">Authorized Release Signature</p>
                 </div>
             </div>
@@ -408,7 +450,7 @@ export function NonConformanceReportTemplate({ data }: { data: EnterpriseBatchRe
                             <div className="h-4 w-4 rounded-full border-2 border-slate-900 ml-4" />
                             <span className="text-[10px] font-black uppercase">REJECT/WASTE</span>
                         </div>
-                        <SignatureBox signature={data.releaseDecision.approver} compact />
+                        <SignatureBox signature={data.signatures.certification} compact />
                     </div>
                 </div>
             </section>
@@ -444,7 +486,7 @@ function ComplianceFooter({ data }: { data: EnterpriseBatchReportDTO }) {
             <p>Generated electronically by SmartLab Engine. Standard Compliance ISO 9001/FSSC 22000.</p>
             <div className="flex items-center gap-2 text-right">
                 <Fingerprint className="h-3 w-3" />
-                <span>HASH: {data.releaseDecision.approver.hash?.split(':')[1] || "SECURE"}</span>
+                <span>HASH: {data.signatures.certification.hash?.split(':')[1] || "SECURE"}</span>
             </div>
         </footer>
     );

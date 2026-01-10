@@ -18,10 +18,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { PrintAssetLabelButton } from "@/app/(dashboard)/lab/assets/_components/print-asset-label-button";
 import { AssetDocumentUpload } from "@/app/(dashboard)/lab/assets/_components/asset-document-upload";
+import { AssetDocumentList } from "@/app/(dashboard)/lab/assets/_components/asset-document-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 import { getLabAssetById, getAssetHistory } from "@/app/actions/lab_modules/asset-details";
+import { VerificationConfigDialog } from "../_components/verification-config-dialog";
+import { AssetDialog } from "../_components/create-asset-dialog";
+
 
 // Helper components
 function StatusBadge({ status }: { status: string }) {
@@ -79,7 +83,7 @@ export default async function LabAssetDetailPage(props: PageProps) {
         notFound();
     }
 
-    const { calibrations, maintenance } = await getAssetHistory(id);
+    const { calibrations, maintenance, documents } = await getAssetHistory(id);
 
     return (
         <div className="space-y-6">
@@ -119,10 +123,12 @@ export default async function LabAssetDetailPage(props: PageProps) {
 
                 <div className="flex items-center gap-3">
                     <PrintAssetLabelButton asset={{ code: asset.code, name: asset.name, next_calibration_date: asset.next_calibration_date }} />
-                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border border-emerald-500/50">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar
-                    </Button>
+                    <AssetDialog assetToEdit={asset} mode="edit">
+                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border border-emerald-500/50">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                        </Button>
+                    </AssetDialog>
                 </div>
             </div>
 
@@ -137,6 +143,9 @@ export default async function LabAssetDetailPage(props: PageProps) {
                     </TabsTrigger>
                     <TabsTrigger value="docs" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">
                         Documentos
+                    </TabsTrigger>
+                    <TabsTrigger value="settings" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">
+                        Configurações
                     </TabsTrigger>
                 </TabsList>
 
@@ -288,6 +297,76 @@ export default async function LabAssetDetailPage(props: PageProps) {
                             </CardHeader>
                             <CardContent>
                                 <AssetDocumentUpload assetId={id} />
+
+                                <div className="mt-8">
+                                    <h3 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wider">Documentos Arquivados</h3>
+
+                                    <AssetDocumentList documents={documents} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    {/* SETTINGS TAB */}
+                    <TabsContent value="settings" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <Card className="glass border-white/5 bg-black/20">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg text-slate-200">Requisitos de Verificação</CardTitle>
+                                    <CardDescription className="text-slate-500">Configure os parâmetros para a verificação diária/periódica.</CardDescription>
+                                </div>
+                                <VerificationConfigDialog asset={asset} />
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2 text-center md:text-left">
+                                        <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Status de Rotina</p>
+                                        <div className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${asset.verification_config?.daily_verification_enabled !== false
+                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                            : "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}>
+                                            {asset.verification_config?.daily_verification_enabled !== false ? "APLICÁVEL" : "NÃO APLICÁVEL"}
+                                        </div>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                                        <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Unidade de Medida</p>
+                                        <p className="text-xl font-mono text-emerald-400">{asset.verification_config?.unit || "Não definida"}</p>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                                        <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Validade (Horas)</p>
+                                        <p className="text-xl font-mono text-amber-400">{asset.verification_config?.validity_hours || 48}h</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-widest">Padrões Configurados</h4>
+                                    <div className="border border-white/5 rounded-xl overflow-hidden">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-white/5 text-slate-400 font-medium">
+                                                <tr>
+                                                    <th className="px-4 py-3">Padrão</th>
+                                                    <th className="px-4 py-3 text-right">Valor Nominal</th>
+                                                    <th className="px-4 py-3 text-right">Tolerância</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                                {asset.verification_config?.standards && asset.verification_config.standards.length > 0 ? (
+                                                    asset.verification_config.standards.map((std: any) => (
+                                                        <tr key={std.id} className="text-slate-300">
+                                                            <td className="px-4 py-3 font-medium">{std.name}</td>
+                                                            <td className="px-4 py-3 text-right font-mono">{std.nominal} {asset.verification_config?.unit}</td>
+                                                            <td className="px-4 py-3 text-right font-mono">± {std.tolerance} {asset.verification_config?.unit}</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={3} className="px-4 py-8 text-center text-slate-500 italic">
+                                                            Nenhum padrão configurado para este instrumento.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     </TabsContent>

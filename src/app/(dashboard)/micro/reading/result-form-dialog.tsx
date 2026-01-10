@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useActionState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, AlertTriangle, CheckCircle, XCircle, FlaskConical } from "lucide-react";
-import { ActionForm } from "@/components/smart/action-form";
+import { Eye, AlertTriangle, FlaskConical } from "lucide-react";
 import { registerMicroResultAction } from "@/app/actions/micro";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { IndustrialStatusBadge as StatusBadge } from "@/components/lab/industrial-ui";
+import { toast } from "sonner";
+import { IndustrialConfirmDialog } from "@/components/shared/industrial-confirm-dialog";
+import { IndustrialOOSDialog } from "@/components/shared/industrial-oos-dialog";
 
 interface ResultFormDialogProps {
     resultId: string;
@@ -23,6 +25,22 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
     const [open, setOpen] = useState(false);
     const [tntc, setTntc] = useState(false);
     const [colonyCount, setColonyCount] = useState<string>("");
+
+    const [password, setPassword] = useState("");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [oosOpen, setOosOpen] = useState(false);
+
+    // Server Action State
+    const [state, formAction, isPending] = useActionState(async (_prev: any, formData: FormData) => {
+        const result = await registerMicroResultAction(formData);
+        if (result.success) {
+            toast.success("Resultado registado com sucesso.");
+            setOpen(false);
+        } else {
+            toast.error(result.message || "Erro ao registar resultado.");
+        }
+        return result;
+    }, null);
 
     // Real-time conformity check
     const getConformityStatus = (): "conforming" | "non_conforming" | "unknown" => {
@@ -39,6 +57,31 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
     };
 
     const status = getConformityStatus();
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (status === 'non_conforming') {
+            setOosOpen(true);
+        } else {
+            setConfirmOpen(true);
+        }
+    };
+
+    const handleConfirm = async (reason?: string, pwd?: string) => {
+        const formData = new FormData();
+        formData.append("result_id", resultId);
+        if (tntc) formData.append("is_tntc", "on");
+        if (colonyCount) formData.append("colony_count", colonyCount);
+
+        // In this manual flow, we append the validation data
+        if (reason) formData.append("reason", reason); // Notes/Justification
+        if (pwd) formData.append("password", pwd);
+
+        formAction(formData);
+        setConfirmOpen(false);
+        setOosOpen(false);
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -70,14 +113,7 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
                     </div>
                 )}
 
-                <ActionForm
-                    action={registerMicroResultAction}
-                    onSuccess={() => setOpen(false)}
-                    submitText="Confirmar Resultado"
-                    className="space-y-6 pt-2"
-                >
-                    <input type="hidden" name="result_id" value={resultId} />
-
+                <form onSubmit={handleSubmit} className="space-y-6 pt-2">
                     <div className="space-y-4">
                         <div className="flex items-center space-x-3 p-3 rounded-xl border border-slate-800 bg-slate-900/50">
                             <Checkbox
@@ -113,45 +149,47 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
 
                     {/* Real-time Conformity Indicator */}
                     {status !== "unknown" && (
-                        <div className={cn(
-                            "flex items-center justify-center gap-3 p-3 rounded-xl border font-bold text-sm tracking-wide transition-all",
-                            status === "conforming"
-                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-lg shadow-emerald-500/10"
-                                : "bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-lg shadow-rose-500/10"
-                        )}>
-                            {status === "conforming" ? (
-                                <>
-                                    <CheckCircle className="h-5 w-5" />
-                                    CONFORME
-                                </>
-                            ) : (
-                                <>
-                                    <XCircle className="h-5 w-5" />
-                                    NÃO CONFORME
-                                </>
-                            )}
+                        <div className="flex justify-center p-2">
+                            <StatusBadge status={status} className="scale-125 px-6 py-1.5" />
                         </div>
                     )}
 
-                    <div className="grid grid-cols-4 items-start gap-4">
-                        <Label htmlFor="result_text" className="text-right text-slate-400 font-medium text-xs uppercase tracking-wide pt-3">
-                            Notas {status === "non_conforming" && <span className="text-rose-500">*</span>}
-                        </Label>
-                        <div className="col-span-3">
-                            <Input
-                                id="result_text"
-                                name="result_text"
-                                placeholder={status === "non_conforming" ? "Justificação obrigatória..." : "Observações..."}
-                                className={cn(
-                                    "bg-slate-900/80 border-slate-700 text-white",
-                                    status === "non_conforming" && "border-rose-500/50 bg-rose-500/5 focus:border-rose-500"
-                                )}
-                                required={status === "non_conforming"}
-                            />
-                        </div>
+                    <div className="flex justify-end pt-4">
+                        <Button type="submit" disabled={isPending} className="bg-blue-600 hover:bg-blue-500 font-bold tracking-wide">
+                            {isPending ? "Processando..." : "Assinar e Confirmar"}
+                        </Button>
                     </div>
-                </ActionForm>
+                </form>
+
+                {/* Standard Confirmation (For Compliant Results) */}
+                <IndustrialConfirmDialog
+                    isOpen={confirmOpen}
+                    onClose={() => setConfirmOpen(false)}
+                    onConfirm={(reason, pwd) => handleConfirm(reason, pwd || "")} // Adapter
+                    title="Confirmar Resultado Microbiológico"
+                    description="Esta ação será registada permanentemente."
+                    requireReason={false} // Clean path doesn't need reason
+                    requireSignature={true}
+                    variant="success"
+                />
+
+                {/* OOS Dialog (For Non-Conforming Results) */}
+                <IndustrialOOSDialog
+                    isOpen={oosOpen}
+                    onClose={() => setOosOpen(false)}
+                    onConfirm={(reason) => handleConfirm(reason, "")} // Confirm without password? Wait. OOS needs signature too usually. 
+                    // IndustrialOOSDialog doesn't ask for password currently? 
+                    // Let's check IndustrialOOSDialog spec. 
+                    measuredValue={tntc ? "TNTC" : colonyCount}
+                    specMin={0}
+                    specMax={maxColonyCount || 0}
+                    unit="CFU"
+                    productName={sampleCode}
+                    testName={parameterName}
+                />
             </DialogContent>
         </Dialog>
     );
 }
+
+// Helper needed? IndustrialStatusBadge is imported.

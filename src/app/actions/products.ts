@@ -20,6 +20,7 @@ const ProductSchema = z.object({
     status: z.enum(["active", "inactive"]).default("active"),
     shelf_life_days: z.coerce.number().int().positive().optional(),
     storage_conditions: z.string().optional(),
+    parent_id: z.string().uuid().optional().nullable(),
 });
 
 /**
@@ -48,6 +49,7 @@ export async function createProductAction(formData: FormData) {
         status: emptyToUndefined(formData.get("status")) || "active",
         shelf_life_days: emptyToUndefined(formData.get("shelf_life_days")),
         storage_conditions: emptyToUndefined(formData.get("storage_conditions")),
+        parent_id: emptyToUndefined(formData.get("parent_id")),
     };
 
     const validation = ProductSchema.safeParse(rawData);
@@ -110,6 +112,7 @@ export async function updateProductAction(formData: FormData) {
         status: emptyToUndefined(formData.get("status")) || "active",
         shelf_life_days: emptyToUndefined(formData.get("shelf_life_days")),
         storage_conditions: emptyToUndefined(formData.get("storage_conditions")),
+        parent_id: emptyToUndefined(formData.get("parent_id")),
     };
 
     const validation = ProductSchema.safeParse(rawData);
@@ -132,6 +135,7 @@ export async function updateProductAction(formData: FormData) {
             unit: currentProduct.unit,
             shelf_life_days: currentProduct.shelf_life_days,
             storage_conditions: currentProduct.storage_conditions,
+            parent_id: currentProduct.parent_id,
             status: currentProduct.status,
             effective_date: currentProduct.created_at?.split('T')[0],
             superseded_at: new Date().toISOString(),
@@ -258,7 +262,10 @@ export async function getProductsAction() {
 
     const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select(`
+            *,
+            parent:products!parent_id(name, sku)
+        `)
         .order("name");
 
     if (error) return { success: false, message: error.message, data: [] };

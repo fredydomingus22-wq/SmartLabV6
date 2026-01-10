@@ -12,9 +12,15 @@ export default async function LabRoutineChecksPage() {
     // Get lab assets (instruments) from new table
     const { data: instruments } = await supabase
         .from("lab_assets")
-        .select("id, name, code, asset_category")
+        .select("id, name, code, asset_category, verification_config, last_verification_at, last_verification_result")
         .eq("status", "active")
         .order("name");
+
+    const filteredInstruments = instruments?.filter(inst => {
+        const config = inst.verification_config as any;
+        // Show if explicitly true or if the field doesn't exist (default)
+        return config?.daily_verification_enabled !== false;
+    });
 
     return (
         <div className="container py-8 space-y-8">
@@ -35,15 +41,17 @@ export default async function LabRoutineChecksPage() {
                             Gestão de Ativos
                         </Button>
                     </Link>
-                    <Button variant="ghost" className="text-slate-400">
-                        <History className="h-4 w-4 mr-2" />
-                        Histórico
-                    </Button>
+                    <Link href="/lab/equipment/routine-checks/history">
+                        <Button variant="ghost" className="text-slate-400">
+                            <History className="h-4 w-4 mr-2" />
+                            Histórico
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
-            {instruments && instruments.length > 0 ? (
-                <RoutineCheckForm equipments={instruments} />
+            {filteredInstruments && filteredInstruments.length > 0 ? (
+                <RoutineCheckForm equipments={filteredInstruments} />
             ) : (
                 <div className="text-center py-20 bg-slate-900/40 rounded-3xl border border-dashed border-slate-800">
                     <FlaskConical className="h-12 w-12 text-slate-700 mx-auto mb-4 opacity-20" />

@@ -27,7 +27,7 @@ import { updateSampleStatusAction } from "@/app/actions/lab";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { ResultDialogWrapper } from "@/app/(dashboard)/lab/result-dialog-wrapper";
+import { ResultEntryModal } from "@/app/(dashboard)/lab/components/result-entry-modal";
 import { ApproveSampleDialog } from "@/app/(dashboard)/lab/approve-sample-dialog";
 
 interface KanbanSample {
@@ -55,9 +55,21 @@ const COLUMNS = [
 
 export function KanbanBoard({ initialSamples }: KanbanBoardProps) {
     const [samples, setSamples] = useState(initialSamples);
+    const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
+    const [isEntryOpen, setIsEntryOpen] = useState(false);
     const router = useRouter();
 
+    const handleOpenEntry = (id: string) => {
+        setSelectedSampleId(id);
+        setIsEntryOpen(true);
+    };
+
     const handleStatusUpdate = async (id: string, newStatus: string) => {
+        if (newStatus === "open_entry") {
+            handleOpenEntry(id);
+            return;
+        }
+
         const res = await updateSampleStatusAction({ id, status: newStatus });
         if (res.success) {
             setSamples(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
@@ -113,12 +125,18 @@ export function KanbanBoard({ initialSamples }: KanbanBoardProps) {
                     </div>
                 </div>
             ))}
+
+            <ResultEntryModal
+                open={isEntryOpen}
+                onOpenChange={setIsEntryOpen}
+                sampleId={selectedSampleId}
+                onSuccess={() => router.refresh()}
+            />
         </div>
     );
 }
 
 function SampleCard({ sample, onMove }: { sample: KanbanSample, onMove: (id: string, status: string) => void }) {
-    const router = useRouter();
     const isReadyForReview = sample.progress === 100 && sample.status === "in_analysis";
     const isRejected = sample.status === "rejected";
     const isApproved = sample.status === "approved";
@@ -193,7 +211,14 @@ function SampleCard({ sample, onMove }: { sample: KanbanSample, onMove: (id: str
                 <div className="flex gap-1">
                     {/* Action Dialogs */}
                     {(sample.status === 'in_analysis' || sample.status === 'collected') && (
-                        <ResultDialogWrapper sample={sample as any} />
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[10px] px-2 font-bold bg-white dark:bg-slate-950"
+                            onClick={() => onMove(sample.id, 'open_entry')}
+                        >
+                            <Beaker className="h-3 w-3 mr-1" /> Resultados
+                        </Button>
                     )}
 
                     {sample.status === 'reviewed' && (

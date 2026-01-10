@@ -15,8 +15,8 @@ export const SAMPLE_TRANSITIONS: Record<SampleStatus, SampleStatus[]> = {
     'collected': ['in_analysis', 'registered'],
     'in_analysis': ['under_review', 'collected'],
     'under_review': ['approved', 'rejected', 'in_analysis'],
-    'approved': ['released', 'under_review'],
-    'rejected': ['released', 'under_review'],
+    'approved': ['released', 'under_review', 'rejected'],
+    'rejected': ['in_analysis', 'under_review'],
     'released': ['archived'],
     'archived': [] // Terminal state
 };

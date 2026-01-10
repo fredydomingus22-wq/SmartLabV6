@@ -43,8 +43,9 @@ export async function createSampleAction(formData: FormData) {
         }
 
         const service = new SampleDomainService(supabase, {
-            organization_id: user.organization_id,
+            organization_id: user.organization_id!,
             user_id: user.id,
+            role: user.role,
             correlation_id: crypto.randomUUID()
         });
 
@@ -174,7 +175,7 @@ export async function saveSampleMetaAction(sampleId: string, notes: string | nul
 export async function getSampleDetailsAction(sampleId: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
-    const { data: sample, error: sampleError } = await supabase.from("samples").select(`*, sample_type:sample_types(*)`).eq("id", sampleId).eq("organization_id", user.organization_id).single();
+    const { data: sample, error: sampleError } = await supabase.from("samples").select(`*, sample_type:sample_types(id, name, code, test_category, retention_time_days, default_sla_minutes)`).eq("id", sampleId).eq("organization_id", user.organization_id).single();
     if (sampleError) return { success: false, message: sampleError.message };
 
     const { data: results, error: resultsError } = await supabase.from("lab_analysis").select(`*, parameter:qa_parameters(*)`).eq("sample_id", sampleId);

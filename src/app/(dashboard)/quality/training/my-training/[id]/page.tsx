@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 interface PageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 export default async function TrainingPlayerPage({ params }: PageProps) {
-    const { data: assignment, error } = await getAssignmentDetails(params.id);
+    const { id } = await params;
+    const { data: assignment, error } = await getAssignmentDetails(id);
 
     if (error || !assignment) {
         notFound();

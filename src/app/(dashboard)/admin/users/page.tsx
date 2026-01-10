@@ -29,6 +29,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserDialog } from "./user-dialog";
+import { SignatureUploadDialog } from "./_components/signature-upload-dialog";
 import { toast } from "sonner";
 
 export default function AdminUsersPage() {
@@ -110,6 +111,7 @@ export default function AdminUsersPage() {
                                         <TableHead>Role</TableHead>
                                         <TableHead>Organization</TableHead>
                                         <TableHead>Plant</TableHead>
+                                        <TableHead>Assinatura</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -134,6 +136,13 @@ export default function AdminUsersPage() {
                                                 </TableCell>
                                                 <TableCell>{user.organizations?.name}</TableCell>
                                                 <TableCell>{user.plants?.name || "All Plants"}</TableCell>
+                                                <TableCell>
+                                                    <SignatureUploadDialog
+                                                        userId={user.id}
+                                                        userName={user.full_name || "User"}
+                                                        currentSignatureUrl={user.signature_url}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

@@ -24,6 +24,7 @@ interface DataGridProps<T> {
     onRowClick?: (row: T) => void;
     isLoading?: boolean;
     className?: string;
+    rowClassName?: string;
 }
 
 export function DataGrid<T extends { id: string | number }>({
@@ -32,6 +33,7 @@ export function DataGrid<T extends { id: string | number }>({
     onRowClick,
     isLoading,
     className,
+    rowClassName,
 }: DataGridProps<T>) {
     if (isLoading) {
         return (
@@ -66,7 +68,7 @@ export function DataGrid<T extends { id: string | number }>({
                         <TableRow
                             key={row.id}
                             onClick={() => onRowClick?.(row)}
-                            className={onRowClick ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}
+                            className={rowClassName || (onRowClick ? "cursor-pointer hover:bg-muted/30 transition-colors" : "")}
                         >
                             {columns.map((col, colIdx) => (
                                 <TableCell key={colIdx} className="py-3">

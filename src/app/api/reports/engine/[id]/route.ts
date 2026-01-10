@@ -23,20 +23,26 @@ export async function GET(
     try {
         const supabase = await createClient();
 
-        // 1. Check for existing Signed Snapshot
-        const { data: existingReport } = await supabase
-            .from("generated_reports")
-            .select("report_data")
-            .eq("entity_id", batchId)
-            .eq("report_type", "FINAL")
-            .eq("status", "signed")
-            .maybeSingle();
+        const isLive = searchParams.get("live") === "true";
+        let enterpriseData: EnterpriseBatchReportDTO | null = null;
 
-        let enterpriseData: EnterpriseBatchReportDTO;
+        // 1. Only check for snapshot if NOT in live mode
+        if (!isLive) {
+            const { data: existingReport } = await supabase
+                .from("generated_reports")
+                .select("report_data")
+                .eq("entity_id", batchId)
+                .eq("report_type", type) // Use current requested type
+                .eq("status", "signed")
+                .maybeSingle();
 
-        if (existingReport?.report_data) {
-            enterpriseData = existingReport.report_data as unknown as EnterpriseBatchReportDTO;
-        } else {
+            if (existingReport?.report_data) {
+                enterpriseData = existingReport.report_data as unknown as EnterpriseBatchReportDTO;
+            }
+        }
+
+        // 2. Fetch fresh data if no snapshot found or live mode requested
+        if (!enterpriseData) {
             const result = await getBatchTraceabilityAction(batchId);
             if (!result.success || !result.data) {
                 return NextResponse.json({ error: result.message }, { status: 404 });

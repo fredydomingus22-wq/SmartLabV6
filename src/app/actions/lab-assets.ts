@@ -198,16 +198,18 @@ export async function logLabAssetActivityAction(formData: FormData) {
         const maintenanceType = formData.get("maintenance_type") as string;
         const result = formData.get("result") as string;
         const description = formData.get("description") as string;
+        const notes = formData.get("notes") as string | null;
         const performedAt = formData.get("performed_at") as string || new Date().toISOString();
 
         const { error: logError } = await supabase.from("maintenance_logs").insert({
             organization_id: user.organization_id,
             asset_type: "lab_asset",
             asset_id: assetId,
-            equipment_id: assetId, // Legacy FK
+            equipment_id: null, // Explicitly NULL as we are using asset_id + asset_type polymorphically
             maintenance_type: maintenanceType,
             description,
             result,
+            notes,
             performed_at: performedAt,
             performed_by: user.id,
         });
@@ -216,9 +218,17 @@ export async function logLabAssetActivityAction(formData: FormData) {
 
         // Update asset status based on result
         if (result === "pass") {
-            await supabase.from("lab_assets").update({ status: "active" }).eq("id", assetId);
+            await supabase.from("lab_assets").update({
+                status: "active",
+                last_verification_at: performedAt,
+                last_verification_result: "pass"
+            }).eq("id", assetId);
         } else if (result === "fail") {
-            await supabase.from("lab_assets").update({ status: "out_of_calibration" }).eq("id", assetId);
+            await supabase.from("lab_assets").update({
+                status: "out_of_calibration",
+                last_verification_at: performedAt,
+                last_verification_result: "fail"
+            }).eq("id", assetId);
         }
 
         revalidatePath("/lab/assets");
@@ -226,5 +236,37 @@ export async function logLabAssetActivityAction(formData: FormData) {
         return { success: true, message: "Atividade registada com sucesso" };
     } catch (error: any) {
         return { success: false, message: error.message || "Erro ao registar atividade" };
+    }
+}
+
+/**
+ * Register a new document execution for a lab asset
+ */
+export async function createLabAssetDocumentAction(data: {
+    asset_id: string;
+    name: string;
+    path: string;
+    file_type: string;
+    size: number;
+}) {
+    try {
+        const user = await getSafeUser();
+        const supabase = await createClient();
+
+        const { error } = await supabase.from("lab_asset_documents").insert({
+            asset_id: data.asset_id,
+            name: data.name,
+            path: data.path,
+            file_type: data.file_type,
+            size: data.size,
+            uploaded_by: user.id,
+        });
+
+        if (error) throw error;
+
+        revalidatePath(`/lab/assets/${data.asset_id}`);
+        return { success: true, message: "Documento registado com sucesso" };
+    } catch (error: any) {
+        return { success: false, message: error.message || "Erro ao salvar documento" };
     }
 }

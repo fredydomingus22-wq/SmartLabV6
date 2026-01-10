@@ -99,34 +99,39 @@ export default async function BatchDetailPage({ params }: PageProps) {
 
     const { data: samples } = await query.order('collected_at', { ascending: true });
 
+    // 4. Map Samples to Intermediates for Table UI
+    const intermediatesWithSamples = intermediates?.map(inter => ({
+        ...inter,
+        samples: samples?.filter(s => s.intermediate_product_id === inter.id) || []
+    })) || [];
+
     // 4. Data Preparation
     const product = Array.isArray(batch.product) ? batch.product[0] : batch.product;
     const line = Array.isArray(batch.line) ? batch.line[0] : batch.line;
 
-    const statusColors: Record<string, string> = {
-        planned: "bg-blue-500/10 text-blue-700 border-none",
-        open: "bg-amber-500/10 text-amber-700 border-none",
-        in_progress: "bg-amber-500/10 text-amber-700 border-none",
-        completed: "bg-purple-500/10 text-purple-700 border-none",
-        closed: "bg-emerald-500/10 text-emerald-700 border-none",
-        released: "bg-emerald-500/10 text-emerald-700 border-none",
-        blocked: "bg-rose-500/10 text-rose-700 border-none",
-        rejected: "bg-rose-500/10 text-rose-700 border-none",
+    const getStatusBadge = (status: string) => {
+        const variants: Record<string, any> = {
+            planned: "outline",
+            open: "active",
+            in_progress: "active",
+            completed: "completed",
+            closed: "approved",
+            released: "approved",
+            blocked: "blocked",
+            rejected: "rejected",
+        };
+        const labels: Record<string, string> = {
+            planned: "Planeado",
+            open: "Em Processo",
+            in_progress: "Em Processo",
+            completed: "Finalizado",
+            closed: "Liberado",
+            released: "Liberado",
+            blocked: "Bloqueado",
+            rejected: "Rejeitado",
+        };
+        return <Badge variant={variants[status] || "outline"} className="font-bold tracking-tight px-3 py-1 rounded-full border shadow-sm">{labels[status] || status.toUpperCase()}</Badge>;
     };
-
-    const statusLabels: Record<string, string> = {
-        planned: "PLANEADO",
-        open: "EM PROCESSO",
-        in_progress: "EM PROCESSO",
-        completed: "FINALIZADO",
-        closed: "LIBERADO",
-        released: "LIBERADO",
-        blocked: "BLOQUEADO",
-        rejected: "REJEITADO",
-    };
-
-    const statusColor = statusColors[batch.status] || "bg-muted text-muted-foreground";
-    const statusLabel = statusLabels[batch.status] || batch.status.toUpperCase();
 
     // Prepare Report Data
     const phasesMap = new Map<string, any[]>();
@@ -178,12 +183,17 @@ export default async function BatchDetailPage({ params }: PageProps) {
         .order("lot_code");
 
     // 5. Fetch available Packaging Lots
-    const { data: availablePackaging } = await supabase
+    const { data: rawPackaging } = await supabase
         .from("packaging_lots")
         .select("id, lot_code, remaining_quantity, material:packaging_materials(name, code)")
         .in("status", ["approved", "active"])
         .gt("remaining_quantity", 0)
         .order("lot_code");
+
+    const availablePackaging = rawPackaging?.map(p => ({
+        ...p,
+        material: Array.isArray(p.material) ? p.material[0] : p.material
+    })) || [];
 
     // 6. Fetch used Packaging for this batch
     const { data: usedPackaging } = await supabase
@@ -192,44 +202,60 @@ export default async function BatchDetailPage({ params }: PageProps) {
         .eq("production_batch_id", id);
 
 
+    const { data: allProducts } = await supabase.from("products").select("id, name, sku").eq("status", "active").order("name");
     const { data: sampleTypes } = await supabase.from("sample_types").select("id, name, code").order("name");
     const { data: samplingPoints } = await supabase.from("sampling_points").select("id, name, code").order("name");
 
     return (
-        <div className="space-y-6">
-            {/* Minimal Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/production">
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full border-none bg-muted/30">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold tracking-tight">{batch.code}</h1>
-                            <Badge className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", statusColor)}>
-                                {statusLabel}
-                            </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-tight">
-                            {product?.name || "No Product"} • Linha: {line?.name || "N/A"}
-                        </p>
-                    </div>
-                </div>
+        <div className="container py-8 space-y-6">
+            {/* Premium Header Container (NC-UI-03) */}
+            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-indigo-500/10 via-slate-900/50 to-transparent relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
 
-                <div className="flex items-center gap-2">
-                    <BatchReportButton
-                        data={{
-                            batchCode: batch.code,
-                            productName: product?.name || "",
-                            startDate: batch.start_date ? new Date(batch.start_date).toLocaleDateString() : "",
-                            endDate: batch.end_date ? new Date(batch.end_date).toLocaleDateString() : undefined,
-                            organization: { name: "SmartLab Enterprise", address: "Production Plant 1" },
-                            phases: reportPhases
-                        }}
-                    />
-                    <ReleaseBatchButton batchId={id} status={batch.status} userRole={profile?.role || "operator"} />
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
+                    <div className="space-y-6">
+                        <Link href="/production">
+                            <Button variant="ghost" size="sm" className="pl-0 text-slate-400 hover:text-white -ml-2 mb-2 group">
+                                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                                Voltar à Produção
+                            </Button>
+                        </Link>
+
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="p-4 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 shadow-inner">
+                                    <Factory className="h-8 w-8 text-indigo-400" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                            {batch.code}
+                                        </h1>
+                                        {getStatusBadge(batch.status)}
+                                    </div>
+                                    <p className="text-lg text-slate-400 font-medium tracking-wide">
+                                        {product?.name || "Sem Produto"} • Linha: {line?.name || "N/A"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-4">
+                        <div className="flex flex-wrap justify-end gap-3">
+                            <BatchReportButton
+                                data={{
+                                    batchCode: batch.code,
+                                    productName: product?.name || "",
+                                    startDate: batch.start_date ? new Date(batch.start_date).toLocaleDateString() : "",
+                                    endDate: batch.end_date ? new Date(batch.end_date).toLocaleDateString() : undefined,
+                                    organization: { name: "SmartLab Enterprise", address: "Production Plant 1" },
+                                    phases: reportPhases
+                                }}
+                            />
+                            <ReleaseBatchButton batchId={id} status={batch.status} userRole={profile?.role || "operator"} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -238,7 +264,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
                     <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Vista Geral</TabsTrigger>
                     <TabsTrigger value="tanks" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Tanques</TabsTrigger>
                     <TabsTrigger value="quality" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Laboratório</TabsTrigger>
-                    <TabsTrigger value="packaging" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none text-muted-foreground/30">Embalagem</TabsTrigger>
+                    <TabsTrigger value="packaging" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Embalagem</TabsTrigger>
                     <TabsTrigger value="history" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Dossiê de Rastreabilidade</TabsTrigger>
                 </TabsList>
 
@@ -305,7 +331,16 @@ export default async function BatchDetailPage({ params }: PageProps) {
                                 <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl">
                                     <span className="text-[10px] font-bold uppercase text-muted-foreground">Taxa de Conformidade</span>
                                     <span className="text-sm font-bold text-emerald-600">
-                                        {samples?.length ? Math.round((samples.filter(s => s.status === 'validated').length / samples.length) * 100) : 0}%
+                                        {(() => {
+                                            if (!samples?.length) return '—';
+                                            // Flatten all analysis results from all samples
+                                            const allAnalysis = samples.flatMap(s => s.lab_analysis || []);
+                                            // Only count analyzed parameters (is_conforming is not null)
+                                            const analyzedParams = allAnalysis.filter((a: any) => a.is_conforming !== null);
+                                            if (analyzedParams.length === 0) return '—';
+                                            const conformingParams = analyzedParams.filter((a: any) => a.is_conforming === true);
+                                            return `${Math.round((conformingParams.length / analyzedParams.length) * 100)}%`;
+                                        })()}
                                     </span>
                                 </div>
                             </div>
@@ -313,18 +348,22 @@ export default async function BatchDetailPage({ params }: PageProps) {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="intermediates" className="mt-6">
+                <TabsContent value="tanks" className="mt-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-lg font-bold tracking-tight">Produtos Intermédios</h3>
                             <p className="text-sm text-muted-foreground">Monitorização de tanques e silos ocupados por este lote.</p>
                         </div>
-                        <IntermediateDialog batchId={id} availableTanks={tanks || []} />
+                        <IntermediateDialog
+                            batchId={id}
+                            availableTanks={tanks || []}
+                            availableProducts={allProducts || []}
+                        />
                     </div>
 
                     {intermediates && intermediates.length > 0 ? (
                         <IntermediatesTable
-                            intermediates={intermediates || []}
+                            intermediates={intermediatesWithSamples}
                             sampleTypes={sampleTypes || []}
                             samplingPoints={samplingPoints || []}
                             plantId={batch.plant_id}
@@ -364,22 +403,28 @@ export default async function BatchDetailPage({ params }: PageProps) {
                                 </thead>
                                 <tbody className="divide-y divide-border/5">
                                     {(usedPackaging || []).length > 0 ? (
-                                        usedPackaging?.map((usage) => (
-                                            <tr key={usage.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-6 py-4 font-medium">
-                                                    {(usage.lot as any)?.material?.name || "Material"}
-                                                </td>
-                                                <td className="px-6 py-4 font-mono text-xs">
-                                                    {(usage.lot as any)?.lot_code}
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-bold">
-                                                    {usage.quantity_used} {usage.unit}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-muted-foreground text-xs">
-                                                    {new Date(usage.added_at).toLocaleString('pt-PT')}
-                                                </td>
-                                            </tr>
-                                        ))
+                                        usedPackaging?.map((usage) => {
+                                            const lot = usage.lot as any; // Cast for property access from deep join safely
+                                            const material = lot?.material;
+                                            const materialName = Array.isArray(material) ? material[0]?.name : material?.name;
+
+                                            return (
+                                                <tr key={usage.id} className="hover:bg-muted/30 transition-colors">
+                                                    <td className="px-6 py-4 font-medium">
+                                                        {materialName || "Material"}
+                                                    </td>
+                                                    <td className="px-6 py-4 font-mono text-xs">
+                                                        {lot?.lot_code}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-bold">
+                                                        {usage.quantity_used} {usage.unit}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right text-muted-foreground text-xs">
+                                                        {new Date(usage.added_at).toLocaleString('pt-PT')}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
                                             <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground uppercase text-[10px] font-bold tracking-widest opacity-30">
@@ -434,13 +479,6 @@ export default async function BatchDetailPage({ params }: PageProps) {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="packaging" className="mt-4">
-                    <div className="text-center py-24 bg-muted/5 rounded-3xl border border-dashed">
-                        <PackageCheck className="h-10 w-12 mx-auto mb-4 opacity-10" />
-                        <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-30">Controlo de Embalagem</h3>
-                        <p className="text-[9px] text-muted-foreground uppercase mt-2 opacity-50 tracking-wider">Aguardando implementação da US-SUP-01</p>
-                    </div>
-                </TabsContent>
 
                 <TabsContent value="history" className="mt-4">
                     <BatchDossier data={traceabilityData} batchId={id} />

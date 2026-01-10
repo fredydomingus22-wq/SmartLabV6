@@ -13,9 +13,21 @@ export default async function PlantConfigPage() {
 
     return (
         <div className="container py-8 space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Plant Configuration</h1>
-                <p className="text-muted-foreground">Organization and plant settings.</p>
+            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-emerald-500/10 via-slate-900/50 to-transparent relative overflow-hidden mb-8">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
+                <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-2">
+                        <div className="p-3 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
+                            <Building2 className="h-6 w-6 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                Configuração da Unidade
+                            </h1>
+                            <p className="text-slate-400 font-medium">Configurações da organização e da planta industrial.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">

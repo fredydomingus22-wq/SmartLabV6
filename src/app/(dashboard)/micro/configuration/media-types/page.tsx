@@ -130,7 +130,7 @@ export default async function MediaTypesPage() {
                         </p>
                     </div>
                 </div>
-                <MediaTypeDialog plantId={plantId} />
+                <MediaTypeDialog plantId={plantId!} />
             </div>
 
             {/* Stats Cards */}
@@ -230,7 +230,7 @@ export default async function MediaTypesPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MediaTypeDialog plantId={plantId} mediaType={mt} />
+                                                <MediaTypeDialog plantId={plantId!} mediaType={mt} />
                                                 <DeleteButton
                                                     action={deleteMediaTypeAction}
                                                     id={mt.id}
@@ -251,7 +251,7 @@ export default async function MediaTypesPage() {
                             <p className="text-muted-foreground text-sm max-w-md mb-6">
                                 Comece adicionando os meios de cultura utilizados nas suas análises microbiológicas.
                             </p>
-                            <MediaTypeDialog plantId={plantId} />
+                            <MediaTypeDialog plantId={plantId!} />
                         </div>
                     )}
                 </CardContent>

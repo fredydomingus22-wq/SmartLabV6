@@ -47,6 +47,19 @@ export async function generateCoAAction(formData: FormData) {
         .eq("plant_id", userData.plant_id)
         .single();
 
+    // Get organization and plant for header data
+    const { data: organization } = await supabase
+        .from("organizations")
+        .select("name, logo_url")
+        .eq("id", userData.organization_id)
+        .single();
+
+    const { data: plant } = await supabase
+        .from("plants")
+        .select("name, code, address")
+        .eq("id", plantId)
+        .single();
+
     // Get analysis results
     const { data: analysis } = await supabase
         .from("lab_analysis")
@@ -77,7 +90,19 @@ export async function generateCoAAction(formData: FormData) {
         entity_id: sampleId,
         report_number: reportNumber,
         title: `Certificate of Analysis - ${sample?.code}`,
-        report_data: { sample, analysis },
+        report_data: {
+            sample,
+            analysis,
+            organization: {
+                name: organization?.name || "Organization",
+                logoUrl: organization?.logo_url || null,
+            },
+            plant: {
+                name: plant?.name || "Plant",
+                code: plant?.code || "",
+                address: typeof plant?.address === 'object' ? JSON.stringify(plant.address) : plant?.address,
+            }
+        },
         generated_by: user.id,
     });
 

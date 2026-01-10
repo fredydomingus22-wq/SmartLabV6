@@ -50,7 +50,7 @@ export function RetestDialog({
             formData.set("original_result_id", resultId);
             formData.set("reason", reason);
 
-            const result = await requestRetestAction(formData);
+            const result = await requestRetestAction(resultId, reason);
 
             if (result.success) {
                 toast.success(result.message);

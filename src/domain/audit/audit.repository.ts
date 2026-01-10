@@ -12,6 +12,27 @@ export interface AuditFilter {
     offset?: number;
 }
 
+export interface AuditEvent {
+    id: string;
+    event_type: string;
+    entity_type: string;
+    entity_id: string;
+    user_id: string;
+    organization_id: string;
+    created_at: string;
+    payload?: any;
+    metadata?: any;
+    user?: {
+        full_name: string;
+    };
+    ai_insight?: {
+        status: string;
+        message: string;
+        confidence: number;
+        entity_id: string;
+    };
+}
+
 /**
  * Universal Audit Engine Repository
  * Logic for fetching and filtering the immutable audit trail
@@ -25,13 +46,7 @@ export async function getAuditEvents(filters: AuditFilter = {}) {
         .select(`
             *,
             user:user_profiles (
-                full_name,
-                email
-            ),
-            ai_insight:ai_insights (
-                status,
-                message,
-                confidence
+                full_name
             )
         `)
         .eq('organization_id', user.organization_id)
@@ -51,11 +66,27 @@ export async function getAuditEvents(filters: AuditFilter = {}) {
     const offset = filters.offset || 0;
     query = query.range(offset, offset + limit - 1);
 
-    const { data, error, count } = await query;
+    const { data: rawEvents, error, count } = await query;
+    const data = (rawEvents || []) as AuditEvent[];
 
     if (error) {
         console.error('[AuditRepo] Fetch failed:', error);
         throw error;
+    }
+
+    // Secondary Enrichment: AI Insights (Resilient Polymorphic Join)
+    const entityIds = data.map(e => e.entity_id).filter(Boolean) as string[];
+    if (entityIds.length > 0) {
+        const { data: insights } = await supabase
+            .from('ai_insights')
+            .select('status, message, confidence, entity_id')
+            .in('entity_id', entityIds);
+
+        if (insights) {
+            data.forEach(event => {
+                event.ai_insight = insights.find(i => i.entity_id === event.entity_id);
+            });
+        }
     }
 
     return {

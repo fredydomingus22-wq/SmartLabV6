@@ -10,6 +10,7 @@ export type UserRole =
     | 'system_owner'
     | 'admin'
     | 'qa_manager'
+    | 'qc_supervisor'
     | 'lab_analyst'
     | 'micro_analyst'
     | 'analyst'
@@ -73,6 +74,16 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         reports: 'full',
         tasks: 'full',
         assets: 'full',
+    },
+    qc_supervisor: {
+        dashboard: 'full',
+        lab: 'full',
+        micro: 'full',
+        production: 'read',
+        cip: 'read',
+        qms: 'read',
+        reports: 'full',
+        tasks: 'full',
     },
     lab_analyst: {
         dashboard: 'full',
@@ -215,5 +226,5 @@ export function isAnalyst(role: string): boolean {
  * Check if role is a manager type
  */
 export function isManager(role: string): boolean {
-    return ['admin', 'qa_manager', 'quality'].includes(role);
+    return ['admin', 'qa_manager', 'quality', 'qc_supervisor'].includes(role);
 }

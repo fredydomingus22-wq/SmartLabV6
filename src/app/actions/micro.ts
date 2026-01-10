@@ -6,6 +6,23 @@ import { format } from "date-fns";
 import { z } from "zod";
 import { SAMPLE_TYPE_CATEGORIES, isMicroCategory } from "@/lib/constants/lab";
 import { requirePermission } from "@/lib/permissions.server";
+import { MicroDomainService } from "@/domain/micro/micro.service";
+
+async function getMicroService() {
+    const userData = await requirePermission('micro', 'write');
+    const supabase = await createClient();
+    return {
+        service: new MicroDomainService(supabase, {
+            organization_id: userData.organization_id!,
+            user_id: userData.id,
+            role: userData.role,
+            plant_id: userData.plant_id!,
+            correlation_id: crypto.randomUUID(), // Mandatory for industrial audit tracing
+        }),
+        userData,
+        supabase
+    };
+}
 
 // --- Schemas ---
 
@@ -35,7 +52,12 @@ const RegisterMicroResultSchema = z.object({
     colony_count: z.coerce.number().optional(),
     is_tntc: z.boolean().optional(),
     is_presence_absence: z.boolean().optional(),
+    presence_detected: z.boolean().optional(),
     result_text: z.string().optional(),
+    sample_weight_g: z.coerce.number().optional(),
+    sample_volume_ml: z.coerce.number().optional(),
+    dilution_factor: z.coerce.number().optional(),
+    buffer_name: z.string().optional(),
     password: z.string().optional(),
 });
 
@@ -147,7 +169,7 @@ export async function createMicroSampleAction(formData: FormData) {
     const { data: newSample, error } = await supabase
         .from("samples")
         .insert({
-            organization_id: userData.organization_id,
+            organization_id: userData.organization_id!,
             plant_id: validation.data.plant_id,
             sample_type_id: validation.data.sample_type_id,
             production_batch_id: validation.data.production_batch_id || null,
@@ -165,32 +187,9 @@ export async function createMicroSampleAction(formData: FormData) {
         return { success: false, message: error.message };
     }
 
-    // 3. Auto-load microbiological specifications and create pending lab_analysis records
-    // This ensures consistency between Lab and Micro modules for reports and dashboards
-    if (newSample?.id && productId) {
-        try {
-            const { data: specs } = await supabase
-                .from("product_specifications")
-                .select("qa_parameter_id, sample_type_id, qa_parameters!inner(category, status)")
-                .eq("product_id", productId)
-                .eq("qa_parameters.status", "active")
-                .eq("qa_parameters.category", SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL)
-                .eq("sample_type_id", validation.data.sample_type_id);
-
-            if (specs && specs.length > 0) {
-                const uniqueParamIds = Array.from(new Set(specs.map(s => s.qa_parameter_id)));
-                const analysisRecords = uniqueParamIds.map(paramId => ({
-                    organization_id: userData.organization_id,
-                    plant_id: validation.data.plant_id,
-                    sample_id: newSample.id,
-                    qa_parameter_id: paramId,
-                }));
-                await supabase.from("lab_analysis").insert(analysisRecords);
-            }
-        } catch (e) {
-            console.error("Failed to auto-load micro specs for lab_analysis:", e);
-        }
-    }
+    // [DEC-01] Decoupled from lab_analysis. 
+    // We no longer auto-load specs into lab_analysis here.
+    // Quality reports for micro will iterate over micro_results.
 
     revalidatePath("/micro/samples");
     revalidatePath("/micro/incubators");
@@ -220,7 +219,7 @@ export async function createMediaLotAction(formData: FormData) {
 
     const payload = {
         ...validation.data,
-        organization_id: userData.organization_id,
+        organization_id: userData.organization_id!,
         quantity_initial: validation.data.quantity,
         quantity_current: validation.data.quantity,
     };
@@ -252,7 +251,7 @@ export async function createIncubatorAction(formData: FormData) {
     const { error } = await supabase.from("micro_incubators").insert({
         name: validation.data.name,
         plant_id: validation.data.plant_id,
-        organization_id: userData.organization_id,
+        organization_id: userData.organization_id!,
         setpoint_temp_c: validation.data.temperature,
         capacity_plates: validation.data.capacity,
     });
@@ -264,138 +263,39 @@ export async function createIncubatorAction(formData: FormData) {
 }
 
 export async function startIncubationAction(formData: FormData) {
-    const userData = await requirePermission('micro', 'write');
-    const supabase = await createClient();
+    const { service } = await getMicroService();
 
     const rawData = {
-        incubator_id: formData.get("incubator_id"),
-        sample_id: formData.get("sample_id"),
-        media_lot_id: formData.get("media_lot_id"),
+        incubator_id: formData.get("incubator_id") as string,
+        sample_id: formData.get("sample_id") as string,
+        media_lot_id: formData.get("media_lot_id") as string,
+        result_ids: formData.getAll("result_ids") as string[] // Support for multiple analytical parameters
     };
 
     if (!rawData.incubator_id || !rawData.sample_id || !rawData.media_lot_id) {
         return { success: false, message: "Missing required fields" };
     }
 
-    // 2. Get sample and its linked product (via batch)
-    const { data: sample } = await supabase
-        .from("samples")
-        .select(`
-            id,
-            production_batch_id,
-            sample_type_id,
-            batch:production_batches(product_id)
-        `)
-        .eq("id", rawData.sample_id)
-        .single();
+    try {
+        const result = await service.startIncubationBatch({
+            incubatorId: rawData.incubator_id,
+            sampleId: rawData.sample_id,
+            mediaLotId: rawData.media_lot_id,
+            resultIds: rawData.result_ids.length > 0 ? rawData.result_ids : [] // Service will handle fetching if empty in future improvement
+        });
 
-    if (!sample) return { success: false, message: "Sample not found" };
+        if (!result.success) return { success: false, message: "Erro ao iniciar incubação." };
 
-    // 3. Get microbiological parameters from product specifications
-    const batch = Array.isArray(sample.batch) ? sample.batch[0] : sample.batch;
-    const productId = batch?.product_id;
-
-    let microParams: { id: string; qa_parameter_id: string; max_colony_count: number | null }[] = [];
-
-    if (productId) {
-        const { data: specs } = await supabase
-            .from("product_specifications")
-            .select(`
-                id,
-                qa_parameter_id,
-                max_colony_count,
-                sample_type_id,
-                parameter:qa_parameters!inner(id, category)
-            `)
-            .eq("product_id", productId)
-            .eq("status", "active")
-            .in("parameter.category", [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL])
-            .eq("sample_type_id", sample.sample_type_id);
-
-        microParams = specs || [];
+        revalidatePath("/micro/incubators");
+        revalidatePath("/micro/reading");
+        return { success: true, message: "Incubação Iniciada com Sucesso" };
+    } catch (e: any) {
+        return { success: false, message: e.message || "Falha no processo de incubação." };
     }
-
-    // Fallback: If no micro specs defined, get any microbiological parameter
-    if (microParams.length === 0) {
-        const { data: fallbackParams } = await supabase
-            .from("qa_parameters")
-            .select("id")
-            .in("category", [SAMPLE_TYPE_CATEGORIES.MICROBIOLOGICAL])
-            .limit(5);
-
-        if (fallbackParams && fallbackParams.length > 0) {
-            microParams = fallbackParams.map(p => ({
-                id: "",
-                qa_parameter_id: p.id,
-                max_colony_count: null
-            }));
-        }
-    }
-
-    // Still no params? Use first available
-    if (microParams.length === 0) {
-        const { data: anyParam } = await supabase
-            .from("qa_parameters")
-            .select("id")
-            .limit(1)
-            .single();
-        if (anyParam) {
-            microParams = [{ id: "", qa_parameter_id: anyParam.id, max_colony_count: null }];
-        }
-    }
-
-    if (microParams.length === 0) {
-        return { success: false, message: "No QA Parameters defined" };
-    }
-
-    // 4. Create Test Session
-    const { data: session, error: sessionError } = await supabase
-        .from("micro_test_sessions")
-        .insert({
-            organization_id: userData.organization_id,
-            plant_id: userData.plant_id,
-            incubator_id: rawData.incubator_id,
-            started_by: userData.id,
-            status: "incubating"
-        })
-        .select()
-        .single();
-
-    if (sessionError) return { success: false, message: "Failed to start session: " + sessionError.message };
-
-    // 5. Create Micro Results for ALL microbiological parameters
-    const resultsToInsert = microParams.map(spec => ({
-        organization_id: userData.organization_id,
-        plant_id: userData.plant_id,
-        sample_id: rawData.sample_id,
-        qa_parameter_id: spec.qa_parameter_id,
-        media_lot_id: rawData.media_lot_id,
-        test_session_id: session.id,
-        status: "incubating"
-    }));
-
-    const { error: resultError } = await supabase
-        .from("micro_results")
-        .insert(resultsToInsert);
-
-    if (resultError) return { success: false, message: "Failed to create results: " + resultError.message };
-
-    // 6. Update sample status
-    await supabase
-        .from("samples")
-        .update({ status: "in_analysis" })
-        .eq("id", rawData.sample_id)
-        .eq("organization_id", userData.organization_id)
-        .eq("plant_id", userData.plant_id);
-
-    revalidatePath("/micro/incubators");
-    revalidatePath("/micro/reading");
-    return { success: true, message: `Incubation started with ${microParams.length} parameter(s)` };
 }
 
 export async function registerMicroResultAction(formData: FormData) {
-    const userData = await requirePermission('micro', 'write');
-    const supabase = await createClient();
+    const { service } = await getMicroService();
 
     const rawData = {
         result_id: formData.get("result_id"),
@@ -408,115 +308,44 @@ export async function registerMicroResultAction(formData: FormData) {
     const validation = RegisterMicroResultSchema.safeParse(rawData);
     if (!validation.success) return { success: false, message: "DADOS INVÁLIDOS: Verifique os campos." };
 
-    // Get the micro result with sample and parameter info
-    const { data: result } = await supabase
-        .from("micro_results")
-        .select(`
-            id,
-            sample_id,
-            qa_parameter_id,
-            sample:samples(
-                production_batch_id,
-                sample_type_id,
-                batch:production_batches(product_id)
-            )
-        `)
-        .eq("id", validation.data.result_id)
-        .single();
-
-    if (!result) return { success: false, message: "Resultado não encontrado." };
-
-    // Get spec limit for conformity check
-    const sample = Array.isArray(result.sample) ? result.sample[0] : result.sample;
-    const batch = sample?.batch;
-    const batchData = Array.isArray(batch) ? batch[0] : batch;
-    const productId = batchData?.product_id;
-
-    let maxColonyCount: number | null = null;
-    if (productId) {
-        const { data: specs } = await supabase
-            .from("product_specifications")
-            .select("max_colony_count, sample_type_id")
-            .eq("product_id", productId)
-            .eq("qa_parameter_id", result.qa_parameter_id)
-            .eq("status", "active")
-            .eq("sample_type_id", sample.sample_type_id)
-            .single();
-        maxColonyCount = specs?.max_colony_count ?? null;
-    }
-
-    // Determine conformity
-    let isConforming: boolean | null = null;
-    const colonyCount = validation.data.colony_count !== null ? Number(validation.data.colony_count) : null;
-    const isTntc = validation.data.is_tntc;
-
-    if (isTntc) {
-        isConforming = maxColonyCount === null ? null : false;
-    } else if (colonyCount !== null) {
-        if (maxColonyCount !== null) {
-            isConforming = colonyCount <= maxColonyCount;
-        }
-    }
-
-    // --- Industrial Compliance & Sync ---
-    const { ResultDomainService } = await import("@/domain/lab/result.service");
-    const resultService = new ResultDomainService(supabase, {
-        organization_id: userData.organization_id,
-        plant_id: userData.plant_id,
-        user_id: userData.id,
-        role: userData.role,
-        correlation_id: crypto.randomUUID()
-    });
-
-    const numericValue = isTntc ? null : colonyCount;
-
-    // 1. Synchronize with lab_analysis (Primary Source of Truth for Sample Status)
-    const { data: analysisRecord } = await supabase
-        .from("lab_analysis")
-        .select("id")
-        .eq("sample_id", result.sample_id)
-        .eq("qa_parameter_id", result.qa_parameter_id)
-        .maybeSingle();
-
-    if (analysisRecord) {
-        const syncResult = await resultService.registerResult({
-            sample_id: result.sample_id,
-            qa_parameter_id: result.qa_parameter_id,
-            value_numeric: numericValue ?? undefined,
-            value_text: validation.data.result_text || undefined,
-            is_conforming: isConforming ?? undefined,
-            notes: validation.data.result_text || undefined,
+    try {
+        const result = await service.registerResult({
+            resultId: validation.data.result_id,
+            colonyCount: validation.data.colony_count,
+            isTntc: validation.data.is_tntc,
+            isPresenceAbsence: validation.data.is_presence_absence,
+            presenceDetected: validation.data.presence_detected,
+            resultText: validation.data.result_text,
+            sampleWeightG: validation.data.sample_weight_g,
+            sampleVolumeMl: validation.data.sample_volume_ml,
+            dilutionFactor: validation.data.dilution_factor,
+            bufferName: validation.data.buffer_name,
             password: validation.data.password
         });
 
-        if (!syncResult.success) return { success: false, message: syncResult.message };
+        if (!result.success) return { success: false, message: result.message || "Erro ao registar resultado." };
+
+        revalidatePath("/micro/reading");
+        return { success: true, message: "Resultado Microbiológico Registado" };
+    } catch (e: any) {
+        return { success: false, message: e.message || "Falha na segurança: Verificação interrompida." };
     }
+}
 
-    // 2. Update the micro_results table
-    const { error } = await supabase
-        .from("micro_results")
-        .update({
-            colony_count: isTntc ? null : colonyCount,
-            is_tntc: isTntc,
-            result_text: validation.data.result_text || null,
-            is_conforming: isConforming,
-            read_by: userData.id,
-            read_at: new Date().toISOString(),
-            status: "completed",
-        })
-        .eq("id", validation.data.result_id)
-        .eq("organization_id", userData.organization_id)
-        .eq("plant_id", userData.plant_id);
+export async function deleteIncubatorAction(formData: FormData) {
+    const { service } = await getMicroService();
+    const id = formData.get("id") as string;
+    const reason = formData.get("reason") as string || "Eliminação por erro de registo";
 
-    if (error) return { success: false, message: error.message };
+    if (!id) return { success: false, message: "ID is required" };
 
-    revalidatePath("/micro/reading");
-    return {
-        success: true,
-        message: isConforming === true
-            ? "Result: CONFORMANTE ✓"
-            : isConforming === false
-                ? "Result: NÃO CONFORMANTE ✗"
-                : "Resultado Registado"
-    };
+    try {
+        const result = await service.softDeleteEquipment('incubator', id, reason);
+        if (!result.success) return { success: false, message: "Erro ao desativar incubadora." };
+
+        revalidatePath("/micro/incubators");
+        return { success: true, message: "Incubadora desativada com sucesso (Soft Delete)" };
+    } catch (e: any) {
+        return { success: false, message: e.message || "Falha na desativação." };
+    }
 }

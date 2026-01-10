@@ -21,7 +21,7 @@ export interface MenuItem {
     icon: ComponentType<{ className?: string }>;
     label: string;
     module: Module;
-    children?: { href: string; label: string }[];
+    children?: { href: string; label: string; module?: Module }[];
 }
 
 export const menuItems: MenuItem[] = [
@@ -42,10 +42,11 @@ export const menuItems: MenuItem[] = [
         icon: FlaskConical,
         module: "lab",
         children: [
-            { href: "/lab", label: "Amostras Lab" },
-            { href: "/micro/samples", label: "Amostras Micro" },
-            { href: "/lab/equipment/routine-checks", label: "Verificações Rotina" },
-            { href: "/lab/sample-types", label: "Configuração" },
+            { href: "/lab", label: "Amostras Lab", module: "lab" },
+            { href: "/lab/approvals", label: "Centro de Aprovações", module: "lab" },
+            { href: "/lab/equipment/routine-checks", label: "Verificações Rotina", module: "lab" },
+            { href: "/lab/assets", label: "Instrumentos Lab", module: "lab" },
+            { href: "/lab/sample-types", label: "Configuração", module: "lab" },
         ]
     },
     {
@@ -53,10 +54,11 @@ export const menuItems: MenuItem[] = [
         icon: Microscope,
         module: "micro",
         children: [
-            { href: "/micro/incubators", label: "Incubadoras" },
-            { href: "/micro/media", label: "Meios de Cultura" },
-            { href: "/micro/reading", label: "Leituras" },
-            { href: "/micro/configuration/media-types", label: "Configuração Micro" },
+            { href: "/micro/samples", label: "Amostras Micro", module: "micro" },
+            { href: "/micro/incubators", label: "Incubadoras", module: "micro" },
+            { href: "/micro/media", label: "Meios de Cultura", module: "micro" },
+            { href: "/micro/reading", label: "Leituras", module: "micro" },
+            { href: "/micro/configuration/media-types", label: "Configuração Micro", module: "micro" },
         ]
     },
     {
@@ -75,7 +77,6 @@ export const menuItems: MenuItem[] = [
         module: "assets",
         children: [
             { href: "/assets", label: "Visão Geral" },
-            { href: "/assets/instruments", label: "Instrumentos Lab" },
             { href: "/assets/process-equipment", label: "Equipamentos Prod." },
             { href: "/assets/calibrations", label: "Calibrações" },
             { href: "/assets/maintenance", label: "Manutenção Preventiva" },

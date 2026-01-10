@@ -13,6 +13,7 @@ export async function getQualityKPIs() {
         .from("nonconformities")
         .select("status")
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .throwOnError();
 
     const openNCs = ncCounts?.filter(nc => nc.status === "open").length || 0;
@@ -25,6 +26,7 @@ export async function getQualityKPIs() {
         .from("capa_actions")
         .select("status")
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .throwOnError();
 
     const openCAPAs = capaCounts?.filter(c => c.status === "open" || c.status === "in_progress").length || 0;
@@ -39,6 +41,7 @@ export async function getQualityKPIs() {
         .select("is_conforming")
         .eq("organization_id", user.organization_id)
         .gte("analyzed_at", thirtyDaysAgo.toISOString())
+        .is("deleted_at", null)
         .throwOnError();
 
     const totalAnalysis = recentAnalysis?.length || 0;
@@ -79,6 +82,7 @@ export async function getNCTrends(days: number = 30) {
         .select("detected_date, severity, nc_type")
         .eq("organization_id", user.organization_id)
         .gte("detected_date", startDate.toISOString())
+        .is("deleted_at", null)
         .order("detected_date", { ascending: true });
 
     if (error) {
@@ -116,6 +120,7 @@ export async function getTopDefects(limit: number = 5) {
         .from("nonconformities")
         .select("nc_type")
         .eq("organization_id", user.organization_id)
+        .is("deleted_at", null)
         .throwOnError();
 
     if (error) {

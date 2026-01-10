@@ -90,9 +90,9 @@ export default async function RawMaterialsPage({ searchParams }: PageProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <CreateRawMaterialDialog plantId={user.plant_id} />
+                    <CreateRawMaterialDialog plantId={user.plant_id!} />
                     <ReceiveLotDialog
-                        plantId={user.plant_id}
+                        plantId={user.plant_id!}
                         materials={materials.map(m => ({ id: m.id, name: m.name, code: m.code, unit: m.unit || 'kg' }))}
                         suppliers={suppliers.map(s => ({ id: s.id, name: s.name }))}
                     />

@@ -9,15 +9,18 @@ import { Plus, Loader2 } from "lucide-react";
 import { createIntermediateProductAction } from "@/app/actions/production";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info, Beaker } from "lucide-react";
 
 import { SearchableSelect } from "@/components/smart/searchable-select";
 
 interface IntermediateDialogProps {
     batchId: string;
     availableTanks: { id: string; name: string; code: string }[];
+    availableProducts?: { id: string; name: string; sku: string }[];
 }
 
-export function IntermediateDialog({ batchId, availableTanks }: IntermediateDialogProps) {
+export function IntermediateDialog({ batchId, availableTanks, availableProducts }: IntermediateDialogProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [selectedTank, setSelectedTank] = useState<string>("");
@@ -63,15 +66,16 @@ export function IntermediateDialog({ batchId, availableTanks }: IntermediateDial
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+
                     <div className="space-y-2">
-                        <Label htmlFor="equipment_id">Tank / Container</Label>
+                        <Label htmlFor="equipment_id">Tanque / Equipamento</Label>
                         <SearchableSelect
                             name="equipment_id" // Form action reads this
                             options={availableTanks.map(t => ({
                                 label: `${t.name} (${t.code})`,
                                 value: t.id
                             }))}
-                            placeholder="Select a tank..."
+                            placeholder="Selecione um tanque..."
                             required
                             onValueChange={(val) => {
                                 setSelectedTank(val); // Keep local state for other logic if needed
@@ -83,6 +87,19 @@ export function IntermediateDialog({ batchId, availableTanks }: IntermediateDial
                         {/* We need to pass the tank NAME as 'code' as per original logic. */}
                         {/* The original code set formData.set("code", tank.name) in handleSubmit based on selectedTank state. */}
                         {/* So we MUST maintain selectedTank state update. */}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="product_id">Produto / Receita (Opcional)</Label>
+                        <SearchableSelect
+                            name="product_id"
+                            options={availableProducts?.map(p => ({
+                                label: `${p.name} (${p.sku})`,
+                                value: p.id
+                            })) || []}
+                            placeholder="Mesma do Lote (Padrão)"
+                        />
+                        <p className="text-[9px] text-muted-foreground uppercase opacity-50">Deixe vazio para herdar a receita do lote principal.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

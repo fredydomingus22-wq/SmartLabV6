@@ -9,66 +9,9 @@ import { createAuditEvent } from "@/domain/audit/audit.service";
 import { SampleFSM, SampleStatus } from "@/domain/lab/sample.fsm";
 import { SampleDomainService } from "@/domain/lab/sample.service";
 
-const ApproveSampleSchema = z.object({
+const ReviewSampleSchema = z.object({
     sample_id: z.string().uuid(),
-    status: z.enum(["approved", "rejected"]),
-    reason: z.string().optional(),
-    password: z.string().optional(),
 });
-
-export async function approveSampleAction(formData: FormData) {
-    const user = await getSafeUser();
-    const supabase = await createClient();
-
-    const rawData = {
-        sample_id: formData.get("sample_id"),
-        status: formData.get("status"),
-        reason: formData.get("reason") || undefined,
-        password: formData.get("password") || undefined,
-    };
-
-    const validation = ApproveSampleSchema.safeParse(rawData);
-    if (!validation.success) return { success: false, message: validation.error.issues[0].message };
-
-    const service = new SampleDomainService(supabase, {
-        organization_id: user.organization_id,
-        user_id: user.id,
-        correlation_id: crypto.randomUUID()
-    });
-
-    const result = await service.approveSample({
-        sampleId: validation.data.sample_id,
-        status: validation.data.status,
-        reason: validation.data.reason,
-        password: validation.data.password
-    });
-
-    if (!result.success) return { success: false, message: result.message };
-
-    // Post-approval Side Effects (Notifications)
-    await createNotificationAction({
-        title: `Amostra ${validation.data.status === 'approved' ? 'Aprovada' : 'Rejeitada'}: ${validation.data.sample_id.substring(0, 8)}`,
-        content: validation.data.status === 'rejected' ? `A amostra foi rejeitada. Motivo: ${validation.data.reason || 'Não especificado'}.` : `A amostra foi aprovada.`,
-        type: validation.data.status === 'approved' ? 'info' : 'alert',
-        severity: validation.data.status === 'approved' ? 'low' : 'high',
-        plantId: user.plant_id,
-        targetRole: 'admin'
-    });
-
-    revalidatePath("/lab");
-    return { success: true, message: validation.data.status === "approved" ? "Sample Approved" : "Sample Rejected" };
-}
-
-export async function approveSampleWithPasswordAction(formData: FormData) {
-    const user = await getSafeUser();
-    const supabase = await createClient();
-    const password = formData.get("password") as string;
-
-    const { error: authError } = await supabase.auth.signInWithPassword({ email: user.email, password });
-    if (authError) return { success: false, message: "Senha inválida." };
-
-    return approveSampleAction(formData);
-}
 
 export async function reviewSampleAction(sampleId: string) {
     const user = await getSafeUser();
@@ -101,8 +44,9 @@ export async function reviewSampleAction(sampleId: string) {
 
     // 4. Update Status using Service for audit
     const service = new SampleDomainService(supabase, {
-        organization_id: user.organization_id,
+        organization_id: user.organization_id!,
         user_id: user.id,
+        role: user.role,
         correlation_id: crypto.randomUUID()
     });
 
@@ -112,4 +56,94 @@ export async function reviewSampleAction(sampleId: string) {
     revalidatePath("/lab");
 
     return { success: true, message: "Amostra enviada para revisão técnica." };
+}
+
+export async function technicalReviewAction(params: {
+    sampleId: string;
+    decision: 'approved' | 'rejected';
+    reason?: string;
+    password?: string;
+}) {
+    const user = await getSafeUser();
+    const supabase = await createClient();
+
+    const service = new SampleDomainService(supabase, {
+        organization_id: user.organization_id!,
+        user_id: user.id,
+        role: user.role,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const result = await service.technicalReview(params);
+    if (result.success) {
+        revalidatePath("/lab");
+        revalidatePath(`/lab/samples/${params.sampleId}`);
+        revalidatePath("/lab/approvals");
+    }
+    return result;
+}
+
+export async function bulkTechnicalReviewAction(params: {
+    sampleIds: string[];
+    decision: 'approved' | 'rejected';
+    reason?: string;
+    password?: string;
+}) {
+    const results = [];
+    for (const id of params.sampleIds) {
+        results.push(await technicalReviewAction({ ...params, sampleId: id }));
+    }
+    return { success: true, results };
+}
+
+export async function finalReleaseAction(params: {
+    sampleId: string;
+    decision: 'released' | 'rejected';
+    notes?: string;
+    password?: string;
+}) {
+    const user = await getSafeUser();
+    const supabase = await createClient();
+
+    const service = new SampleDomainService(supabase, {
+        organization_id: user.organization_id!,
+        user_id: user.id,
+        role: user.role,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const result = await service.finalRelease(params);
+    if (result.success) {
+        revalidatePath("/lab");
+        revalidatePath(`/lab/samples/${params.sampleId}`);
+        revalidatePath("/lab/approvals");
+    }
+    return result;
+}
+
+export async function bulkFinalReleaseAction(params: {
+    sampleIds: string[];
+    decision: 'released' | 'rejected';
+    notes?: string;
+    password?: string;
+}) {
+    const results = [];
+    for (const id of params.sampleIds) {
+        results.push(await finalReleaseAction({ ...params, sampleId: id }));
+    }
+    return { success: true, results };
+}
+
+export async function approveSampleWithPasswordAction(formData: FormData) {
+    const sampleId = formData.get("sample_id") as string;
+    const status = formData.get("status") as 'approved' | 'rejected';
+    const password = formData.get("password") as string;
+    const reason = formData.get("reason") as string | undefined;
+
+    return technicalReviewAction({
+        sampleId,
+        decision: status,
+        reason,
+        password
+    });
 }

@@ -41,6 +41,7 @@ export async function getPackagingLots(options?: {
             received_at,
             expiry_date,
             status,
+            qc_notes,
             packaging_material:packaging_materials(id, name, code)
         `)
         .eq("organization_id", user.organization_id)

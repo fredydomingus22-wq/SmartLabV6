@@ -14,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { IndustrialEquipmentSelect } from "@/components/shared/industrial-equipment-select";
 import {
     Activity,
     Beaker,
@@ -35,6 +36,7 @@ import { toast } from "sonner";
 import { submitAnalysisAction, getExecutionContextAction } from "@/app/actions/lab_modules/execution";
 import { startAnalysisAction } from "@/app/actions/lab_modules/results";
 import { LabInstrumentSelect } from "@/components/lab/lab-instrument-select";
+import { IndustrialContextRow as ContextRow, IndustrialSpecBox as SpecBox, IndustrialStatusBadge as StatusBadge } from "@/components/lab/industrial-ui";
 
 interface IndustrialAnalysisFormProps {
     analysis: any;
@@ -62,19 +64,22 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
         (spec.max_value !== undefined && spec.max_value !== null && numericValue > spec.max_value)
     );
 
-    const isValid = !!(data.value && (!isOutOfSpec || (data.notes && data.deviationType)) && data.equipmentId);
+    // Validation: Value and Equipment are mandatory. OOS justification is now handled by the Wizard Dialog.
+    const isValid = !!(data.value && data.equipmentId);
 
     const handleChange = (field: string, newValue: string) => {
-        const nextData = { ...data, [field]: newValue };
+        let processedValue = newValue;
 
-        // Compute validity for the next state
-        const nextNumericValue = parseFloat(nextData.value);
-        const nextIsOutOfSpec = !isNaN(nextNumericValue) && (
-            (spec.min_value !== undefined && spec.min_value !== null && nextNumericValue < spec.min_value) ||
-            (spec.max_value !== undefined && spec.max_value !== null && nextNumericValue > spec.max_value)
-        );
-        const nextIsValid = !!(nextData.value && (!nextIsOutOfSpec || (nextData.notes && nextData.deviationType)) && nextData.equipmentId);
+        // Strict Numeric Validation for Value Field
+        if (field === 'value') {
+            // Replace commas with dots and strip invalid chars
+            processedValue = newValue.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+            // Prevent multiple dots
+            if ((processedValue.match(/\./g) || []).length > 1) return;
+        }
 
+        const nextData = { ...data, [field]: processedValue };
+        const nextIsValid = !!(nextData.value && nextData.equipmentId);
         onChange({ ...nextData, isValid: nextIsValid });
     };
 
@@ -151,12 +156,7 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
                                 <ChevronRight className="h-5 w-5 text-blue-500" />
                                 Registro de Resultados
                             </h3>
-                            <Badge variant="outline" className={cn(
-                                "font-mono uppercase text-[10px]",
-                                isOutOfSpec ? "border-rose-500/50 text-rose-400 bg-rose-500/5" : "border-emerald-500/50 text-emerald-400 bg-emerald-500/5"
-                            )}>
-                                {isOutOfSpec ? "FORA DE ESPECIFICAÇÃO (OOS)" : "DENTRO DA NORMA"}
-                            </Badge>
+                            <StatusBadge status={isOutOfSpec ? "non_conforming" : "conforming"} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -181,45 +181,14 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
 
                             <div className="space-y-4">
                                 <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Instrumento Utilizado</Label>
-                                <LabInstrumentSelect
+                                <IndustrialEquipmentSelect
                                     value={data.equipmentId}
-                                    onValueChange={(val) => handleChange('equipmentId', val)}
-                                    error={!data.equipmentId && !!data.value}
+                                    onChange={(val) => handleChange('equipmentId', val)}
+                                    className="h-14"
+                                    table="lab_assets"
                                 />
                             </div>
                         </div>
-
-                        {isOutOfSpec && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                                <Label className="text-xs font-bold text-rose-400 uppercase tracking-widest flex items-center gap-1">
-                                    <AlertTriangle className="h-3 w-3" /> Categoria do Desvio
-                                </Label>
-                                <Select value={data.deviationType} onValueChange={(val) => handleChange('deviationType', val)}>
-                                    <SelectTrigger className="h-14 border-rose-500/30 bg-rose-500/5 text-rose-200">
-                                        <SelectValue placeholder="Selecione o tipo..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                        <SelectItem value="real_oos">Real OOS (Qualidade de Produto)</SelectItem>
-                                        <SelectItem value="equipment_error">Erro de Equipamento / Falha Técnica</SelectItem>
-                                        <SelectItem value="sampling_error">Erro de Colheita / Amostragem</SelectItem>
-                                        <SelectItem value="method_error">Erro de Método / Procedimento</SelectItem>
-                                        <SelectItem value="human_error">Erro Humano / Transcrição</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {isOutOfSpec && (
-                            <div className="space-y-3 pt-2 border-t border-slate-800/50 animate-in fade-in duration-700">
-                                <Label className="text-xs font-bold text-rose-400 uppercase tracking-widest">Justificativa Técnica (Obrigatória)</Label>
-                                <Textarea
-                                    value={data.notes}
-                                    onChange={(e) => handleChange('notes', e.target.value)}
-                                    placeholder="Descreva a causa raiz e ações imediatas tomadas conforme POS..."
-                                    className="min-h-[100px] bg-slate-950/50 border-rose-500/20 focus:border-rose-500/50 text-slate-200"
-                                />
-                            </div>
-                        )}
 
                         {!isOutOfSpec && (
                             <div className="space-y-3">
@@ -234,41 +203,6 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
                         )}
                     </div>
                 </div>
-            </div>
-        </div>
-    );
-}
-
-function ContextRow({ label, value, icon, highlight, status }: {
-    label: string,
-    value: React.ReactNode,
-    icon?: React.ReactNode,
-    highlight?: boolean,
-    status?: "calibrated" | "expired"
-}) {
-    return (
-        <div className="flex items-center justify-between p-3 px-4 hover:bg-slate-800/30 transition-colors">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                {icon} {label}
-            </span>
-            <span className={cn(
-                "text-xs font-semibold truncate max-w-[150px]",
-                highlight ? "text-blue-400 uppercase font-black" : "text-slate-300",
-                status === "expired" && "text-rose-400 font-black flex items-center gap-1 animate-pulse"
-            )}>
-                {value}
-                {status === "expired" && <AlertTriangle className="h-3 w-3" />}
-            </span>
-        </div>
-    );
-}
-
-function SpecBox({ label, value, color = "text-slate-400" }: { label: string, value: any, color?: string }) {
-    return (
-        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800/50 text-center">
-            <div className="text-[8px] font-bold text-slate-500 uppercase">{label}</div>
-            <div className={cn("text-xs font-black font-mono", color)}>
-                {value !== null && value !== undefined ? value : "-"}
             </div>
         </div>
     );

@@ -19,32 +19,32 @@ export interface SampleTypeDefinition {
 export const SAMPLE_TYPES: Record<string, SampleTypeDefinition> = {
     RAW_FQ: {
         code: "RAW-FQ",
-        name: "Raw Material (FQ)",
+        name: "Matéria-Prima (FQ)",
         category: "physico_chemical",
     },
     RAW_MICRO: {
         code: "RAW-MICRO",
-        name: "Raw Material (Micro)",
+        name: "Matéria-Prima (Micro)",
         category: "microbiological",
     },
     IP_FQ: {
         code: "IP-FQ",
-        name: "Intermediate Product (FQ)",
+        name: "Produto Intermédio (FQ)",
         category: "physico_chemical",
     },
     IP_MICRO: {
         code: "IP-MICRO",
-        name: "Intermediate Product (Micro)",
+        name: "Produto Intermédio (Micro)",
         category: "microbiological",
     },
     FP_FQ: {
         code: "FP-FQ",
-        name: "Finished Product (FQ)",
+        name: "Produto Final (FQ)",
         category: "physico_chemical",
     },
     FP_MICRO: {
         code: "FP-MICRO",
-        name: "Finished Product (Micro)",
+        name: "Produto Final (Micro)",
         category: "microbiological",
     },
     UT_FQ: {
