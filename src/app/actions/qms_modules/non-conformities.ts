@@ -21,6 +21,15 @@ const CreateNCSchema = z.object({
     notes: z.string().optional(),
 });
 
+function mapNCSeverityToNotification(severity: "minor" | "major" | "critical"): "low" | "medium" | "high" | "critical" {
+    switch (severity) {
+        case "minor": return "low";
+        case "major": return "high";
+        case "critical": return "critical";
+        default: return "low";
+    }
+}
+
 export async function createNCAction(formData: FormData): Promise<ActionState<{ id: string, code: string }>> {
     try {
         const user = await getSafeUser();
@@ -87,7 +96,7 @@ export async function createNCAction(formData: FormData): Promise<ActionState<{ 
             title: `Nova Não Conformidade: ${newNC.nc_number}`,
             content: validation.data.title,
             type: 'alert',
-            severity: validation.data.severity,
+            severity: mapNCSeverityToNotification(validation.data.severity),
             plantId: user.plant_id || validation.data.plant_id || "",
             targetRole: 'admin'
         });

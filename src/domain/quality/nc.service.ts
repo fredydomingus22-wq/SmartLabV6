@@ -11,7 +11,7 @@ export class NonConformityDomainService extends BaseDomainService {
         sampleId: string;
         parameterName: string;
         value: string | number;
-        severity?: 'low' | 'medium' | 'high' | 'critical';
+        severity?: 'minor' | 'major' | 'critical';
     }): Promise<DomainResponse> {
         try {
             // 1. Resolve Plant Context from Sample

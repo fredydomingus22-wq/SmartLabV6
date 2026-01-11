@@ -860,7 +860,7 @@ export class AnalysisExecutionService extends BaseDomainService {
                     sampleId,
                     parameterName: (spec.parameter as any)?.name || 'Desconhecido',
                     value,
-                    severity: spec.is_critical ? 'critical' : 'high'
+                    severity: spec.is_critical ? 'critical' : 'major'
                 });
             }
         } catch (err) {
