@@ -11,8 +11,8 @@ const CreateNCSchema = z.object({
     title: z.string().min(5, "Título muito curto"),
     description: z.string().min(10, "Descrição detalhada necessária"),
     detected_date: z.string(),
-    severity: z.enum(["low", "medium", "high", "critical"]),
-    type: z.enum(["internal", "supplier", "customer", "audit"]), // Fixed enum to match DB/Dialog
+    severity: z.enum(["minor", "major", "critical"]), // Updated to match Dialog and DB default
+    type: z.enum(["internal", "supplier", "customer", "audit"]),
     plant_id: z.string().uuid().optional(), // Make optional in schema as we override it
     category: z.string().optional(),
     source_reference: z.string().optional(),
@@ -21,7 +21,7 @@ const CreateNCSchema = z.object({
     notes: z.string().optional(),
 });
 
-export async function createNCAction(formData: FormData): Promise<ActionState<{ id: string, code: string }>> { // Added code to return type
+export async function createNCAction(formData: FormData): Promise<ActionState<{ id: string, code: string }>> {
     try {
         const user = await getSafeUser();
         const supabase = await createClient();
@@ -29,9 +29,9 @@ export async function createNCAction(formData: FormData): Promise<ActionState<{ 
         const rawData = {
             title: formData.get("title"),
             description: formData.get("description"),
-            detected_date: formData.get("detected_date"), // Changed from occurrence_date
+            detected_date: formData.get("detected_date"),
             severity: formData.get("severity"),
-            type: formData.get("type") || "internal", // Default to internal
+            type: formData.get("nc_type") || "internal", // Corrected: Dialog sends 'nc_type'
             category: formData.get("category"),
             source_reference: formData.get("source_reference"),
             // Use user.plant_id if available, otherwise form data
