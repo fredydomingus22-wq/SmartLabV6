@@ -15,7 +15,7 @@ const ParameterSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     code: z.string().min(1, "Code is required").toUpperCase(),
     unit: z.string().optional(),
-    category: z.enum(["physico_chemical", "microbiological", "sensory", "other"]).optional(),
+    category: z.enum(["physico_chemical", "microbiological", "sensory", "process", "other"]).optional(),
     method: z.string().optional(),
     precision: z.coerce.number().int().min(0).max(6).default(2),
     analysis_time_minutes: z.coerce.number().int().positive().optional(),
