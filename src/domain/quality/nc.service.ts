@@ -21,19 +21,33 @@ export class NonConformityDomainService extends BaseDomainService {
                 .eq("id", params.sampleId)
                 .single();
 
+            // 1.5 Generate NC Number
+            const year = new Date().getFullYear();
+            const { count } = await this.supabase
+                .from("nonconformities")
+                .select("*", { count: 'exact', head: true })
+                .eq("organization_id", this.context.organization_id)
+                .gte("created_at", `${year}-01-01`);
+
+            const sequence = (count || 0) + 1;
+            const nc_number = `NC-${year}-${sequence.toString().padStart(4, "0")}`;
+
             // 2. Persistence in 'nonconformities' table
             const { data: newNC, error } = await this.supabase.from("nonconformities").insert({
                 organization_id: this.context.organization_id,
                 plant_id: sample?.plant_id || this.context.plant_id,
+                nc_number: nc_number,
                 title: `Desvio Automático: ${params.parameterName}`,
                 description: `O parâmetro crítico ${params.parameterName} falhou com o valor [${params.value}]. Gerado automaticamente via LIMS.`,
                 severity: params.severity || 'critical',
-                type: 'process',
-                source_analysis_id: params.analysisId,
+                nc_type: 'process', // Fixed column name
+                category: 'process',
+                source_id: params.analysisId, // Fixed column name from source_analysis_id
+                source_type: 'analysis',
                 status: 'open',
                 created_by: this.context.user_id,
-                occurrence_date: new Date().toISOString()
-            }).select("id, code").single();
+                detected_date: new Date().toISOString() // Fixed column name
+            }).select("id, nc_number").single();
 
             if (error) throw error;
 
@@ -44,7 +58,7 @@ export class NonConformityDomainService extends BaseDomainService {
                 value: params.value
             });
 
-            return this.success({ id: newNC.id, code: newNC.code });
+            return this.success({ id: newNC.id, code: newNC.nc_number });
         } catch (error: any) {
             console.error("[NonConformityService] Automation Failed:", error);
             return this.failure("Falha ao gerar NC automática.", error);

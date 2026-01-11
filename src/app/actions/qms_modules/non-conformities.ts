@@ -10,14 +10,18 @@ import { ActionState } from "@/lib/types";
 const CreateNCSchema = z.object({
     title: z.string().min(5, "Título muito curto"),
     description: z.string().min(10, "Descrição detalhada necessária"),
-    occurrence_date: z.string(),
+    detected_date: z.string(),
     severity: z.enum(["low", "medium", "high", "critical"]),
-    type: z.enum(["raw_material", "process", "finished_product", "audit", "customer_complaint", "environmental"]),
-    plant_id: z.string().uuid(),
+    type: z.enum(["internal", "supplier", "customer", "audit"]), // Fixed enum to match DB/Dialog
+    plant_id: z.string().uuid().optional(), // Make optional in schema as we override it
+    category: z.string().optional(),
+    source_reference: z.string().optional(),
     detected_by_id: z.string().uuid().optional(),
+    responsible_id: z.string().uuid().optional(),
+    notes: z.string().optional(),
 });
 
-export async function createNCAction(formData: FormData): Promise<ActionState<{ id: string }>> {
+export async function createNCAction(formData: FormData): Promise<ActionState<{ id: string, code: string }>> { // Added code to return type
     try {
         const user = await getSafeUser();
         const supabase = await createClient();
@@ -25,11 +29,16 @@ export async function createNCAction(formData: FormData): Promise<ActionState<{ 
         const rawData = {
             title: formData.get("title"),
             description: formData.get("description"),
-            occurrence_date: formData.get("occurrence_date"),
+            detected_date: formData.get("detected_date"), // Changed from occurrence_date
             severity: formData.get("severity"),
-            type: formData.get("type"),
-            plant_id: formData.get("plant_id"),
-            detected_by_id: formData.get("detected_by_id") || undefined,
+            type: formData.get("type") || "internal", // Default to internal
+            category: formData.get("category"),
+            source_reference: formData.get("source_reference"),
+            // Use user.plant_id if available, otherwise form data
+            plant_id: user.plant_id || formData.get("plant_id"),
+            detected_by_id: formData.get("detected_by_id") || user.id, // Default to current user
+            responsible_id: formData.get("responsible_id"),
+            notes: formData.get("notes"),
         };
 
         const validation = CreateNCSchema.safeParse(rawData);
@@ -41,26 +50,50 @@ export async function createNCAction(formData: FormData): Promise<ActionState<{ 
             };
         }
 
+        // Generate NC Number (NC-YYYY-XXXX)
+        const year = new Date().getFullYear();
+        const { count, error: countError } = await supabase
+            .from("nonconformities")
+            .select("*", { count: 'exact', head: true })
+            .eq("organization_id", user.organization_id)
+            .gte("created_at", `${year}-01-01`);
+
+        if (countError) throw countError;
+
+        const sequence = (count || 0) + 1;
+        const nc_number = `NC-${year}-${sequence.toString().padStart(4, "0")}`;
+
         const { data: newNC, error } = await supabase.from("nonconformities").insert({
-            ...validation.data,
             organization_id: user.organization_id,
+            plant_id: user.plant_id || validation.data.plant_id, // Ensure plant_id
+            nc_number: nc_number,
+            title: validation.data.title,
+            description: validation.data.description,
+            detected_date: validation.data.detected_date,
+            severity: validation.data.severity,
+            nc_type: validation.data.type, // DB column is nc_type
+            category: validation.data.category,
+            source_reference: validation.data.source_reference,
             status: "open",
+            detected_by: validation.data.detected_by_id || user.id,
+            responsible_id: validation.data.responsible_id || undefined,
+            notes: validation.data.notes,
             created_by: user.id,
-        }).select("id, code").single();
+        }).select("id, nc_number").single();
 
         if (error) return { success: false, message: error.message };
 
         await createNotificationAction({
-            title: `Nova Não Conformidade: ${newNC.code}`,
+            title: `Nova Não Conformidade: ${newNC.nc_number}`,
             content: validation.data.title,
             type: 'alert',
             severity: validation.data.severity,
-            plantId: validation.data.plant_id,
+            plantId: user.plant_id || validation.data.plant_id || "",
             targetRole: 'admin'
         });
 
         revalidatePath("/quality/qms");
-        return { success: true, message: "NC criada com sucesso.", data: { id: newNC.id } };
+        return { success: true, message: "NC criada com sucesso.", data: { id: newNC.id, code: newNC.nc_number } };
     } catch (err: any) {
         return { success: false, message: err.message || "Erro inesperado ao criar NC" };
     }
