@@ -281,13 +281,13 @@ export async function getProductionEvents(batchId: string) {
             id,
             event_type,
             metadata,
-            timestamp,
+            timestamp:recorded_at,
             performed_by,
             user:user_profiles!production_events_performed_by_fkey(full_name)
         `)
         .eq("organization_id", user.organization_id)
         .eq("production_batch_id", batchId)
-        .order("timestamp", { ascending: false });
+        .order("recorded_at", { ascending: false });
 
     if (error) throw error;
 
