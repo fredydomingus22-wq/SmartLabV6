@@ -64,22 +64,49 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
         (spec.max_value !== undefined && spec.max_value !== null && numericValue > spec.max_value)
     );
 
+    const [isCalibrationValid, setIsCalibrationValid] = useState(() => {
+        if (!analysis.equipment) return true;
+        if (!analysis.equipment.next_calibration_date) return true;
+        return new Date(analysis.equipment.next_calibration_date) > new Date();
+    });
+
+    const isQualitative = spec.unit?.toLowerCase() === 'status' ||
+        spec.unit?.toLowerCase() === 'boolean' ||
+        analysis.parameter?.name?.toLowerCase().includes('visual');
+
+    const precision = analysis.parameter?.precision || 0;
+    const step = precision > 0 ? (1 / Math.pow(10, precision)).toFixed(precision) : "1";
+
     // Validation: Value and Equipment are mandatory. OOS justification is now handled by the Wizard Dialog.
-    const isValid = !!(data.value && data.equipmentId);
+    const isValid = !!(data.value && data.equipmentId && isCalibrationValid);
 
-    const handleChange = (field: string, newValue: string) => {
-        let processedValue = newValue;
+    const handleValueChange = (newValue: string) => {
+        // Replace commas with dots and strip invalid chars
+        let processedValue = newValue.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        // Prevent multiple dots
+        if ((processedValue.match(/\./g) || []).length > 1) return;
 
-        // Strict Numeric Validation for Value Field
-        if (field === 'value') {
-            // Replace commas with dots and strip invalid chars
-            processedValue = newValue.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-            // Prevent multiple dots
-            if ((processedValue.match(/\./g) || []).length > 1) return;
+        const nextData = { ...data, value: processedValue };
+        const nextIsValid = !!(nextData.value && nextData.equipmentId && isCalibrationValid);
+        onChange({ ...nextData, isValid: nextIsValid });
+    };
+
+    const handleEquipmentChange = (id: string, eq?: any) => {
+        const expired = eq?.next_calibration_date && new Date(eq.next_calibration_date) < new Date();
+        setIsCalibrationValid(!expired);
+
+        if (expired) {
+            toast.error(`ALERTA: O equipamento ${eq.code} está com calibração VENCIDA (${new Date(eq.next_calibration_date).toLocaleDateString()}). Uso bloqueado.`);
         }
 
-        const nextData = { ...data, [field]: processedValue };
-        const nextIsValid = !!(nextData.value && nextData.equipmentId);
+        const nextData = { ...data, equipmentId: id };
+        const nextIsValid = !!(nextData.value && nextData.equipmentId && !expired);
+        onChange({ ...nextData, isValid: nextIsValid });
+    };
+
+    const handleNotesChange = (val: string) => {
+        const nextData = { ...data, notes: val };
+        const nextIsValid = !!(nextData.value && nextData.equipmentId && isCalibrationValid);
         onChange({ ...nextData, isValid: nextIsValid });
     };
 
@@ -163,19 +190,49 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
                             <div className="space-y-4">
                                 <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Resultado ({spec.unit || 'UN'})</Label>
                                 <div className="relative">
-                                    <Input
-                                        type="text"
-                                        value={data.value}
-                                        onChange={(e) => handleChange('value', e.target.value)}
-                                        className={cn(
-                                            "h-14 text-2xl font-black bg-slate-950/50 border-slate-700 focus:ring-2 transition-all",
-                                            isOutOfSpec ? "border-rose-500/50 text-rose-400 focus:ring-rose-500/20" : "focus:ring-blue-500/20"
-                                        )}
-                                        placeholder="0.00"
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 font-mono text-xs">
-                                        {spec.unit}
-                                    </div>
+                                    {isQualitative ? (
+                                        <div className="flex items-center gap-4 h-14 bg-slate-950/50 border border-slate-700 rounded-lg px-4">
+                                            <Label className="flex items-center gap-2 cursor-pointer text-white">
+                                                <input
+                                                    type="radio"
+                                                    name="qualitative_result"
+                                                    value="1"
+                                                    checked={data.value === "1"}
+                                                    onChange={() => handleValueChange("1")}
+                                                    className="w-4 h-4 accent-emerald-500"
+                                                />
+                                                APROVADO
+                                            </Label>
+                                            <Label className="flex items-center gap-2 cursor-pointer text-white">
+                                                <input
+                                                    type="radio"
+                                                    name="qualitative_result"
+                                                    value="0"
+                                                    checked={data.value === "0"}
+                                                    onChange={() => handleValueChange("0")}
+                                                    className="w-4 h-4 accent-rose-500"
+                                                />
+                                                REJEITADO
+                                            </Label>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Input
+                                                type="number"
+                                                step={step}
+                                                value={data.value}
+                                                onChange={(e) => handleValueChange(e.target.value)}
+                                                className={cn(
+                                                    "h-14 text-2xl font-black bg-slate-950/50 border-slate-700 focus:ring-2 transition-all",
+                                                    isOutOfSpec ? "border-rose-500/50 text-rose-400 focus:ring-rose-500/20" : "focus:ring-blue-500/20"
+                                                )}
+                                                placeholder="0.00"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 font-mono text-xs">
+                                                {spec.unit}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -183,10 +240,15 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
                                 <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Instrumento Utilizado</Label>
                                 <IndustrialEquipmentSelect
                                     value={data.equipmentId}
-                                    onChange={(val) => handleChange('equipmentId', val)}
+                                    onChange={handleEquipmentChange}
                                     className="h-14"
                                     table="lab_assets"
                                 />
+                                {!isCalibrationValid && (
+                                    <p className="text-[10px] text-rose-500 font-black uppercase tracking-tighter flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" /> Calibração Vencida - Bloqueado
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -195,7 +257,7 @@ export function IndustrialAnalysisForm({ analysis, sample, spec, data, onChange 
                                 <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Observações Adicionais</Label>
                                 <Textarea
                                     value={data.notes}
-                                    onChange={(e) => handleChange('notes', e.target.value)}
+                                    onChange={(e) => handleNotesChange(e.target.value)}
                                     placeholder="Notas internas (opcional)..."
                                     className="min-h-[80px] bg-slate-950/50 border-slate-800 focus:border-slate-700 text-slate-200"
                                 />

@@ -43,5 +43,5 @@ export function SuppliersPageClient({ suppliers }: SuppliersPageClientProps) {
         },
     ];
 
-    return <DataGrid data={suppliers} columns={columns} />;
+    return <DataGrid data={suppliers} columns={columns} className="border-none shadow-none" rowClassName="hover:bg-amber-500/5 transition-colors" />;
 }

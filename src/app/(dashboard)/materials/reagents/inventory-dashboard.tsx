@@ -1,5 +1,6 @@
 "use client";
 
+import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-card";
 import {
     Card,
     CardContent,
@@ -26,6 +27,9 @@ interface InventoryDashboardProps {
     mostUsed: { name: string; quantity: number }[];
     lowStockItems: { name: string; current: number; min: number; unit: string }[];
     expiringBatches: { reagent: string; batch: string; expiry: string }[];
+    stockInTrend: any[];
+    stockOutTrend: any[];
+    totalTrend: any[];
 }
 
 export function InventoryDashboard({
@@ -35,6 +39,9 @@ export function InventoryDashboard({
     mostUsed,
     lowStockItems,
     expiringBatches,
+    stockInTrend = [], // Default to empty array
+    stockOutTrend = [],
+    totalTrend = []
 }: InventoryDashboardProps) {
     return (
         <div className="space-y-4 mb-8">
@@ -44,51 +51,36 @@ export function InventoryDashboard({
             </div>
 
             {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-slate-900/40 border-slate-800">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total de Reagentes
-                        </CardTitle>
-                        <Archive className="h-4 w-4 text-slate-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-100">{totalReagents}</div>
-                        <p className="text-xs text-slate-400">
-                            Químicos registados
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="grid gap-6 md:grid-cols-3">
+                <PremiumAnalyticsCard
+                    title="Total de Reagentes"
+                    value={String(totalReagents)}
+                    description="Químicos registados no sistema"
+                    data={totalTrend}
+                    dataKey="value"
+                    color="#8b5cf6" // violet
+                    trend={{ value: totalTrend.reduce((acc, curr) => acc + curr.value, 0), isPositive: true }}
+                />
 
-                <Card className="bg-slate-900/40 border-slate-800">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Stock Ativo
-                        </CardTitle>
-                        <FlaskConical className="h-4 w-4 text-slate-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-100">{activeReagents}</div>
-                        <p className="text-xs text-slate-400">
-                            Com quantidade {'>'} 0
-                        </p>
-                    </CardContent>
-                </Card>
+                <PremiumAnalyticsCard
+                    title="Stock Ativo"
+                    value={String(activeReagents)}
+                    description="Itens com quantidade disponível"
+                    data={stockInTrend}
+                    dataKey="value"
+                    color="#10b981" // emerald
+                    trend={{ value: stockInTrend.reduce((acc, curr) => acc + curr.value, 0), isPositive: true }}
+                />
 
-                <Card className="bg-slate-900/40 border-slate-800">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Alertas de Stock Baixo
-                        </CardTitle>
-                        <AlertCircle className={`h-4 w-4 ${lowStockCount > 0 ? "text-red-400" : "text-slate-400"}`} />
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-2xl font-bold ${lowStockCount > 0 ? "text-red-400" : "text-slate-100"}`}>{lowStockCount}</div>
-                        <p className="text-xs text-slate-400">
-                            Abaixo do nível mínimo
-                        </p>
-                    </CardContent>
-                </Card>
+                <PremiumAnalyticsCard
+                    title="Alertas de Stock"
+                    value={String(lowStockCount)}
+                    description="Abaixo do nível mínimo"
+                    data={stockOutTrend}
+                    dataKey="value"
+                    color={lowStockCount > 0 ? "#ef4444" : "#64748b"} // red if alerts, else slate
+                    trend={{ value: lowStockCount, isPositive: false }}
+                />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

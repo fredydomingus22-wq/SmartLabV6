@@ -37,7 +37,7 @@ export function IntermediateDialog({ batchId, availableTanks, availableProducts 
         const tank = availableTanks.find(t => t.id === selectedTank);
         if (tank) {
             formData.set("code", tank.name); // Using Name as the friendly code/identifier
-            formData.set("equipment_id", tank.id);
+            formData.set("tank_id", tank.id);
         }
 
         const result = await createIntermediateProductAction(formData);
@@ -56,21 +56,21 @@ export function IntermediateDialog({ batchId, availableTanks, availableProducts 
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Tank
+                    <Beaker className="mr-2 h-4 w-4" />
+                    Registar Tanque
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] glass">
                 <DialogHeader>
-                    <DialogTitle>Add Intermediate Product</DialogTitle>
+                    <DialogTitle>Novo Produto Intermédio</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
                     <div className="space-y-2">
-                        <Label htmlFor="equipment_id">Tanque / Equipamento</Label>
+                        <Label htmlFor="tank_id">Tanque / Equipamento</Label>
                         <SearchableSelect
-                            name="equipment_id" // Form action reads this
+                            name="tank_id" // Form action reads this
                             options={availableTanks.map(t => ({
                                 label: `${t.name} (${t.code})`,
                                 value: t.id
@@ -79,9 +79,6 @@ export function IntermediateDialog({ batchId, availableTanks, availableProducts 
                             required
                             onValueChange={(val) => {
                                 setSelectedTank(val); // Keep local state for other logic if needed
-                                // NOTE: The hidden input inside SearchableSelect handles the 'equipment_id' value for FormData.
-                                // However, this component also used to use hidden input manually.
-                                // The original code used `selectedTank` to set the `code` field via name lookup in handleSubmit.
                             }}
                         />
                         {/* We need to pass the tank NAME as 'code' as per original logic. */}
@@ -127,7 +124,7 @@ export function IntermediateDialog({ batchId, availableTanks, availableProducts 
                     <div className="flex justify-end pt-4">
                         <Button type="submit" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Tank
+                            Criar Tanque
                         </Button>
                     </div>
                 </form>

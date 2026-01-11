@@ -66,7 +66,7 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         dashboard: 'full',
         lab: 'full',
         micro: 'full',
-        production: 'read',
+        production: 'full',
         cip: 'full',
         qms: 'full',
         haccp: 'full',

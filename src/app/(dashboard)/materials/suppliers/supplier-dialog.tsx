@@ -22,7 +22,7 @@ export function SupplierDialog({ plantId }: SupplierDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-semibold rounded-xl shadow-lg shadow-amber-900/20 border border-transparent hover:border-amber-400/30 transition-all duration-300">
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar Fornecedor
                 </Button>
@@ -44,33 +44,33 @@ export function SupplierDialog({ plantId }: SupplierDialogProps) {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="code">Código do Fornecedor *</Label>
-                                    <Input id="code" name="code" required placeholder="ex: FOR-001" />
+                                    <Input id="code" name="code" required placeholder="ex: FOR-001" className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Nome da Empresa *</Label>
-                                    <Input id="name" name="name" required placeholder="ex: Empresa Lda" />
+                                    <Input id="name" name="name" required placeholder="ex: Empresa Lda" className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                                 </div>
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="contact_name">Pessoa de Contacto</Label>
-                                <Input id="contact_name" name="contact_name" placeholder="ex: João Silva" />
+                                <Input id="contact_name" name="contact_name" placeholder="ex: João Silva" className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="contact_email">Email</Label>
-                                    <Input id="contact_email" name="contact_email" type="email" placeholder="joao@empresa.com" />
+                                    <Input id="contact_email" name="contact_email" type="email" placeholder="joao@empresa.com" className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="contact_phone">Telefone</Label>
-                                    <Input id="contact_phone" name="contact_phone" placeholder="+351 xxx xxx xxx" />
+                                    <Input id="contact_phone" name="contact_phone" placeholder="+351 xxx xxx xxx" className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                                 </div>
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="address">Morada</Label>
-                                <Textarea id="address" name="address" placeholder="Morada completa..." rows={2} />
+                                <Textarea id="address" name="address" placeholder="Morada completa..." rows={2} className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all" />
                             </div>
                         </div>
                     </ActionForm>

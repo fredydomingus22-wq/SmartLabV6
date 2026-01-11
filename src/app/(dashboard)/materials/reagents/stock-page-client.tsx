@@ -71,6 +71,7 @@ export function StockPageClient({ data }: StockPageClientProps) {
             filterColumn="name"
             columnFilters={columnFilters}
             onColumnFiltersChange={onColumnFiltersChange}
+            className="border-none shadow-none bg-transparent"
         />
     );
 }

@@ -29,6 +29,16 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardTrendsClient } from "@/components/dashboard/dashboard-trends-client";
 import { DashboardToolbar } from "@/components/dashboard/dashboard-toolbar";
 import { getSafeUser } from "@/lib/auth.server"; import { SafeUser } from "@/lib/auth";
+import { ManagerOverview } from "@/components/dashboard/role-views/manager-overview";
+import { AnalystView } from "@/components/dashboard/role-views/analyst-view";
+import { OperatorView } from "@/components/dashboard/role-views/operator-view";
+import { MicroView } from "@/components/dashboard/role-views/micro-view";
+import { HACCPView } from "@/components/dashboard/role-views/haccp-view";
+import { RMPMView } from "@/components/dashboard/role-views/rmpm-view";
+import { SystemOwnerView } from "@/components/dashboard/role-views/system-owner-view";
+import { AdminView } from "@/components/dashboard/role-views/admin-view";
+import { Suspense } from "react";
+import { Sparkles, Activity as ActivityIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -42,8 +52,13 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
     const fromDate = filters.from || new Date(new Date().setDate(new Date().getDate() - 7));
     const toDate = filters.to || new Date();
 
+    const previousFromDate = new Date(fromDate);
+    previousFromDate.setDate(previousFromDate.getDate() - 7);
+    const previousToDate = new Date(fromDate);
+
     const isMicro = user.role === 'micro_analyst';
     const isLab = user.role === 'lab_analyst';
+    const isHaccp = user.role === 'haccp_analyst' || user.role === 'haccp';
     const isAdmin = user.role === 'admin';
     const isQaManager = user.role === 'qa_manager';
 
@@ -106,16 +121,106 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
         .eq("status", "pending")
         .eq("organization_id", user.organization_id);
 
-    // 8. Recent Deviations (Moved up for dependencies)
-    const { count: recentDeviations } = await supabase.from("ccp_readings")
+    // 8. Recent Deviations (HACCP / CCP) - FIXED: Use pcc_logs
+    const { count: recentDeviations } = await supabase.from("pcc_logs")
         .select("*", { count: "exact", head: true })
-        .eq("is_deviation", true)
-        .gte("reading_time", fromDate.toISOString())
-        .lte("reading_time", toDate.toISOString())
+        .eq("is_compliant", false)
+        .gte("checked_at", fromDate.toISOString())
+        .lte("checked_at", toDate.toISOString())
         .eq("organization_id", user.organization_id);
+
+    // 9. HACCP Compliance Rate
+    const { data: haccpReadings } = await supabase.from("pcc_logs")
+        .select("is_compliant")
+        .gte("checked_at", fromDate.toISOString())
+        .lte("checked_at", toDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const totalHaccp = haccpReadings?.length || 0;
+    const compliantHaccp = haccpReadings?.filter((r: any) => r.is_compliant).length || 0;
+    const haccpComplianceRate = totalHaccp > 0 ? (compliantHaccp / totalHaccp) * 100 : 100;
+
+    // 10. Problematic CCP
+    const { data: problematicData } = await supabase.from("pcc_logs")
+        .select(`
+            hazard:haccp_hazards(process_step)
+        `)
+        .eq("is_compliant", false)
+        .gte("checked_at", fromDate.toISOString())
+        .lte("checked_at", toDate.toISOString())
+        .eq("organization_id", user.organization_id)
+        .limit(20);
+
+    const ccpFailureCounts: Record<string, number> = {};
+    problematicData?.forEach((d: any) => {
+        const step = d.hazard?.process_step || "Desconhecido";
+        ccpFailureCounts[step] = (ccpFailureCounts[step] || 0) + 1;
+    });
+    const problematicCCP = Object.entries(ccpFailureCounts)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || "Nenhum";
+
+    // 11. Production Lines Status
+    const { data: linesData } = await supabase.from("production_lines")
+        .select(`
+            id,
+            name,
+            code,
+            status,
+            production_batches(
+                id,
+                pcc_logs(is_compliant, checked_at)
+            )
+        `)
+        .eq("organization_id", user.organization_id)
+        .order("name", { ascending: true });
+
+    const lines = linesData?.map((l: any) => {
+        // Flatten logs from all batches of this line
+        const allLogs = l.production_batches?.flatMap((b: any) => b.pcc_logs || []) || [];
+        const sortedLogs = allLogs.sort((a: any, b: any) =>
+            new Date(b.checked_at).getTime() - new Date(a.checked_at).getTime()
+        );
+        const lastReadings = sortedLogs.slice(0, 3).map((log: any) => log.is_compliant);
+        const hasDeviation = lastReadings.some((r: boolean | null) => r === false);
+        const lastCheck = sortedLogs[0]?.checked_at;
+
+        return {
+            id: l.id,
+            name: l.name,
+            code: l.code,
+            status: l.status,
+            isProtected: !hasDeviation,
+            lastReadings,
+            lastCheck
+        };
+    }) || [];
 
     // 5. Role Specific Alerts (Calculated LAST)
     let roleAlerts = 0;
+    let recentHaccpLogs: any[] = [];
+
+    if (isHaccp) {
+        const { data: haccpLogs } = await supabase.from("pcc_logs")
+            .select(`
+                id,
+                actual_value,
+                actual_value_text,
+                critical_limit_min,
+                critical_limit_max,
+                is_compliant,
+                checked_at,
+                action_taken,
+                hazard:haccp_hazards(process_step),
+                equipment:equipments(name, code)
+            `)
+            .gte("checked_at", fromDate.toISOString())
+            .lte("checked_at", toDate.toISOString())
+            .eq("organization_id", user.organization_id)
+            .order("checked_at", { ascending: false })
+            .limit(10);
+        recentHaccpLogs = haccpLogs || [];
+    }
+
     if (isMicro) {
         const { count: microPending } = await supabase.from("micro_results")
             .select("*", { count: "exact", head: true })
@@ -126,7 +231,193 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
         roleAlerts = pendingSamples || 0;
     } else if (isAdmin || isQaManager) {
         roleAlerts = (recentDeviations || 0) + (expiringSoon || 0);
+    } else if (isHaccp) {
+        roleAlerts = recentDeviations || 0;
     }
+
+
+    // --- New KPIs: OTD & Sampling Compliance ---
+
+    // OTD (48h SLA)
+    const { data: closedBatches } = await supabase.from("production_batches")
+        .select("start_date, end_date")
+        .eq("status", "closed")
+        .not("end_date", "is", null)
+        .gte("end_date", fromDate.toISOString())
+        .lte("end_date", toDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const totalClosed = closedBatches?.length || 0;
+    const onTimeBatches = closedBatches?.filter((b: any) => {
+        const start = new Date(b.start_date).getTime();
+        const end = new Date(b.end_date).getTime();
+        return (end - start) <= (48 * 60 * 60 * 1000);
+    }).length || 0;
+    const otdRate = totalClosed > 0 ? (onTimeBatches / totalClosed) * 100 : 100;
+
+    // Sampling Compliance (Execution Rate)
+    const { count: totalSamplesPeriod } = await supabase.from("samples")
+        .select("*", { count: 'exact', head: true })
+        .gte("created_at", fromDate.toISOString())
+        .lte("created_at", toDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const { count: completedSamples } = await supabase.from("samples")
+        .select("*", { count: 'exact', head: true })
+        .neq("status", "pending")
+        .gte("created_at", fromDate.toISOString())
+        .lte("created_at", toDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const samplingCompliance = totalSamplesPeriod ? (completedSamples! / totalSamplesPeriod!) * 100 : 100;
+
+    // --- Trend Calculations ---
+
+    // Compliance Trend
+    let prevComplianceQuery = supabase.from("samples")
+        .select("status, type:sample_types!inner(test_category)")
+        .gte("created_at", previousFromDate.toISOString())
+        .lte("created_at", previousToDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    if (isLab) prevComplianceQuery = prevComplianceQuery.neq("type.test_category", "microbiological");
+    if (isMicro) prevComplianceQuery = prevComplianceQuery.eq("type.test_category", "microbiological");
+
+    const { data: prevSamples } = await prevComplianceQuery;
+    const prevTotal = prevSamples?.length || 0;
+    const prevApproved = prevSamples?.filter((s: any) => s.status === 'approved').length || 0;
+    const prevComplianceRate = prevTotal > 0 ? (prevApproved / prevTotal) * 100 : 100;
+
+    // OTD Trend (using simplified proxy: closed batches vs open)
+    const { count: prevActiveBatches } = await supabase.from("production_batches")
+        .select("*", { count: "exact", head: true })
+        .lte("created_at", previousToDate.toISOString())
+        .gte("created_at", previousFromDate.toISOString()) // Created in previous window
+        .eq("organization_id", user.organization_id);
+
+    // Deviations Trend - FIXED: Use pcc_logs
+    const { count: prevDeviations } = await supabase.from("pcc_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("is_compliant", false)
+        .gte("checked_at", previousFromDate.toISOString())
+        .lte("checked_at", previousToDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    // Previous HACCP Compliance
+    const { data: prevHaccpReadings } = await supabase.from("pcc_logs")
+        .select("is_compliant")
+        .gte("checked_at", previousFromDate.toISOString())
+        .lte("checked_at", previousToDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const prevTotalHaccp = prevHaccpReadings?.length || 0;
+    const prevCompliantHaccp = prevHaccpReadings?.filter((r: any) => r.is_compliant).length || 0;
+    const prevHaccpComplianceRate = prevTotalHaccp > 0 ? (prevCompliantHaccp / prevTotalHaccp) * 100 : 100;
+
+    // OTD Trend
+    const { data: prevClosedBatches } = await supabase.from("production_batches")
+        .select("start_date, end_date")
+        .eq("status", "closed")
+        .not("end_date", "is", null)
+        .gte("end_date", previousFromDate.toISOString())
+        .lte("end_date", previousToDate.toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const prevTotalClosed = prevClosedBatches?.length || 0;
+    const prevOnTime = prevClosedBatches?.filter((b: any) => {
+        const start = new Date(b.start_date).getTime();
+        const end = new Date(b.end_date).getTime();
+        return (end - start) <= (48 * 60 * 60 * 1000);
+    }).length || 0;
+    const prevOtdRate = prevTotalClosed > 0 ? (prevOnTime / prevTotalClosed) * 100 : 100;
+
+    const calculateTrend = (current: number, previous: number) => {
+        if (previous === 0) return 0;
+        return ((current - previous) / previous) * 100;
+    };
+
+    const trends = {
+        compliance: calculateTrend(complianceRate, prevComplianceRate),
+        deviations: calculateTrend(recentDeviations || 0, prevDeviations || 0),
+        workload: calculateTrend(activeBatches || 0, prevActiveBatches || 0),
+        otd: calculateTrend(otdRate, prevOtdRate),
+        sampling: 0 // Placeholder
+    };
+
+    // --- Analyst Specific Premium Metrics (Lead Time & SLA) ---
+    let ltQuery = supabase.from("samples")
+        .select(`
+            id,
+            collected_at,
+            status,
+            type:sample_types!inner(test_category),
+            lab_analysis (analyzed_at)
+        `)
+        .gte("created_at", fromDate.toISOString())
+        .lte("created_at", toDate.toISOString())
+        .eq("organization_id", user.organization_id)
+        .in("status", ["reviewed", "approved", "rejected"]);
+
+    if (isLab) ltQuery = ltQuery.neq("type.test_category", "microbiological");
+    if (isMicro) ltQuery = ltQuery.eq("type.test_category", "microbiological");
+
+    const { data: completedSamplesLT } = await ltQuery;
+
+    let totalLeadTimeHours = 0;
+    let compliantCount = 0;
+    const completedCount = completedSamplesLT?.length || 0;
+
+    completedSamplesLT?.forEach((s: any) => {
+        const collected = new Date(s.collected_at).getTime();
+        const analyses = s.lab_analysis || [];
+        if (analyses.length > 0) {
+            const lastAnalysis = Math.max(...analyses.map((a: any) => new Date(a.analyzed_at).getTime()));
+            const minTime = Math.min(...analyses.map((a: any) => new Date(a.analyzed_at).getTime()));
+            // Industrial Lead Time: Collection to FINAL Signature
+            const leadTimeHours = (lastAnalysis - collected) / (1000 * 60 * 60);
+            totalLeadTimeHours += leadTimeHours;
+            if (leadTimeHours <= 8) compliantCount++; // 8h Shift SLA
+        }
+    });
+
+    const avgLeadTime = completedCount > 0 ? totalLeadTimeHours / completedCount : 0;
+    const slaComplianceAnalyst = completedCount > 0 ? (compliantCount / completedCount) * 100 : 100;
+
+    // Previous Period for Analyst Trends
+    let prevLTQuery = supabase.from("samples")
+        .select(`
+            id,
+            collected_at,
+            status,
+            type:sample_types!inner(test_category),
+            lab_analysis (analyzed_at)
+        `)
+        .gte("created_at", previousFromDate.toISOString())
+        .lte("created_at", previousToDate.toISOString())
+        .eq("organization_id", user.organization_id)
+        .in("status", ["reviewed", "approved", "rejected"]);
+
+    if (isLab) prevLTQuery = prevLTQuery.neq("type.test_category", "microbiological");
+    if (isMicro) prevLTQuery = prevLTQuery.eq("type.test_category", "microbiological");
+
+    const { data: prevCompletedSamplesLT } = await prevLTQuery;
+    let prevTotalLT = 0;
+    let prevCompliant = 0;
+    const prevCompletedCount = prevCompletedSamplesLT?.length || 0;
+
+    prevCompletedSamplesLT?.forEach((s: any) => {
+        const collected = new Date(s.collected_at).getTime();
+        const analyses = s.lab_analysis || [];
+        if (analyses.length > 0) {
+            const lastAnalysis = Math.max(...analyses.map((a: any) => new Date(a.analyzed_at).getTime()));
+            const lt = (lastAnalysis - collected) / (1000 * 60 * 60);
+            prevTotalLT += lt;
+            if (lt <= 8) prevCompliant++;
+        }
+    });
+
+    const prevAvgLT = prevCompletedCount > 0 ? prevTotalLT / prevCompletedCount : 0;
+    const prevSlaComp = prevCompletedCount > 0 ? (prevCompliant / prevCompletedCount) * 100 : 100;
 
     return {
         activeBatches: activeBatches || 0,
@@ -136,7 +427,22 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
         expiringSoon: expiringSoon || 0,
         cipActive: cipActive || 0,
         recentDeviations: recentDeviations || 0,
+        haccpCompliance: haccpComplianceRate,
+        problematicCCP,
+        recentHaccpLogs,
+        lines,
         roleAlerts,
+        otdRate,
+        samplingCompliance,
+        avgLeadTime,
+        slaCompliance: slaComplianceAnalyst,
+        trends: {
+            ...trends,
+            haccpCompliance: calculateTrend(haccpComplianceRate, prevHaccpComplianceRate),
+            deviations: calculateTrend(recentDeviations || 0, prevDeviations || 0),
+            leadTime: calculateTrend(avgLeadTime, prevAvgLT) * -1, // Negative lead time change is positive trend
+            sla: calculateTrend(slaComplianceAnalyst, prevSlaComp)
+        }
     };
 }
 
@@ -260,11 +566,6 @@ async function getRecentActivity(supabase: any, user: SafeUser, filters: Dashboa
     return { recentSamples: samples || [], recentBatches: batches || [] };
 }
 
-import { ManagerOverview } from "@/components/dashboard/role-views/manager-overview";
-import { AnalystView } from "@/components/dashboard/role-views/analyst-view";
-import { OperatorView } from "@/components/dashboard/role-views/operator-view";
-import { SystemOwnerView } from "@/components/dashboard/role-views/system-owner-view";
-import { AdminView } from "@/components/dashboard/role-views/admin-view";
 
 export default async function DashboardPage(props: { searchParams: Promise<{ from?: string; to?: string; scope?: string }> }) {
     const searchParams = await props.searchParams;
@@ -283,13 +584,16 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
         redirect("/saas");
     }
 
+    // Unified Role Logic
     const isSystemOwner = user.role === 'system_owner';
-    const isAnalyst = ['lab_analyst', 'micro_analyst', 'analyst'].includes(user.role);
+    const isMicro = user.role === 'micro_analyst';
+    const isHaccp = user.role === 'haccp_analyst' || user.role === 'haccp';
+    const isRmpm = user.role === 'rmpm_lab';
+    const isLab = user.role === 'lab_analyst' || user.role === 'analyst';
     const isAdmin = user.role === 'admin';
     const isQaManager = user.role === 'qa_manager';
-    // Admin was previously grouped in isManager. Now we separate.
-    const isManager = isQaManager; // Only QA Manager gets the specialized Manager Overview now, Admin gets AdminView
-    const isOperator = !isAnalyst && !isManager && !isAdmin && !isSystemOwner;
+    const isManager = isQaManager || isAdmin;
+    const isOperator = !isLab && !isMicro && !isHaccp && !isRmpm && !isManager && !isSystemOwner;
 
     // Fetch Global Stats for System Owner
     let globalStats = { totalOrgs: 0, totalPlants: 0, totalUsers: 0, activeSessions: 0 };
@@ -394,71 +698,94 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
         }
     }
 
+
+
     return (
-        <div className="space-y-6">
-            {/* Header section common to all */}
-            <header className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-                    {isSystemOwner ? <Globe className="h-6 w-6 text-blue-400" /> : isManager ? <TrendingUp className="h-6 w-6 text-emerald-400" /> : <LayoutDashboard className="h-6 w-6 text-blue-400" />}
-                    Olá, {user.full_name?.split(' ')[0] || 'Utilizador'}
-                </h1>
-                <p className="text-sm text-muted-foreground italic">
-                    {isSystemOwner ? "Consola Global de Gestão SmartLab SaaS." :
-                        isManager ? "Aqui está o resumo de conformidade e operação da planta." :
-                            isAdmin ? "Visão Geral Administrativa da Planta." :
-                                isAnalyst ? "Tens novas amostras aguardando análise no seu turno." :
-                                    "Pronto para registar novas atividades de produção."}
-                </p>
-            </header>
+        <div className="min-h-screen bg-[#020817] text-slate-50 selection:bg-primary/30">
+            {/* Ambient Background Glows */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+            </div>
 
-            {/* Global Toolbar - Hidden for System Owner */}
-            {!isSystemOwner && <DashboardToolbar />}
+            <div className="relative max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+                {/* Premium Header Section */}
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-white/5">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl glass border-primary/20 bg-primary/5">
+                                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                            </div>
+                            <Badge variant="outline" className="h-6 px-3 glass border-white/10 text-[10px] font-bold uppercase tracking-widest text-primary">
+                                {user.role?.replace('_', ' ') || 'Industrial Intelligence'}
+                            </Badge>
+                        </div>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40">
+                            Olá, {user.full_name?.split(' ')[0] || 'Utilizador'}
+                        </h1>
+                        <p className="text-sm text-muted-foreground font-medium max-w-2xl leading-relaxed mt-1">
+                            {isManager && "Visão estratégica de qualidade, conformidade e KPIs globais da planta."}
+                            {isMicro && "Monitoramento de incubações, leituras críticas e conformidade biológica."}
+                            {isHaccp && "Controle de pontos críticos, segurança alimentar e alertas preventivos."}
+                            {isRmpm && "Inspeção de materiais, recebimento e homologação de fornecedores."}
+                            {isLab && "Gestão operacional de amostras, workflows analíticos e produtividade."}
+                            {isOperator && "Monitoramento de linhas produtivas, coletas e status em tempo real."}
+                        </p>
+                    </div>
 
-            {/* Role-Specific Dashboard Content */}
-            {isSystemOwner && (
-                <SystemOwnerView stats={globalStats} />
-            )}
+                    <DashboardToolbar />
+                </header>
 
-            {isManager && !isSystemOwner && stats && (
-                <ManagerOverview
-                    stats={stats}
-                    products={products}
-                    parameters={parameters}
-                    initialTrendData={initialTrendData}
-                    initialSpecs={initialSpecs}
-                />
-            )}
+                <main className="relative">
+                    <Suspense fallback={<DashboardSkeleton />}>
+                        {isManager ? (
+                            <ManagerOverview
+                                stats={stats}
+                                products={products}
+                                parameters={parameters}
+                                initialTrendData={initialTrendData}
+                                initialSpecs={initialSpecs}
+                            />
+                        ) : isMicro ? (
+                            <MicroView user={user} stats={stats} assignments={assignments} activity={activity} />
+                        ) : isHaccp ? (
+                            <HACCPView stats={stats} activity={activity} />
+                        ) : isRmpm ? (
+                            <RMPMView stats={stats} activity={activity} />
+                        ) : isLab ? (
+                            <AnalystView user={user} stats={stats} assignments={assignments} activity={activity} />
+                        ) : (
+                            <OperatorView stats={stats} activity={activity} />
+                        )}
+                    </Suspense>
+                </main>
 
-            {isAdmin && !isSystemOwner && stats && (
-                <AdminView
-                    stats={stats}
-                    activity={activity}
-                />
-            )}
+                {/* Global Status Footer */}
+                <footer className="flex items-center justify-between pt-6 border-t border-white/5 opacity-50">
+                    <span className="text-[10px] font-mono tracking-widest uppercase">GAMP 5 Certified Platform</span>
+                    <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Sincronizado com o Chão de Fábrica</span>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    );
+}
 
-            {isAnalyst && stats && (
-                <AnalystView
-                    user={user}
-                    stats={stats}
-                    assignments={assignments || []}
-                    activity={activity}
-                />
-            )}
-
-            {isOperator && stats && (
-                <OperatorView
-                    stats={stats}
-                    activity={activity}
-                />
-            )}
-
-            {/* Global System Status Footer (Simplified) */}
-            <div className="flex items-center justify-between pt-6 border-t border-slate-800/50">
-                <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">GAMP 5 Certified Platform</span>
-                <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-widest">Sincronizado</span>
-                </div>
+function DashboardSkeleton() {
+    return (
+        <div className="space-y-10">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-[220px] rounded-3xl bg-slate-900/50 border border-white/5 animate-pulse relative overflow-hidden">
+                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-white/5 to-transparent" />
+                    </div>
+                ))}
+            </div>
+            <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2 h-[400px] rounded-3xl bg-slate-900/50 border border-white/5 animate-pulse" />
+                <div className="h-[400px] rounded-3xl bg-slate-900/50 border border-white/5 animate-pulse" />
             </div>
         </div>
     );

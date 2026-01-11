@@ -66,6 +66,8 @@ export async function createNCAction(formData: FormData): Promise<ActionState<{ 
     }
 }
 
+import { NonConformityDomainService } from "@/domain/quality/nc.service";
+
 export async function createNCFromFailedResult(params: {
     parameterName: string;
     value: string | number;
@@ -77,21 +79,28 @@ export async function createNCFromFailedResult(params: {
 }): Promise<ActionState<{ code: string }>> {
     try {
         const supabase = await createClient();
-        const { data: newNC, error } = await supabase.from("nonconformities").insert({
-            title: `Desvio Crítico: ${params.parameterName}`,
-            description: `O parâmetro ${params.parameterName} falhou com o valor ${params.value}. (Amostra: ${params.sampleId})`,
-            severity: 'critical',
-            type: 'process',
-            source_analysis_id: params.analysisId, // Traceability link
+        const service = new NonConformityDomainService(supabase, {
             organization_id: params.organizationId,
+            user_id: params.userId,
+            role: 'system', // Action context
             plant_id: params.plantId,
-            status: 'open',
-            created_by: params.userId
-        }).select("id, code").single();
+            correlation_id: crypto.randomUUID()
+        });
 
-        if (error) return { success: false, message: error.message };
+        const result = await service.createFromAnalysisFailure({
+            analysisId: params.analysisId || '',
+            sampleId: params.sampleId,
+            parameterName: params.parameterName,
+            value: params.value
+        });
 
-        return { success: true, message: "NC gerada automaticamente.", data: { code: newNC.code } };
+        if (!result.success) return { success: false, message: result.message || "Falha ao processar NC no domínio." };
+
+        return {
+            success: true,
+            message: "NC gerada automaticamente via Domain Service.",
+            data: { code: (result.data as any).code }
+        };
     } catch (err: any) {
         return { success: false, message: err.message || "Erro ao gerar NC automática" };
     }

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSafeUser } from "@/lib/auth.server";
 import { generateAnalysisHash } from "@/lib/utils/crypto";
 import { createAuditEvent } from "@/domain/audit/audit.service";
-import { AnalysisDomainService, SaveResultDTO } from "@/domain/lab/analysis.service";
+import { AnalysisExecutionService } from "@/domain/lab/execution.service";
 import { SampleDomainService } from "@/domain/lab/sample.service";
 import { SampleStatus } from "@/domain/lab/sample.fsm";
 
@@ -53,7 +53,7 @@ export async function registerResultAction(formData: FormData) {
     const analysisId = formData.get("analysis_id") as string;
 
     if (analysisId) {
-        const service = new AnalysisDomainService(supabase, {
+        const service = new AnalysisExecutionService(supabase, {
             organization_id: user.organization_id!,
             user_id: user.id,
             role: user.role,
@@ -72,7 +72,7 @@ export async function registerResultAction(formData: FormData) {
         if (!result.success) return { success: false, message: result.message };
     } else {
         // Fallback for legacy calls WITHOUT analysis_id
-        const service = new AnalysisDomainService(supabase, {
+        const service = new AnalysisExecutionService(supabase, {
             organization_id: user.organization_id!,
             user_id: user.id,
             role: user.role,
@@ -101,7 +101,7 @@ export async function registerResultAction(formData: FormData) {
 export async function startAnalysisAction(analysisId: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
-    const service = new AnalysisDomainService(supabase, {
+    const service = new AnalysisExecutionService(supabase, {
         organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
@@ -132,7 +132,7 @@ export async function signAndSaveResultsAction(
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    const service = new AnalysisDomainService(supabase, {
+    const service = new AnalysisExecutionService(supabase, {
         organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
@@ -201,7 +201,7 @@ export async function validateSampleAction(sampleId: string, password?: string) 
 export async function requestRetestAction(analysisId: string, reason: string, password?: string) {
     const user = await getSafeUser();
     const supabase = await createClient();
-    const service = new AnalysisDomainService(supabase, {
+    const service = new AnalysisExecutionService(supabase, {
         organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,
@@ -226,7 +226,7 @@ export async function saveMasterWorksheetAction(payload: { sampleId: string; res
     const user = await getSafeUser();
     const supabase = await createClient();
 
-    const service = new AnalysisDomainService(supabase, {
+    const service = new AnalysisExecutionService(supabase, {
         organization_id: user.organization_id!,
         user_id: user.id,
         role: user.role,

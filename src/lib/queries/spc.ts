@@ -63,11 +63,10 @@ export async function getSPCData(
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    // 1. Fetch Parameter Info
-    const { data: param } = await supabase
+    // 1. Fetch Parameter Info - Don't filter by org_id since parameter ID is unique
+    const { data: param, error: paramError } = await supabase
         .from("qa_parameters")
         .select("id, name, unit")
-        .eq("organization_id", user.organization_id)
         .eq("id", parameterId)
         .single();
 
@@ -119,7 +118,7 @@ export async function getSPCData(
         dateToStr = new Date(dt).toISOString();
     }
 
-    // 4. Load Analysis Data
+    // 4. Load Analysis Data - Use inner join for samples to ensure data integrity
     let query = supabase
         .from("lab_analysis")
         .select(`
@@ -127,48 +126,57 @@ export async function getSPCData(
             analyzed_at, 
             value_numeric, 
             is_conforming,
+            sample_id,
             sample:samples!inner(
                 id, 
                 production_batch_id, 
                 sample_type_id, 
-                sample_type:sample_types!inner(name, code),
+                sample_type:sample_types(name, code),
                 batch:production_batches(id, product_id, code)
             )
         `)
-        .eq("organization_id", user.organization_id)
         .eq("qa_parameter_id", parameterId)
         .gte("analyzed_at", dateFromStr)
         .not("value_numeric", "is", null)
         .order("analyzed_at", { ascending: true });
 
-    if (filters?.sampleTypeId) {
-        query = query.eq("sample.sample_type_id", filters.sampleTypeId);
-    }
-
     if (dateToStr) {
         query = query.lte("analyzed_at", dateToStr);
     }
 
+    // Note: Supabase nested filtering can be unreliable.
+    // We fetch all matching data and filter in-memory for reliability.
+    const { data: rawResults, error } = await query;
+
+    if (error) {
+        console.error("SPC Query Error:", error);
+        return null;
+    }
+
+    // Apply filters in-memory for maximum reliability
+    let results = rawResults || [];
+
+    if (filters?.sampleTypeId) {
+        results = results.filter((r: any) => {
+            const sample = Array.isArray(r.sample) ? r.sample[0] : r.sample;
+            return sample?.sample_type_id === filters.sampleTypeId;
+        });
+    }
+
     if (filters?.productId) {
-        query = query.eq("sample.batch.product_id", filters.productId);
+        results = results.filter((r: any) => {
+            const sample = Array.isArray(r.sample) ? r.sample[0] : r.sample;
+            const batch = Array.isArray(sample?.batch) ? sample.batch[0] : sample?.batch;
+            return batch?.product_id === filters.productId;
+        });
     }
 
     if (filters?.batchId) {
-        query = query.eq("sample.production_batch_id", filters.batchId);
+        results = results.filter((r: any) => {
+            const sample = Array.isArray(r.sample) ? r.sample[0] : r.sample;
+            return sample?.production_batch_id === filters.batchId;
+        });
     }
-
-    const { data: rawResults } = await query;
-
-    // Filter results strictly for Finished Product if no explicit sampleTypeId
-    const results = (rawResults || []).filter((r: any) => {
-        if (filters?.sampleTypeId) return true; // Already filtered by query
-
-        const st: any = Array.isArray(r.sample?.sample_type) ? r.sample.sample_type[0] : r.sample?.sample_type;
-        const name = st?.name?.toLowerCase() || "";
-        const code = st?.code?.toLowerCase() || "";
-        return name.includes("final") || name.includes("finished") ||
-            code.startsWith("fp");
-    });
 
     if (!results || results.length === 0) {
         return {

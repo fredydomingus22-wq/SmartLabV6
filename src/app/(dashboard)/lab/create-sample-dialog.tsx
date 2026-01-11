@@ -67,9 +67,15 @@ interface CreateSampleDialogProps {
     samplingPoints: SamplingPoint[];
     plantId: string;
     users: { id: string, full_name: string | null, role: string }[];
+    requestId?: string;
+    prefilledData?: {
+        sample_type_id?: string;
+        production_batch_id?: string;
+        intermediate_product_id?: string;
+    }
 }
 
-export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId, users }: CreateSampleDialogProps) {
+export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId, users, requestId, prefilledData }: CreateSampleDialogProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -81,6 +87,8 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
             code: "AUTO-GENERATED",
             plant_id: plantId,
             collected_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+            sample_type_id: prefilledData?.sample_type_id || "",
+            intermediate_product_id: prefilledData?.intermediate_product_id || "",
         },
     });
 
@@ -125,6 +133,10 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
 
         if (!isProductSample || data.sampling_point_id) {
             if (data.sampling_point_id) formData.append("sampling_point_id", data.sampling_point_id);
+        }
+
+        if (requestId) {
+            formData.append("sample_request_id", requestId);
         }
 
         const result = await createSampleAction(formData);

@@ -18,6 +18,7 @@ const CreateSampleSchema = z.object({
     intermediate_product_id: z.string().uuid().optional(),
     sampling_point_id: z.string().uuid().optional(),
     plant_id: z.string().uuid(),
+    sample_request_id: z.string().uuid().optional(),
 });
 
 /**
@@ -35,6 +36,7 @@ export async function createSampleAction(formData: FormData) {
             intermediate_product_id: formData.get("intermediate_product_id") || undefined,
             sampling_point_id: formData.get("sampling_point_id") || undefined,
             plant_id: formData.get("plant_id"),
+            sample_request_id: formData.get("sample_request_id") || undefined,
         };
 
         const validation = CreateSampleSchema.safeParse(rawData);

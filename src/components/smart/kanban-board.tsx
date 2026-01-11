@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ResultEntryModal } from "@/app/(dashboard)/lab/components/result-entry-modal";
-import { ApproveSampleDialog } from "@/app/(dashboard)/lab/approve-sample-dialog";
+import { ApproveSampleDialog } from "./approve-sample-dialog";
 
 interface KanbanSample {
     id: string;

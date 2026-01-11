@@ -7,27 +7,40 @@ import { getBatchTraceabilityAction } from "./traceability";
 import { mapToEnterpriseReport } from "@/lib/reports/report-dtos";
 import { requirePermission } from "@/lib/permissions.server";
 import { IntermediateDomainService } from "@/domain/production/intermediate.service";
+import { ProductionOrchestratorService } from "@/domain/production/production-orchestrator.service";
+import { ProductionOrderDomainService } from "@/domain/production/order.service";
+import { PackagingDomainService } from "@/domain/production/packaging.service";
+import { SamplingOrchestratorService } from "@/domain/quality/sampling-orchestrator.service";
+import { QualityGatekeeperService } from "@/domain/quality/gatekeeper.service";
+import { getCurrentUser } from "@/lib/auth";
 
-// --- Schemas ---
-
-const CreateBatchSchema = z.object({
+const CreateOrderSchema = z.object({
     product_id: z.string().uuid(),
-    production_line_id: z.string().uuid(),
     code: z.string().min(3),
-    planned_quantity: z.coerce.number().optional(),
+    planned_quantity: z.coerce.number().positive(),
     plant_id: z.string().uuid(),
     start_date: z.string().optional(),
 });
 
-const UpdateBatchStatusSchema = z.object({
-    batch_id: z.string().uuid(),
-    status: z.enum(["planned", "open", "in_progress", "completed", "closed", "blocked", "released", "rejected"]),
+const PlanBatchSchema = z.object({
+    production_order_id: z.string().uuid(),
+    shift_id: z.string().uuid(),
+    production_line_id: z.string().uuid(), // <-- Added
+    planned_date: z.string(),
+    batch_code: z.string().min(1, "Código do lote é obrigatório"),
+});
+
+const LogEventSchema = z.object({
+    production_batch_id: z.string().uuid(),
+    event_type: z.enum(['start', 'stop', 'resume', 'waste', 'scrap', 'breakdown', 'maintenance', 'shift_change']),
+    reason_code: z.string().optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const CreateIntermediateSchema = z.object({
     production_batch_id: z.string().uuid(),
     code: z.string().min(1), // Tank Name/Code for display
-    equipment_id: z.string().uuid(), // FK to equipments
+    tank_id: z.string().uuid(), // FK to tanks
     product_id: z.string().uuid().optional(), // Explicit snapshot link
     volume: z.coerce.number().optional(),
     unit: z.string().default("L"),
@@ -48,95 +61,99 @@ const LinkPackagingSchema = z.object({
     unit: z.string().min(1).default("un"),
 });
 
+const UpdateScrapReworkSchema = z.object({
+    production_batch_id: z.string().uuid(),
+    scrap_quantity: z.coerce.number().nonnegative(),
+    rework_quantity: z.coerce.number().nonnegative(),
+});
+
 /**
- * Create Golden Batch from Form (used by CreateBatchDialog)
+ * Create Production Order (OP)
+ * Delegated to ProductionOrderDomainService for consistency and audit trail.
  */
-export async function createGoldenBatchFromFormAction(formData: FormData): Promise<void> {
+export async function createProductionOrderAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
+    const profile = await getCurrentUser();
+
+    if (!profile) throw new Error("Profile not found");
 
     const rawData = {
         product_id: formData.get("product_id"),
-        production_line_id: formData.get("production_line_id"),
-        code: formData.get("code") ?? `GB-${Date.now()}`,
-        planned_quantity: formData.get("planned_quantity") || undefined,
-        plant_id: formData.get("plant_id"),
-        start_date: formData.get("start_date") || new Date().toISOString(),
+        code: formData.get("code") || `OP-${Date.now()}`,
+        planned_quantity: formData.get("planned_quantity"),
+        plant_id: profile.plant_id,
+        start_date: formData.get("start_date") || new Date().toISOString().split('T')[0],
     };
 
-    console.log("SERVER ACTION: createGoldenBatchFromFormAction", rawData);
+    const validation = CreateOrderSchema.safeParse(rawData);
+    if (!validation.success) throw new Error(validation.error.issues[0].message);
 
-    const validation = CreateBatchSchema.safeParse(rawData);
-    if (!validation.success) {
-        console.error("VALIDATION ERROR:", validation.error.issues);
-        throw new Error(validation.error.issues[0]?.message ?? "Invalid data");
-    }
+    const service = new ProductionOrderDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
 
-    // Security Check: Get Plant's Organization
-    const { data: plant } = await supabase
-        .from("plants")
-        .select("organization_id")
-        .eq("id", validation.data.plant_id)
-        .single();
-
-    if (!plant) {
-        throw new Error("Invalid Plant ID");
-    }
-
-    // Verify User belongs to this Org (Optional but Good Practice)
-    // For now, we trust the RLS policies which limit INSERTs to user's org.
-    // However, explicitly setting organization_id guarantees we don't accidentally insert into null org if RLS was loose.
-
-    const { data, error } = await supabase.from("production_batches").insert({
-        organization_id: plant.organization_id!,
-        plant_id: validation.data.plant_id!,
+    const result = await service.createOrder({
         product_id: validation.data.product_id,
-        production_line_id: validation.data.production_line_id,
         code: validation.data.code,
         planned_quantity: validation.data.planned_quantity,
-        status: "planned",
-        start_date: validation.data.start_date,
-    })
-        .select("id")
-        .single();
+        plant_id: validation.data.plant_id,
+        start_date: validation.data.start_date
+    });
 
-    if (error) {
-        console.error("DB INSERT ERROR:", error);
-        throw new Error(error.message);
-    }
+    if (!result.success) throw new Error(result.message);
 
-    const newBatchId = data.id;
+    revalidatePath("/production/orders");
+    return { success: true, message: result.message };
+}
 
+/**
+ * Plan Batch from Order
+ */
+export async function planBatchFromOrderAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+    const profile = await getCurrentUser();
 
+    if (!profile) throw new Error("Profile not found");
 
-    // EPIC 1.2: Automated Intermediate Planning
-    // If the product has a parent (recipe), we must plan the intermediate usage slot.
-    const { data: productDef } = await supabase
-        .from("products")
-        .select("parent_id, parent:products!products_parent_id_fkey(name, sku)") // Self-referencing join
-        .eq("id", validation.data.product_id)
-        .single();
+    const rawData = {
+        production_order_id: formData.get("order_id"),
+        shift_id: formData.get("shift_id"),
+        production_line_id: formData.get("production_line_id"),
+        planned_date: formData.get("planned_date") || new Date().toISOString(),
+        batch_code: formData.get("batch_code"),
+    };
 
-    // If there is a parent recipe/intermediate product defined
-    if (productDef?.parent_id) {
-        console.log("Auto-planning intermediate for:", productDef.parent);
+    const validation = PlanBatchSchema.safeParse(rawData);
+    if (!validation.success) throw new Error(validation.error.issues[0].message);
 
-        // Create a PLANNED intermediate slot (no equipment assigned yet)
-        const parentData = Array.isArray(productDef.parent) ? productDef.parent[0] : productDef.parent;
+    const orchestrator = new ProductionOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
 
-        await supabase.from("intermediate_products").insert({
-            organization_id: plant.organization_id!,
-            plant_id: validation.data.plant_id!,
-            production_batch_id: error ? "" : (await supabase.from("production_batches").select("id").eq("code", validation.data.code).single()).data?.id, // Fetch ID we just made. Or better, use select() on insert.
-            product_id: productDef.parent_id, // Explicit link to the Recipe
-            code: `${(parentData as any)?.name || 'Intermediate'} (Planned)`,
-            status: 'planned',
-            approval_status: 'pending' // Lab must approve later
-        });
-    }
+    const batch = await orchestrator.planBatchFromOrder(
+        validation.data.production_order_id,
+        validation.data.shift_id,
+        validation.data.planned_date,
+        validation.data.batch_code,
+        validation.data.production_line_id // <-- Added
+    );
 
     revalidatePath("/production");
+    revalidatePath("/production/orders");
+    return { success: true, data: batch };
 }
+
+
 
 /**
  * Create Intermediate Product (Tank/Silo Mapping)
@@ -164,7 +181,7 @@ export async function createIntermediateProductAction(formData: FormData) {
     const result = await service.registerIntermediate({
         production_batch_id: formData.get("production_batch_id") as string,
         code: formData.get("code") as string,
-        equipment_id: formData.get("equipment_id") as string,
+        tank_id: formData.get("tank_id") as string,
         volume: Number(formData.get("volume")) || undefined,
         unit: (formData.get("unit") as string) || "L",
         plant_id: profile.plant_id as string
@@ -180,11 +197,14 @@ export async function createIntermediateProductAction(formData: FormData) {
 
 /**
  * Link Raw Material (Ingredient) to Intermediate Product
- * Also debits quantity from the source lot
+ * Delegated to IntermediateDomainService for transactional safety and audit.
  */
 export async function linkIngredientAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
+    const profile = await getCurrentUser();
+
+    if (!profile) return { success: false, message: "Profile not found" };
 
     const rawData = {
         intermediate_product_id: formData.get("intermediate_product_id"),
@@ -199,67 +219,28 @@ export async function linkIngredientAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    // Get intermediate to inherit org/plant
-    const { data: intermediate } = await supabase
-        .from("intermediate_products")
-        .select("organization_id, plant_id")
-        .eq("id", validation.data.intermediate_product_id)
-        .single();
-
-    if (!intermediate) return { success: false, message: "Intermediate product not found" };
-
-    // If lot ID provided, verify sufficient quantity
-    if (validation.data.raw_material_lot_id) {
-        const { data: lot } = await supabase
-            .from("raw_material_lots")
-            .select("quantity_remaining, unit")
-            .eq("id", validation.data.raw_material_lot_id)
-            .single();
-
-        if (!lot) return { success: false, message: "Lot not found" };
-
-        if (lot.quantity_remaining < validation.data.quantity) {
-            return {
-                success: false,
-                message: `Insufficient quantity. Available: ${lot.quantity_remaining} ${lot.unit}`
-            };
-        }
-    }
-
-    // Insert the ingredient link
-    const { error } = await supabase.from("intermediate_ingredients").insert({
-        organization_id: intermediate.organization_id!,
-        plant_id: intermediate.plant_id!,
-        intermediate_product_id: validation.data.intermediate_product_id,
-        raw_material_lot_id: validation.data.raw_material_lot_id || null,
-        raw_material_lot_code: validation.data.raw_material_lot_code,
-        quantity: validation.data.quantity,
-        unit: validation.data.unit,
+    const service = new IntermediateDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
     });
 
-    if (error) return { success: false, message: error.message };
+    const result = await service.linkIngredient({
+        intermediateId: validation.data.intermediate_product_id,
+        rawMaterialLotId: validation.data.raw_material_lot_id,
+        rawMaterialLotCode: validation.data.raw_material_lot_code,
+        quantity: validation.data.quantity,
+        unit: validation.data.unit
+    });
 
-    // Debit quantity from the source lot
-    if (validation.data.raw_material_lot_id) {
-        // Fetch current quantity and update with new value
-        const { data: currentLot } = await supabase
-            .from("raw_material_lots")
-            .select("quantity_remaining")
-            .eq("id", validation.data.raw_material_lot_id)
-            .single();
-
-        if (currentLot) {
-            const newQuantity = currentLot.quantity_remaining - validation.data.quantity;
-            await supabase
-                .from("raw_material_lots")
-                .update({ quantity_remaining: newQuantity })
-                .eq("id", validation.data.raw_material_lot_id);
-        }
+    if (result.success) {
+        revalidatePath("/production");
+        revalidatePath("/raw-materials");
     }
 
-    revalidatePath("/production");
-    revalidatePath("/raw-materials");
-    return { success: true, message: "Ingredient Linked & Lot Updated" };
+    return result;
 }
 
 /**
@@ -393,35 +374,41 @@ export async function startUsageAction(formData: FormData) {
 export async function finalizeBatchAction(batch_id: string) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
-
-    const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id")
-        .eq("id", user.id)
-        .single();
+    const profile = await getCurrentUser();
 
     if (!profile) return { success: false, message: "Profile not found" };
 
-    const { error } = await supabase
-        .from("production_batches")
-        .update({ status: "completed" })
-        .eq("id", batch_id)
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
+    const orchestrator = new ProductionOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
 
-    if (error) return { success: false, message: error.message };
+    try {
+        await orchestrator.finalizeBatch(batch_id);
 
-    revalidatePath("/production");
-    revalidatePath(`/production/${batch_id}`);
-    return { success: true, message: "Produção finalizada. Aguardando revisão do Manager." };
+        revalidatePath("/production");
+        revalidatePath(`/production/${batch_id}`);
+        return { success: true, message: "Produção finalizada. Aguardando revisão do Manager." };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
 }
 
+/**
+ * Link Packaging Lot to Production Batch
+ */
 /**
  * Link Packaging Lot to Production Batch
  */
 export async function linkPackagingLotAction(formData: FormData) {
     const user = await requirePermission('production', 'write');
     const supabase = await createClient();
+    const profile = await getCurrentUser();
+
+    if (!profile) throw new Error("Profile not found");
 
     const rawData = {
         production_batch_id: formData.get("production_batch_id"),
@@ -435,52 +422,26 @@ export async function linkPackagingLotAction(formData: FormData) {
         return { success: false, message: validation.error.issues[0].message };
     }
 
-    const validated = validation.data;
-
-    // 1. Fetch batch to verify existence and get org/plant
-    const { data: batch } = await supabase
-        .from("production_batches")
-        .select("organization_id, plant_id")
-        .eq("id", validated.production_batch_id)
-        .single();
-
-    if (!batch) return { success: false, message: "Batch not found" };
-
-    // 2. Verify Packaging Lot and quantity
-    const { data: lot } = await supabase
-        .from("packaging_lots")
-        .select("remaining_quantity, status")
-        .eq("id", validated.packaging_lot_id)
-        .single();
-
-    if (!lot) return { success: false, message: "Packaging lot not found" };
-    if (!['approved', 'active'].includes(lot.status)) return { success: false, message: "Packaging lot is not approved or active" };
-    if (lot.remaining_quantity < validated.quantity_used) {
-        return { success: false, message: `Insufficient quantity. Available: ${lot.remaining_quantity}` };
-    }
-
-    // 3. Insert usage
-    const { error: insertError } = await supabase.from("batch_packaging_usage").insert({
-        organization_id: batch.organization_id,
-        plant_id: batch.plant_id,
-        production_batch_id: validated.production_batch_id,
-        packaging_lot_id: validated.packaging_lot_id,
-        quantity_used: validated.quantity_used,
-        unit: validated.unit,
-        added_by: user.id
+    const service = new PackagingDomainService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
     });
 
-    if (insertError) return { success: false, message: insertError.message };
+    const result = await service.linkPackaging({
+        batchId: validation.data.production_batch_id,
+        packagingMaterialLotId: validation.data.packaging_lot_id,
+        quantity: validation.data.quantity_used,
+        unit: validation.data.unit
+    });
 
-    // 4. Update lot quantity
-    const newQuantity = Number(lot.remaining_quantity) - Number(validated.quantity_used);
-    await supabase
-        .from("packaging_lots")
-        .update({ remaining_quantity: newQuantity })
-        .eq("id", validated.packaging_lot_id);
+    if (result.success) {
+        revalidatePath(`/production/${validation.data.production_batch_id}`);
+    }
 
-    revalidatePath(`/production/${validated.production_batch_id}`);
-    return { success: true, message: "Material de embalagem adicionado com sucesso." };
+    return result;
 }
 
 /**
@@ -501,98 +462,235 @@ export async function releaseBatchAction(formData: FormData) {
 
     if (!profile) return { success: false, message: "Profile not found" };
 
-    // 0. Electronic Signature (21 CFR Part 11)
+    // 5. Use Quality Gatekeeper for robust logic (Phase 4 Implementation)
+    const gatekeeper = new QualityGatekeeperService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
     const password = formData.get("password") as string;
-    if (password) {
-        const { ElectronicSignatureService } = await import("@/domain/lab/signature.service");
-        const signatureService = new ElectronicSignatureService(supabase, {
-            organization_id: profile.organization_id!,
-            user_id: user.id,
-            role: profile.role,
-            correlation_id: crypto.randomUUID()
-        });
-        const isValid = await signatureService.verify(password);
-        if (!isValid) return { success: false, message: "Assinatura eletrónica inválida. Ação cancelada." };
-    }
-
-    // Security: Only managers/admins can release/reject
-    if (!["admin", "system_owner", "manager", "qa_manager"].includes(profile.role)) {
-        return { success: false, message: "Apenas Managers ou Admins podem liberar ou rejeitar lotes." };
-    }
-
-    // 1. Fetch all intermediate products
-    const { data: intermediates } = await supabase
-        .from('intermediate_products')
-        .select('id, code, approval_status')
-        .eq('production_batch_id', batch_id);
-
-    // 2. Validate Intermediates (only for release)
-    if (action === "release") {
-        const unapproved = intermediates?.filter(i => i.approval_status !== 'approved');
-        if (unapproved && unapproved.length > 0) {
-            return {
-                success: false,
-                message: `Não é possível liberar: Produtos intermédios [${unapproved.map(u => u.code).join(', ')}] não estão aprovados.`
-            };
-        }
-    }
-
     const reason = formData.get("reason") as string;
 
-    // 3. Update the batch
-    const status = action === "release" ? "released" : "rejected";
-    const { error } = await supabase
-        .from("production_batches")
-        .update({
-            status: status,
-            end_date: new Date().toISOString(),
-            qa_approved_by: user.id,
-            qa_approved_at: new Date().toISOString()
-        })
-        .eq("id", batch_id)
-        .eq("organization_id", profile.organization_id)
-        .eq("plant_id", profile.plant_id);
-
-    if (error) return { success: false, message: error.message };
-
-    // 4. Create Compliance Snapshot (ISO/FSSC Rule)
-    try {
-        const traceabilityData = await getBatchTraceabilityAction(batch_id);
-        if (traceabilityData.success && traceabilityData.data) {
-            const enterpriseDTO = mapToEnterpriseReport(traceabilityData.data);
-
-            // Inject audit reason into report metadata
-            const reportMetadata = {
-                ...enterpriseDTO,
-                audit: {
-                    action: action.toUpperCase(),
-                    performed_by: user.id,
-                    timestamp: new Date().toISOString(),
-                    justification: reason || "No justification provided (Legacy/Manual)",
-                    signed: !!password
-                }
+    if (action === "release") {
+        // Strict release logic via Gatekeeper
+        const releaseResult = await gatekeeper.releaseBatch(batch_id, password);
+        if (!releaseResult.success) {
+            return {
+                success: false,
+                message: releaseResult.message || "Erro na validação de qualidade.",
+                // Return blockers if available to show in UI
+                errors: ((releaseResult as any).metadata)?.blockers
             };
-
-            await supabase.from("generated_reports").insert({
-                organization_id: profile.organization_id!,
-                plant_id: profile.plant_id!,
-                report_type: action === "release" ? "FINAL" : "REJECTION",
-                entity_type: "batch",
-                entity_id: batch_id,
-                report_number: `${action === "release" ? 'BQR' : 'BRJ'}-${enterpriseDTO.header.batchCode}`,
-                title: action === "release" ? "Production Batch Quality Report" : "Production Batch Rejection Report",
-                report_data: reportMetadata as any,
-                generated_by: user.id,
-                status: "signed",
-                signed_by: user.id,
-                signed_at: new Date().toISOString()
-            });
         }
-    } catch (snapError) {
-        console.error("SNAPSHOT ERROR (Non-blocking):", snapError);
+
+        // Audit Snapshot is handled inside Gatekeeper for Releases
+    } else {
+        // Rejection logic (Simpler, allows manual rejection even if technically compliant)
+        // 3. Update the batch (Legacy/Manual Rejection Path)
+        const { error } = await supabase
+            .from("production_batches")
+            .update({
+                status: "rejected",
+                end_date: new Date().toISOString(),
+                qa_approved_by: user.id,
+                qa_approved_at: new Date().toISOString()
+            })
+            .eq("id", batch_id)
+            .eq("organization_id", profile.organization_id)
+            .eq("plant_id", profile.plant_id);
+
+        if (error) return { success: false, message: error.message };
+
+        // 4. Create Compliance Snapshot (ISO/FSSC Rule) - Kept for Rejection
+        try {
+            const traceabilityData = await getBatchTraceabilityAction(batch_id);
+            if (traceabilityData.success && traceabilityData.data) {
+                const enterpriseDTO = mapToEnterpriseReport(traceabilityData.data);
+
+                // Inject audit reason into report metadata
+                const reportMetadata = {
+                    ...enterpriseDTO,
+                    audit: {
+                        action: "REJECTION",
+                        performed_by: user.id,
+                        timestamp: new Date().toISOString(),
+                        justification: reason || "Rejection Decision",
+                        signed: !!password
+                    }
+                };
+
+                await supabase.from("generated_reports").insert({
+                    organization_id: profile.organization_id!,
+                    plant_id: profile.plant_id!,
+                    report_type: "REJECTION",
+                    entity_type: "batch",
+                    entity_id: batch_id,
+                    report_number: `BRJ-${enterpriseDTO.header.batchCode}`,
+                    title: "Production Batch Rejection Report",
+                    report_data: reportMetadata as any,
+                    generated_by: user.id,
+                    status: "signed",
+                    signed_by: user.id,
+                    signed_at: new Date().toISOString()
+                });
+            }
+        } catch (snapError) {
+            console.error("SNAPSHOT ERROR (Non-blocking):", snapError);
+        }
     }
 
     revalidatePath("/production");
     revalidatePath(`/production/${batch_id}`);
     return { success: true, message: `Lote ${action === "release" ? "Liberado" : "Rejeitado"} com sucesso.` };
+}
+
+/**
+ * Start Batch Execution (Gatekeeper Pattern)
+ */
+export async function startBatchExecutionAction(batchId: string) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+    const profile = await getCurrentUser();
+    if (!profile) throw new Error("Profile not found");
+
+    const orchestrator = new ProductionOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    try {
+        const batch = await orchestrator.startBatchExecution(batchId);
+        revalidatePath("/production");
+        revalidatePath(`/production/${batchId}`);
+        return { success: true, data: batch };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}
+
+/**
+ * Log Production Event (Execution Control)
+ */
+export async function logProductionEventAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+    const profile = await getCurrentUser();
+    if (!profile) throw new Error("Profile not found");
+
+    const rawData = {
+        production_batch_id: formData.get("production_batch_id"),
+        event_type: formData.get("event_type"),
+        reason_code: formData.get("reason_code") || undefined,
+        metadata: formData.get("metadata") ? JSON.parse(formData.get("metadata") as string) : {},
+    };
+
+    const validation = LogEventSchema.safeParse(rawData);
+    if (!validation.success) throw new Error(validation.error.issues[0].message);
+
+    const orchestrator = new ProductionOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    await orchestrator.logExecutionEvent(
+        validation.data.production_batch_id,
+        validation.data.event_type as any,
+        {
+            ...validation.data.metadata,
+            reason_code: validation.data.reason_code
+        }
+    );
+
+    revalidatePath("/production");
+    revalidatePath(`/production/${validation.data.production_batch_id}`);
+    return { success: true, message: `Evento ${validation.data.event_type} registado.` };
+}
+
+/**
+ * Execution Heartbeat (State-Aware Reminders)
+ */
+export async function processSamplingHeartbeatAction(batchId: string) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+    const profile = await getCurrentUser();
+    if (!profile) throw new Error("Profile not found");
+
+    const sampling = new SamplingOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    const result = await sampling.processSamplingHeartbeat(batchId);
+
+    if (result.samples_created && result.samples_created > 0) {
+        revalidatePath("/production");
+        revalidatePath(`/production/${batchId}`);
+        revalidatePath("/lab");
+    }
+
+    return result;
+}
+
+/**
+ * Update Scrap and Rework quantities for a batch
+ */
+export async function updateScrapReworkAction(formData: FormData) {
+    const user = await requirePermission('production', 'write');
+    const supabase = await createClient();
+    const profile = await getCurrentUser();
+    if (!profile) throw new Error("Profile not found");
+
+    const rawData = {
+        production_batch_id: formData.get("production_batch_id"),
+        scrap_quantity: formData.get("scrap_quantity"),
+        rework_quantity: formData.get("rework_quantity"),
+    };
+
+    const validation = UpdateScrapReworkSchema.safeParse(rawData);
+    if (!validation.success) throw new Error(validation.error.issues[0].message);
+
+    const { error } = await supabase
+        .from("production_batches")
+        .update({
+            scrap_quantity: validation.data.scrap_quantity,
+            rework_quantity: validation.data.rework_quantity,
+        })
+        .eq("id", validation.data.production_batch_id)
+        .eq("organization_id", profile.organization_id);
+
+    if (error) throw new Error(error.message);
+
+    // Also log an event for audit
+    const orchestrator = new ProductionOrchestratorService(supabase, {
+        organization_id: profile.organization_id!,
+        user_id: user.id,
+        role: profile.role,
+        plant_id: profile.plant_id!,
+        correlation_id: crypto.randomUUID()
+    });
+
+    await orchestrator.logExecutionEvent(
+        validation.data.production_batch_id,
+        'waste',
+        {
+            scrap_quantity: validation.data.scrap_quantity,
+            rework_quantity: validation.data.rework_quantity,
+            message: "KPIs de produção atualizados."
+        }
+    );
+
+    revalidatePath(`/production/${validation.data.production_batch_id}`);
+    return { success: true, message: "KPIs de produção atualizados com sucesso." };
 }

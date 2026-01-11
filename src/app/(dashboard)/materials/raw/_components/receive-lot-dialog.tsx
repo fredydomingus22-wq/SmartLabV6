@@ -107,12 +107,12 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-lg shadow-emerald-900/20 font-semibold tracking-wide border border-transparent hover:border-emerald-400/30 transition-all duration-300">
                     <Plus className="h-4 w-4 mr-2" />
-                    Novo Lote
+                    Receber Lote
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-slate-950 border-slate-800 max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[600px] bg-slate-950 border-slate-800 max-h-[90vh] overflow-y-auto shadow-2xl shadow-emerald-900/10">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Layers className="h-5 w-5 text-blue-400" />
@@ -173,7 +173,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                     <FormItem>
                                         <FormLabel>Código do Lote</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: LOT-2023-001" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: LOT-2023-001" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -187,7 +187,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                         <FormItem>
                                             <FormLabel>Qtd Recebida</FormLabel>
                                             <FormControl>
-                                                <Input type="number" step="0.01" {...field} className="bg-slate-900 border-slate-800" />
+                                                <Input type="number" step="0.01" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -200,7 +200,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                         <FormItem>
                                             <FormLabel>Unidade</FormLabel>
                                             <FormControl>
-                                                <Input {...field} className="bg-slate-900 border-slate-800" />
+                                                <Input {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -246,7 +246,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                     <FormItem>
                                         <FormLabel>Nº Certificado / COA</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: COA-9988" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: COA-9988" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -259,7 +259,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                     <FormItem>
                                         <FormLabel>Local de Armazenamento</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: Armazém MP - Prateleira A1" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: Armazém MP - Prateleira A1" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -287,7 +287,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                                         <Textarea
                                             placeholder="Observações adicionais..."
                                             {...field}
-                                            className="bg-slate-900 border-slate-800 min-h-[60px]"
+                                            className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all text-slate-100 min-h-[60px]"
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -299,7 +299,7 @@ export function ReceiveLotDialog({ plantId, materials, suppliers }: ReceiveLotDi
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>
                                 Cancelar
                             </Button>
-                            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-900/20 border border-transparent hover:border-emerald-400/30 transition-all duration-300">
                                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 Receber Lote
                             </Button>

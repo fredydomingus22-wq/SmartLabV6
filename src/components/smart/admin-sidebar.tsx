@@ -35,6 +35,7 @@ const adminMenuItems = [
         children: [
             { href: "/saas/tenants", label: "Gestão de Instâncias" },
             { href: "/saas/plans", label: "Planos & Tiers" },
+            { href: "/quality/sampling-plans", label: "Planos de Amostragem" },
         ]
     },
     {

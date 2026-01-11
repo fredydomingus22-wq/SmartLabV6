@@ -44,6 +44,7 @@ interface DataTableProps<TData, TValue> {
     isLoading?: boolean;
     filterColumn?: string;
     searchPlaceholder?: string;
+    className?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -57,6 +58,7 @@ export function DataTable<TData, TValue>({
     onSortingChange: externalOnSortingChange,
     columnFilters: externalColumnFilters,
     onColumnFiltersChange: externalOnColumnFiltersChange,
+    className,
 }: DataTableProps<TData, TValue>) {
     const [internalSorting, setInternalSorting] = React.useState<SortingState>([]);
     const [internalColumnFilters, setInternalColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -138,7 +140,7 @@ export function DataTable<TData, TValue>({
             </div>
 
             {/* Table */}
-            <div className="rounded-md border bg-card">
+            <div className={`rounded-md border bg-card ${className}`}>
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (

@@ -1,11 +1,26 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, Clock, FlaskConical, Microscope, Beaker, Factory, RefreshCw, ShieldAlert, Plus, ArrowRight, Package } from "lucide-react";
+import {
+    ClipboardCheck,
+    FlaskConical,
+    Microscope,
+    Beaker,
+    Factory,
+    RefreshCw,
+    ShieldAlert,
+    Plus,
+    ArrowRight,
+    Package,
+    CheckCircle
+} from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { IndustrialCard, IndustrialGrid } from "@/components/shared/industrial-card";
+import { IndustrialChart } from "@/components/shared/industrial-chart";
+import { PremiumListItem } from "@/components/dashboard/premium-list-item";
+import type { EChartsOption } from "echarts";
+import { Box, Typography } from "@mui/material";
 
 interface AnalystViewProps {
     user: any;
@@ -18,153 +33,188 @@ export function AnalystView({ user, stats, assignments, activity }: AnalystViewP
     const isMicro = user.role === 'micro_analyst';
     const isLab = user.role === 'lab_analyst';
 
+    const getSparklineOption = (color: string, data: number[]): EChartsOption => ({
+        xAxis: { type: "category", show: false },
+        yAxis: { type: "value", show: false, min: "dataMin", max: "dataMax" },
+        tooltip: {
+            show: true,
+            trigger: "axis",
+            formatter: (params: any) => `<b>${params[0].value}</b>`,
+            position: ["50%", "-10%"],
+            backgroundColor: "rgba(15, 23, 42, 0.9)",
+            padding: [4, 8],
+            className: "border-white/10"
+        },
+        series: [{
+            type: "line",
+            data,
+            smooth: 0.4,
+            showSymbol: false,
+            lineStyle: { color, width: 2.5 },
+            areaStyle: {
+                color: {
+                    type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [
+                        { offset: 0, color: color },
+                        { offset: 1, color: 'rgba(0,0,0,0)' }
+                    ]
+                },
+                opacity: 0.2
+            }
+        }],
+        grid: { left: -10, right: -10, top: 0, bottom: 0 }
+    });
+
     return (
-        <div className="space-y-6">
-            {/* Quick Actions Bar */}
-            <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm" className="glass-primary">
+        <Box className="space-y-10">
+            {/* Quick Actions */}
+            <Box className="flex flex-wrap gap-3">
+                <Button asChild className="h-11 px-6 rounded-xl glass-primary shadow-lg shadow-primary/20 hover:scale-105 transition-all">
                     <Link href="/lab?create=true">
-                        <Plus className="h-4 w-4 mr-1" /> Nova Amostra
+                        <Plus className="h-4 w-4 mr-2" /> Nova Amostra
                     </Link>
                 </Button>
                 {isLab && (
                     <>
-                        <Button asChild size="sm" variant="outline" className="glass border-blue-500/20 hover:bg-blue-500/10">
+                        <Button asChild variant="outline" className="h-11 px-6 rounded-xl glass border-blue-500/20 hover:bg-blue-500/10 transition-all">
                             <Link href="/production">
-                                <Factory className="h-4 w-4 mr-1" /> Produção
+                                <Factory className="h-4 w-4 mr-2 text-blue-400" /> Produção MES
                             </Link>
                         </Button>
-                        <Button asChild size="sm" variant="outline" className="glass border-cyan-500/20 hover:bg-cyan-500/10">
+                        <Button asChild variant="outline" className="h-11 px-6 rounded-xl glass border-cyan-500/20 hover:bg-cyan-500/10 transition-all">
                             <Link href="/cip/register">
-                                <RefreshCw className="h-4 w-4 mr-1" /> Registar CIP
-                            </Link>
-                        </Button>
-                        <Button asChild size="sm" variant="outline" className="glass border-orange-500/20 hover:bg-orange-500/10">
-                            <Link href="/haccp/pcc">
-                                <ShieldAlert className="h-4 w-4 mr-1" /> Monitorar PCC
+                                <RefreshCw className="h-4 w-4 mr-2 text-cyan-400" /> Registar CIP
                             </Link>
                         </Button>
                     </>
                 )}
-            </div>
+            </Box>
 
-            {/* Stats Grid - Lab Analyst Specific */}
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                <Card className="glass border-orange-500/20 bg-orange-500/5">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium flex items-center gap-2 text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5 text-orange-400" />
-                            Pendentes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <span className="text-2xl font-bold text-orange-400">{stats.roleAlerts || stats.pendingSamples}</span>
-                    </CardContent>
-                </Card>
-                <Card className="glass border-blue-500/20">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium flex items-center gap-2 text-muted-foreground">
-                            <Beaker className="h-3.5 w-3.5 text-blue-400" />
-                            Em Análise
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <span className="text-2xl font-bold text-blue-400">{stats.inAnalysis}</span>
-                    </CardContent>
-                </Card>
-                {isLab && (
-                    <>
-                        <Card className="glass border-cyan-500/20">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs font-medium flex items-center gap-2 text-muted-foreground">
-                                    <RefreshCw className="h-3.5 w-3.5 text-cyan-400" />
-                                    CIP Pendente
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <span className="text-2xl font-bold text-cyan-400">{stats.cipActive || 0}</span>
-                            </CardContent>
-                        </Card>
-                        <Card className={cn("glass", stats.recentDeviations > 0 ? "border-red-500/30 bg-red-500/5" : "border-emerald-500/20")}>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs font-medium flex items-center gap-2 text-muted-foreground">
-                                    <ShieldAlert className={cn("h-3.5 w-3.5", stats.recentDeviations > 0 ? "text-red-400" : "text-emerald-400")} />
-                                    Desvios PCC
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <span className={cn("text-2xl font-bold", stats.recentDeviations > 0 ? "text-red-400" : "text-emerald-400")}>{stats.recentDeviations || 0}</span>
-                            </CardContent>
-                        </Card>
-                    </>
-                )}
-            </div>
+            {/* Stats Grid */}
+            <IndustrialGrid cols={4}>
+                <IndustrialCard
+                    variant="analytics"
+                    title="Amostras Pendentes"
+                    value={(stats.roleAlerts || stats.pendingSamples).toString()}
+                    description="Aguardando início de análise"
+                    tooltip="Total de amostras registradas que ainda não iniciaram o processo analítico."
+                    status={(stats.roleAlerts > 10) ? "error" : "warning"}
+                >
+                    <IndustrialChart option={getSparklineOption("#f97316", [8, 12, 7, 15, 12, 18, 14])} height="100%" />
+                </IndustrialCard>
 
-            {/* Assignments List */}
-            <Card className="glass overflow-hidden">
-                <CardHeader className="border-b border-slate-800/50 bg-slate-900/20 flex flex-row items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <ClipboardCheck className="h-4 w-4 text-orange-400" />
-                        Minha Fila de Trabalho
-                    </CardTitle>
-                    <Button asChild variant="ghost" size="sm" className="text-xs">
-                        <Link href={isMicro ? "/micro/samples" : "/lab"}>
-                            Ver Todas <ArrowRight className="h-3 w-3 ml-1" />
-                        </Link>
-                    </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="divide-y divide-slate-800/50">
-                        {assignments.length === 0 && (
-                            <div className="p-6 text-center text-muted-foreground text-sm">
-                                Sem tarefas pendentes. Bom trabalho! 🎉
-                            </div>
+                <IndustrialCard
+                    variant="analytics"
+                    title="Em Análise"
+                    value={stats.inAnalysis.toString()}
+                    description="Em processamento no laboratório"
+                    tooltip="Amostras que já iniciaram a fase de bancada e leitura de resultados."
+                >
+                    <IndustrialChart option={getSparklineOption("#3b82f6", [5, 8, 4, 10, 6, 9, 7])} height="100%" />
+                </IndustrialCard>
+
+                <IndustrialCard
+                    variant="analytics"
+                    title="Lead Time Médio"
+                    value={`${stats.avgLeadTime ? stats.avgLeadTime.toFixed(1) : '0.0'}h`}
+                    description="Ciclo total (Registro -> Liberação)"
+                    tooltip="Tempo médio decorrido desde a coleta até a assinatura final do resultado."
+                    trend={{ value: Math.abs(stats.trends?.leadTime || 0), isPositive: (stats.trends?.leadTime || 0) >= 0 }}
+                >
+                    <IndustrialChart option={getSparklineOption("#06b6d4", [4, 6, 3, 5, 4, 6, 2])} height="100%" />
+                </IndustrialCard>
+
+                <IndustrialCard
+                    variant="analytics"
+                    title="SLA de Turno"
+                    value={`${stats.slaCompliance ? stats.slaCompliance.toFixed(1) : '100'}%`}
+                    description="Amostras aprovadas em < 8h"
+                    tooltip="Percentual de amostras concluídas dentro da janela de 8 horas do turno."
+                    trend={{ value: Math.abs(stats.trends?.sla || 0), isPositive: (stats.trends?.sla || 0) >= 0 }}
+                >
+                    <IndustrialChart option={getSparklineOption("#8b5cf6", [95, 98, 96, 99, 97, 98, 99])} height="100%" />
+                </IndustrialCard>
+            </IndustrialGrid>
+
+            {/* Main Content */}
+            <Box className="grid gap-8 lg:grid-cols-3">
+                <Box className="lg:col-span-2 space-y-6">
+                    <Box className="flex justify-between items-center px-1">
+                        <Typography className="text-xl font-bold flex items-center gap-2 text-white">
+                            <ClipboardCheck className="h-5 w-5 text-blue-500" />
+                            Minha Fila de Trabalho
+                        </Typography>
+                        <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                            <Link href={isMicro ? "/micro/samples" : "/lab"}>
+                                Ver fila completa <ArrowRight className="h-4 w-4 ml-2" />
+                            </Link>
+                        </Button>
+                    </Box>
+
+                    <IndustrialCard bodyClassName="p-0">
+                        {assignments.length === 0 ? (
+                            <Box className="p-20 text-center text-muted-foreground">
+                                <Box className="p-4 rounded-full bg-emerald-500/10 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <CheckCircle className="h-8 w-8 text-emerald-500" />
+                                </Box>
+                                <Typography className="text-lg font-medium">Tudo em dia!</Typography>
+                                <Typography className="text-sm">Sem tarefas pendentes agora.</Typography>
+                            </Box>
+                        ) : (
+                            <Box className="divide-y divide-white/5">
+                                {assignments.map((task: any) => (
+                                    <PremiumListItem
+                                        key={task.id}
+                                        title={task.title}
+                                        subtitle={task.subtitle}
+                                        time={new Date(task.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        icon={
+                                            task.type === 'micro' ? <Microscope className="h-6 w-6" /> :
+                                                task.type === 'batch' ? <Package className="h-6 w-6" /> : <Beaker className="h-6 w-6" />
+                                        }
+                                        variant={task.type === 'micro' ? "warning" : task.type === 'batch' ? "success" : "info"}
+                                        href={task.type === 'micro' ? `/micro/reading` : `/lab/samples/${task.id}`}
+                                    />
+                                ))}
+                            </Box>
                         )}
-                        {assignments.map((task: any) => (
-                            <Link
-                                key={task.id}
-                                href={task.type === 'micro' ? `/micro/reading` : `/lab/samples/${task.id}`}
-                                className="flex items-center justify-between p-4 hover:bg-slate-900/30 transition-colors group"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={cn(
-                                        "p-2 rounded-lg",
-                                        task.type === 'micro' ? "bg-purple-500/10" :
-                                            task.type === 'batch' ? "bg-emerald-500/10" : "bg-blue-500/10"
-                                    )}>
-                                        {task.type === 'micro' ? <Microscope className="h-4 w-4 text-purple-400" /> :
-                                            task.type === 'batch' ? <Package className="h-4 w-4 text-emerald-400" /> : <Beaker className="h-4 w-4 text-blue-400" />}
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="font-bold text-slate-100">{task.title}</span>
-                                        <span className="text-xs text-slate-400">{task.subtitle}</span>
-                                    </div>
-                                </div>
-                                <Clock className="h-4 w-4 text-slate-600 group-hover:text-orange-400 transition-colors" />
-                            </Link>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+                    </IndustrialCard>
+                </Box>
 
-            {/* Recent Samples */}
-            <Card className="glass overflow-hidden">
-                <CardHeader className="border-b border-slate-800/50">
-                    <CardTitle className="text-sm">Atividade Recente</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="divide-y divide-slate-800/50">
-                        {activity.recentSamples.map((sample: any) => (
-                            <div key={sample.id} className="flex items-center justify-between p-3 px-4">
-                                <span className="font-mono text-xs">{sample.code}</span>
-                                <Badge variant="outline" className="text-[10px] capitalize">
-                                    {sample.status.replace("_", " ")}
-                                </Badge>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                <Box className="space-y-6">
+                    <Typography className="text-xl font-bold flex items-center gap-2 px-1 text-white">
+                        <FlaskConical className="h-5 w-5 text-blue-500" />
+                        Atividade Recente
+                    </Typography>
+                    <IndustrialCard bodyClassName="p-0">
+                        <Box className="divide-y divide-white/5">
+                            {activity.recentSamples.map((sample: any) => (
+                                <PremiumListItem
+                                    key={sample.id}
+                                    title={sample.code}
+                                    subtitle="Registado recentemente"
+                                    status={sample.status.replace("_", " ")}
+                                    variant="default"
+                                />
+                            ))}
+                        </Box>
+                    </IndustrialCard>
+
+                    <Box className="p-5 rounded-2xl glass border-red-500/20 bg-red-500/5 relative overflow-hidden group">
+                        <Box className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
+                            <ShieldAlert className="h-16 w-16 text-red-500" />
+                        </Box>
+                        <Typography className="text-sm font-bold text-red-400 uppercase tracking-widest mb-1">Status Crítico</Typography>
+                        <Typography className="text-2xl font-black tracking-tighter mb-2 text-white">{stats.recentDeviations || 0} NCs</Typography>
+                        <Typography className="text-xs text-slate-400 leading-relaxed">
+                            Desvios CCP registrados nas últimas 24h.
+                        </Typography>
+                        <Button variant="link" className="text-red-400 p-0 h-auto mt-3 text-xs font-bold uppercase tracking-widest">
+                            Ver Desvios →
+                        </Button>
+                    </Box>
+                </Box>
+            </Box>
+        </Box>
     );
 }

@@ -56,15 +56,31 @@ export default async function SampleDetailPage({ params }: PageProps) {
     let sampleQuery = supabase
         .from("samples")
         .select(`
-            *,
+            id,
+            code,
+            collection_date,
+            collected_at: collection_date,
+            description,
+            organization_id,
+            status,
+            collected_by,
+            validated_by,
+            validated_at,
+            notes,
+            attachment_url,
+            sample_type_id,
+            production_batch_id,
+            intermediate_product_id,
+            spec_version_id,
             type: sample_types(id, name, code),
             batch: production_batches(
-                id, code,
+                id, code, product_id,
                 product: products(id, name, sku)
             ),
             intermediate_product: intermediate_products(
                 id, code, status,
-                equipment_id,
+                tank_id,
+                product_id,
                 batch: production_batches(
                     id, code,
                     product: products(id, name, sku) 
@@ -90,23 +106,32 @@ export default async function SampleDetailPage({ params }: PageProps) {
         `)
         .eq("id", id);
 
-    // Apply strict category filtering based on role (Segregated Compliance)
-    if (userRole === 'lab_analyst') {
-        // Lab analysts see everything EXCEPT microbiological
-        sampleQuery = sampleQuery.filter('lab_analysis.parameter.category', 'neq', 'microbiological');
-    } else if (userRole === 'micro_analyst') {
-        // Micro analysts ONLY see microbiological
-        sampleQuery = sampleQuery.filter('lab_analysis.parameter.category', 'eq', 'microbiological');
-    }
+    // Apply status-based filtering or other root-level filters here
+    // CRITICAL: We DO NOT filter by nested resource categories (e.g. lab_analysis.parameter.category) 
+    // in the root .single() query, as this causes PostgREST row multiplication and fails the .single() constraint.
+    // Filtering is handled in the JS layer below.
 
     const { data: sample, error: sampleError } = await sampleQuery.single();
 
     if (sampleError || !sample) {
-        console.error("Sample fetch error:", sampleError);
+        console.error("Sample fetch error:", {
+            error: sampleError,
+            message: sampleError?.message,
+            code: sampleError?.code,
+            id
+        });
         notFound();
     }
 
-    const analysesRaw = (sample as any).lab_analysis || [];
+    const allAnalyses = (sample as any).lab_analysis || [];
+
+    // Apply role-based filtering in application layer to prevent query multiplication
+    const analysesRaw = allAnalyses.filter((a: any) => {
+        const category = Array.isArray(a.parameter) ? a.parameter[0]?.category : a.parameter?.category;
+        if (userRole === 'lab_analyst') return category !== 'microbiological';
+        if (userRole === 'micro_analyst') return category === 'microbiological';
+        return true;
+    });
 
     // Fetch AI Insights
     const analysisIds = analysesRaw.map((a: any) => a.id);
@@ -119,6 +144,17 @@ export default async function SampleDetailPage({ params }: PageProps) {
             .in("entity_id", analysisIds);
         insights = data || [];
     }
+
+    // Fetch Sample Global Insight
+    const { data: sampleInsightData } = await supabase
+        .from("ai_insights")
+        .select("*")
+        .eq("entity_type", "sample")
+        .eq("entity_id", sample.id)
+        .single();
+
+    const sampleInsight = sampleInsightData || null;
+
     const insightsMap = new Map(insights.map(i => [i.entity_id, i]));
 
     // Normalize analyses to ensure parameter and analyst are objects (not arrays)
@@ -151,17 +187,34 @@ export default async function SampleDetailPage({ params }: PageProps) {
         : { data: null };
     const validatedByName = validatedUser?.full_name || "Unknown";
 
+    // Resolve Product Authority based on Sample Type (Strict Scoping)
+    // CORRECTED LOGIC: FP samples ALWAYS use Batch Product. IP samples use IP Product.
+    const sampleType = Array.isArray(sample.type) ? sample.type[0] : sample.type;
+    const sampleTypeCode = sampleType?.code || "";
+    const isFinishedProduct = sampleTypeCode.startsWith("FP");
+    const isIntermediate = sampleTypeCode.startsWith("IP") || (!!sample.intermediate_product_id && !isFinishedProduct);
+
+
+    const batchData: any = Array.isArray(sample.batch) ? sample.batch[0] : sample.batch;
+    const ipData: any = Array.isArray(sample.intermediate_product) ? sample.intermediate_product[0] : sample.intermediate_product;
+    const samplingPointData: any = Array.isArray(sample.sampling_point) ? sample.sampling_point[0] : sample.sampling_point;
+
+    // AI Status constant for UI
+    const aiStatus = sampleInsight?.status;
+
     // Level 2 - Technical Storage Info (Separate fetch due to missing DB FK)
-    const { data: ipEquipment } = sample.intermediate_product?.equipment_id
-        ? await supabase.from("equipments").select("id, name, code").eq("id", sample.intermediate_product.equipment_id).single()
+    const { data: ipEquipment } = ipData?.tank_id
+        ? await supabase.from("equipments").select("id, name, code").eq("id", ipData.tank_id).single()
         : { data: null };
 
-    // Resolve Product Authority (Strict Scoping)
-    // If it's a Tank/Intermediate sample, follow the tank's recipe.
-    const isIntermediate = !!sample.intermediate_product_id;
-    const productId = isIntermediate
-        ? sample.intermediate_product?.product_id
-        : (sample.batch?.product?.id || sample.intermediate_product?.batch?.product?.id);
+    let productId = null;
+    if (isFinishedProduct) {
+        productId = batchData?.product_id || (Array.isArray(batchData?.product) ? batchData?.product[0]?.id : batchData?.product?.id);
+    } else if (isIntermediate) {
+        productId = ipData?.product_id || batchData?.product_id;
+    } else {
+        productId = batchData?.product_id;
+    }
 
     let specs: Record<string, {
         min_value?: number;
@@ -194,7 +247,9 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
     if (productId) {
         // Path A: Product-guided spec
-        specQuery = specQuery.eq("product_id", productId);
+        specQuery = specQuery
+            .eq("product_id", productId)
+            .or(`sample_type_id.eq.${sample.sample_type_id},sample_type_id.is.null`);
     } else {
         // Path B: General spec (Environment/Plant)
         specQuery = specQuery.eq("sample_type_id", sample.sample_type_id);
@@ -292,18 +347,18 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                                 {sample.code}
                                             </h1>
                                             {getStatusBadge(sample.status)}
-                                            {sample.ai_risk_status && (
-                                                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
+                                            {aiStatus && (
+                                                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[aiStatus].bg, riskConfig[aiStatus].color)}>
                                                     {(() => {
-                                                        const Icon = riskConfig[sample.ai_risk_status].icon;
+                                                        const Icon = riskConfig[aiStatus].icon;
                                                         return <Icon className="h-3 w-3 inline mr-1" />;
                                                     })()}
-                                                    IA: {riskConfig[sample.ai_risk_status].label}
+                                                    IA: {riskConfig[aiStatus].label}
                                                 </div>
                                             )}
                                         </div>
                                         <p className="text-lg text-slate-400 font-medium tracking-wide">
-                                            {sample.type?.name || "Tipo Desconhecido"}
+                                            {sampleType?.name || "Tipo Desconhecido"}
                                         </p>
                                     </div>
                                 </div>
@@ -347,8 +402,8 @@ export default async function SampleDetailPage({ params }: PageProps) {
                                                     sample={{
                                                         id: sample.id,
                                                         sample_code: sample.code || 'N/A',
-                                                        product_name: sample.batch?.product?.name || 'Unknown Product',
-                                                        batch_code: sample.batch?.code || 'N/A',
+                                                        product_name: batchData?.product?.name || (Array.isArray(batchData?.product) ? batchData?.product[0]?.name : 'Unknown Product'),
+                                                        batch_code: batchData?.code || 'N/A',
                                                         collection_date: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
                                                         description: sample.description || undefined
                                                     }}
@@ -409,10 +464,10 @@ export default async function SampleDetailPage({ params }: PageProps) {
                         </div>
                         <div className="space-y-1">
                             <div className="font-mono text-2xl font-bold text-slate-100 tracking-tight">
-                                {sample.batch?.code || "—"}
+                                {batchData?.code || "—"}
                             </div>
                             <div className="text-sm text-slate-400 font-medium truncate">
-                                {sample.batch?.product?.name || "Sem Produto Associado"}
+                                {batchData?.product?.name || (Array.isArray(batchData?.product) ? batchData?.product[0]?.name : "Sem Produto Associado")}
                             </div>
                         </div>
                     </div>
@@ -429,10 +484,10 @@ export default async function SampleDetailPage({ params }: PageProps) {
                         </div>
                         <div className="space-y-1">
                             <div className="text-xl font-bold text-slate-100">
-                                {sample.sampling_point?.name || "Geral"}
+                                {samplingPointData?.name || "Geral"}
                             </div>
                             <div className="text-sm text-slate-400 font-medium">
-                                {sample.sampling_point?.location || "Localização N/D"}
+                                {samplingPointData?.location || "Localização N/D"}
                             </div>
                         </div>
                     </div>
@@ -473,10 +528,10 @@ export default async function SampleDetailPage({ params }: PageProps) {
                             </div>
                             <div className="flex flex-col">
                                 <div className="font-mono text-slate-100 font-bold text-lg leading-none mb-1">
-                                    {sample.intermediate_product.code}
+                                    {ipData?.code}
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
-                                    {sample.intermediate_product.batch?.product?.name || "Produto N/D"}
+                                    {ipData?.batch?.product?.name || "Produto N/D"}
                                 </div>
                             </div>
                         </div>
@@ -498,7 +553,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
                         <div className="flex items-center gap-3">
                             <Badge className="bg-slate-800 text-slate-300 border-slate-700 py-1 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                                {sample.intermediate_product.status}
+                                {ipData?.status}
                             </Badge>
                         </div>
                     </div>

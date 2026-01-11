@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
+import { UUID } from "crypto";
 
 /**
  * Get all production batches with metadata
@@ -229,6 +230,7 @@ export async function getProducts() {
     if (error) throw error;
     return data;
 }
+
 /**
  * Get the latest CIP status for a piece of equipment
  * Returns { isClean: boolean, lastCipDate?: string, validationStatus?: string }
@@ -241,7 +243,7 @@ export async function getEquipmentCIPStatus(equipmentId: string | UUID) {
         .from("cip_executions")
         .select("id, status, validation_status, end_time")
         .eq("organization_id", user.organization_id)
-        .eq("equipment_id", equipmentId.toString())
+        .eq("equipment_uid", equipmentId.toString())
         .order("end_time", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -262,9 +264,36 @@ export async function getEquipmentCIPStatus(equipmentId: string | UUID) {
         isClean,
         lastCipDate: latestCip.end_time,
         validationStatus: latestCip.validation_status,
-        status: latestCip.status
+        message: isClean ? "Higiene Validada" : "Higiene Não Validada"
     };
 }
 
-import { UUID } from "crypto";
+/**
+ * Get production events for a batch (stoppages, breakdowns, etc.)
+ */
+export async function getProductionEvents(batchId: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
 
+    const { data, error } = await supabase
+        .from("production_events")
+        .select(`
+            id,
+            event_type,
+            metadata,
+            timestamp,
+            performed_by,
+            user:user_profiles!production_events_performed_by_fkey(full_name)
+        `)
+        .eq("organization_id", user.organization_id)
+        .eq("production_batch_id", batchId)
+        .order("timestamp", { ascending: false });
+
+    if (error) throw error;
+
+    // Normalize user data if needed
+    return data?.map(event => ({
+        ...event,
+        user_name: (event.user as any)?.full_name || "Sistema"
+    })) || [];
+}

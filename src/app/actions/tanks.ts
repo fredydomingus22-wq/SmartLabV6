@@ -54,7 +54,7 @@ export async function getTankWithContentAction(id: string) {
             ),
             product:products(id, name, sku)
         `)
-        .eq("equipment_id", id)
+        .eq("tank_id", id)
         .in("status", ["pending", "approved", "in_use"])
         .order("created_at", { ascending: false })
         .limit(1)
@@ -68,7 +68,7 @@ export async function getTankWithContentAction(id: string) {
             product:products(name),
             batch:production_batches(code)
         `, { count: "exact" })
-        .eq("equipment_id", id)
+        .eq("tank_id", id)
         .order("created_at", { ascending: false })
         .limit(10);
 

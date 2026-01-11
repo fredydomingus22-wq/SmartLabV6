@@ -57,25 +57,8 @@ export function SearchableSelect({
     const value = isControlled ? controlledValue : internalValue;
 
     const handleSelect = (currentValue: string) => {
-        // Command onSelect returns the value (which is label in our case because we set value={option.label})
-        // OR the text content if value not set.
-        // We need to match it back to the ID.
-
-        // Wait, CommandItem `value` prop is the search value.
-        // If we set `value={option.label}`, we search by label.
-        // We need to map back label -> option.value (ID).
-        // But what if labels are not unique? Ideally they should be unique enough for search.
-
-        // Alternative: Pass `option.value` (ID) as `value` to CommandItem.
-        // THEN `keywords={[option.label]}` for search? No, Shadcn Command uses value for search if keywords not supported.
-        // Shadcn Command usually filters by `value` AND `children` text content if using cmkdk?
-        // Let's assume standard Shadcn behavior: it filters by the `value` prop.
-
-        // If we put the LABEL as the value prop, search works great.
-        // But then we need to lookup the ID.
-
-        const selectedOption = options.find(o => o.label.toLowerCase() === currentValue.toLowerCase());
-        const newValue = selectedOption ? selectedOption.value : "";
+        // currentValue is now the ID (option.value)
+        const newValue = currentValue;
 
         if (!isControlled) {
             setInternalValue(newValue);
@@ -112,8 +95,9 @@ export function SearchableSelect({
                                 {options.map((option) => (
                                     <CommandItem
                                         key={option.value}
-                                        value={option.label} // Use label for searchable text
-                                        onSelect={handleSelect}
+                                        value={option.value} // Use ID as value for definitive mapping
+                                        onSelect={(currentValue) => handleSelect(currentValue)}
+                                        keywords={[option.label]} // Still allow searching by label
                                     >
                                         <Check
                                             className={cn(

@@ -12,7 +12,8 @@ import {
     FlaskConical,
     Activity,
     Eye,
-    MoreHorizontal
+    MoreHorizontal,
+    Settings2
 } from "lucide-react";
 import Link from "next/link";
 import { ParameterDialog } from "./parameter-dialog";
@@ -86,6 +87,12 @@ export default async function ParametersPage({ searchParams }: PageProps) {
             color: "text-slate-400",
             icon: Activity,
             gradient: "from-slate-500/20 to-gray-500/5 hover:to-gray-500/10"
+        },
+        process: {
+            label: "Processo / Engenharia",
+            color: "text-amber-400",
+            icon: Settings2,
+            gradient: "from-amber-500/20 to-yellow-500/5 hover:to-yellow-500/10"
         }
     };
 

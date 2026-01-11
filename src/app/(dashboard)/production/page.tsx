@@ -1,12 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { CreateBatchDialog } from "./create-batch-dialog";
-import { ProductionCharts } from "./production-charts";
-import { ProductionPageClient } from "./production-page-client";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Activity, CheckCircle2, ShieldAlert, BrainCircuit, BarChart3, TrendingUp, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Clock, Activity, Plus } from "lucide-react";
+import { ProductionDashboard } from "./production-dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +26,7 @@ export default async function ProductionPage() {
 
     const { organization_id, plant_id } = profile;
 
-    // 2. Fetch Metadata (Products & Lines)
+    // 2. Fetch Metadata (Products & Lines) - Still useful for context
     const { data: products } = await supabase
         .from("products")
         .select("id, name, sku")
@@ -100,107 +97,40 @@ export default async function ProductionPage() {
     return (
         <div className="flex-1 flex flex-col min-h-screen bg-[#020617] text-slate-100 selection:bg-blue-500/30">
             {/* 🏙️ PREMIUM HEADER */}
-            <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-8 py-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1600px] mx-auto">
+            <header className="sticky top-0 z-40 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-8 py-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1700px] mx-auto">
                     <div className="space-y-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-tighter bg-blue-500/10 text-blue-400 border-blue-500/20 rounded-full animate-pulse-slow">
-                                MES Operator Station
-                            </Badge>
-                            <Badge variant="outline" className="h-7 px-3 text-[10px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-400 border-emerald-500/20 rounded-full">
-                                Plant {profile.plant_id || 'Alpha'}
-                            </Badge>
+                        <div className="flex items-center gap-2 text-primary mb-2">
+                            <Activity className="h-4 w-4" />
+                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Manufacturing Execution System</span>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tighter uppercase flex items-center gap-4">
-                            <div className="h-10 w-1 pt-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full" />
-                            Production <span className="text-slate-500">Queue</span>
+                        <h1 className="text-4xl font-extrabold tracking-tight">
+                            Production Center
                         </h1>
-                        <p className="text-sm text-slate-400 font-medium tracking-tight flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-blue-500/50" />
-                            Batch management and industrial execution logic.
+                        <p className="text-muted-foreground text-lg">
+                            Real-time monitoring, batch execution, and industrial performance.
                         </p>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <CreateBatchDialog
-                            products={products || []}
-                            lines={lines || []}
-                            plantId={plant_id}
-                        />
+                        <Link href="/production/config/shifts">
+                            <Button variant="outline" className="h-11 border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-300 font-bold uppercase text-[10px] tracking-widest px-6 rounded-2xl">
+                                <Clock className="h-4 w-4 mr-2" />
+                                Gestão de Turnos
+                            </Button>
+                        </Link>
+                        <Link href="/production/orders">
+                            <Button className="h-11 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest px-6 rounded-2xl shadow-lg shadow-blue-500/20">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Nova Ordem de Produção
+                            </Button>
+                        </Link>
                     </div>
                 </div>
             </header>
 
-            <main className="flex-1 p-8 space-y-8 max-w-[1600px] mx-auto w-full">
-                {/* 📊 INDUSTRIAL KPI GRID */}
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-                    {[
-                        { label: "Planned", val: stats.planned, color: "blue", icon: Clock },
-                        { label: "In Process", val: stats.inProcess, color: "amber", icon: Activity },
-                        { label: "Finalized", val: stats.completed, color: "purple", icon: CheckCircle2 },
-                        { label: "Blocked", val: stats.blocked, color: "rose", icon: ShieldAlert },
-                        { label: "Released", val: stats.released, color: "emerald", icon: CheckCircle2 },
-                        { label: "Quality Rate", val: `${stats.qualityRate}%`, color: "indigo", icon: BrainCircuit },
-                    ].map((kpi, i) => (
-                        <div key={i} className="group relative glass border border-white/5 rounded-3xl overflow-hidden transition-all duration-500 hover:border-white/10 p-5">
-                            <div className={cn(
-                                "absolute -top-12 -right-12 h-24 w-24 blur-[40px] opacity-10 group-hover:opacity-25 transition-opacity duration-700 rounded-full",
-                                `bg-${kpi.color}-500`
-                            )} />
-
-                            <div className="relative z-10 flex flex-col gap-3">
-                                <div className="flex items-center justify-between">
-                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", `text-${kpi.color}-400`)}>{kpi.label}</p>
-                                    <kpi.icon className={cn("h-3 w-3", `text-${kpi.color}-400`)} />
-                                </div>
-                                <p className="text-3xl font-black tracking-tighter text-slate-100">{kpi.val}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* 📈 STRATEGIC OVERLAYS */}
-                <div className="grid gap-6 md:grid-cols-3">
-                    {[
-                        { label: "Industrial Yield", val: `${stats.yieldRate}%`, icon: "Y", color: "emerald", desc: "Release vs Planned ratio" },
-                        { label: "Average TAT", val: `${stats.avgTAT}h`, icon: "T", color: "blue", desc: "Mean turnaround time" },
-                        { label: "Rejected Batches", val: stats.rejected, icon: "R", color: "rose", desc: "Non-compliant assets" },
-                    ].map((kpi, i) => (
-                        <div key={i} className="flex items-center gap-5 p-6 glass border border-white/5 rounded-[2.5rem] relative overflow-hidden group">
-                            <div className={cn("absolute -left-12 -bottom-12 h-24 w-24 blur-[50px] opacity-5 group-hover:opacity-10 transition-opacity rounded-full", `bg-${kpi.color}-500`)} />
-
-                            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-xl border", `bg-${kpi.color}-500/10 border-${kpi.color}-500/20 text-${kpi.color}-400`)}>
-                                {kpi.icon}
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{kpi.label}</p>
-                                <p className="text-2xl font-black tracking-tighter text-slate-100">{kpi.val}</p>
-                                <p className="text-[9px] font-medium text-slate-400 italic mt-0.5">{kpi.desc}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* 📉 VISUAL ANALYTICS */}
-                <div className="glass border border-white/5 rounded-[2.5rem] p-8 overflow-hidden shadow-2xl relative">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
-                                <TrendingUp className="h-5 w-5 text-indigo-400" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-black tracking-tighter uppercase">Trend Analytics</h2>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Real-time production throughput</p>
-                            </div>
-                        </div>
-                    </div>
-                    <ProductionCharts batches={batchesList} />
-                </div>
-
-                {/* 📑 PRODUCTION QUEUE TABLE */}
-                <div className="glass border border-white/5 rounded-[2.5rem] p-4 shadow-2xl overflow-hidden">
-                    <ProductionPageClient batches={batchesList} />
-                </div>
+            <main className="flex-1 p-8 max-w-[1700px] mx-auto w-full">
+                <ProductionDashboard stats={stats} batchesList={batchesList} />
             </main>
         </div>
     );

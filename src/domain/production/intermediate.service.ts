@@ -1,10 +1,11 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { BaseDomainService } from "../shared/base.service";
 import { DomainResponse } from "../shared/industrial.context";
+import { SamplingService } from "../lab/sampling.service";
 
 export interface CreateIntermediateDTO {
     production_batch_id: string;
-    equipment_id: string;
+    tank_id: string;
     code: string;
     volume?: number;
     unit?: string;
@@ -40,7 +41,7 @@ export class IntermediateDomainService extends BaseDomainService {
             const { data: occupied } = await this.supabase
                 .from("intermediate_products")
                 .select("id, status, code")
-                .eq("equipment_id", dto.equipment_id)
+                .eq("tank_id", dto.tank_id)
                 .in("status", ["pending", "sampling", "in_analysis", "approved", "in_use"]) // Active statuses
                 .maybeSingle();
 
@@ -67,7 +68,7 @@ export class IntermediateDomainService extends BaseDomainService {
                 .select("id")
                 .eq("production_batch_id", dto.production_batch_id)
                 .eq("status", "planned")
-                .is("equipment_id", null)
+                .is("tank_id", null)
                 .limit(1)
                 .maybeSingle();
 
@@ -82,7 +83,7 @@ export class IntermediateDomainService extends BaseDomainService {
                         plant_id: dto.plant_id,
                         product_id: resolvedProductId || null,
                         code: dto.code, // Set the actual Tank Name
-                        equipment_id: dto.equipment_id,
+                        tank_id: dto.tank_id,
                         volume: dto.volume || null,
                         unit: dto.unit || "L",
                         status: "pending", // Activated
@@ -105,7 +106,7 @@ export class IntermediateDomainService extends BaseDomainService {
                         production_batch_id: dto.production_batch_id,
                         product_id: resolvedProductId || null,
                         code: dto.code,
-                        equipment_id: dto.equipment_id,
+                        tank_id: dto.tank_id,
                         volume: dto.volume || null,
                         unit: dto.unit || "L",
                         status: "pending",
@@ -121,10 +122,22 @@ export class IntermediateDomainService extends BaseDomainService {
 
             // 4. Audit
             await this.auditAction('INTERMEDIATE_CREATED', 'intermediate_products', intermediateId, {
-                equipment_id: dto.equipment_id,
+                tank_id: dto.tank_id,
                 productId: resolvedProductId,
                 was_planned: !!plannedSlot
             });
+
+            // 5. Trigger Contextual Sampling Plans
+            // When a new intermediate is created (tank activated), we check if there are any
+            // PROCESS_STEP sampling plans for this specific product.
+            if (resolvedProductId) {
+                const samplingService = new SamplingService(this.supabase, this.context);
+                await samplingService.triggerRequestsFromEvent({
+                    batchId: dto.production_batch_id,
+                    productId: resolvedProductId,
+                    eventAnchor: 'process_step'
+                });
+            }
 
             return this.success({ id: intermediateId }, "Produto intermédio registado/ativado.");
 
@@ -305,4 +318,109 @@ export class IntermediateDomainService extends BaseDomainService {
             return this.failure("Erro ao finalizar consumo.", error.message);
         }
     }
+
+    /**
+     * Links a raw material lot to an intermediate product.
+     * Handles transactional inventory debit.
+     */
+    async linkIngredient(params: {
+        intermediateId: string;
+        rawMaterialLotId?: string;
+        rawMaterialLotCode: string;
+        quantity: number;
+        unit: string;
+    }): Promise<DomainResponse> {
+        this.enforceRole(['production_operator', 'lab_analyst', 'admin', 'system_owner']);
+
+        try {
+            // 1. Fetch intermediate to get org/plant context
+            const { data: intermediate, error: intError } = await this.supabase
+                .from("intermediate_products")
+                .select("organization_id, plant_id, status")
+                .eq("id", params.intermediateId)
+                .single();
+
+            if (intError || !intermediate) {
+                return this.failure("Produto intermédio não encontrado.");
+            }
+
+            // 2. Validate status (can only add ingredients when pending or in production)
+            if (!['pending', 'sampling'].includes(intermediate.status)) {
+                return this.failure(`BLOQUEIO: Não é possível adicionar ingredientes a um tanque com estado '${intermediate.status}'.`);
+            }
+
+            // 3. Validate lot availability (if lot ID provided)
+            if (params.rawMaterialLotId) {
+                const { data: lot, error: lotError } = await this.supabase
+                    .from("raw_material_lots")
+                    .select("quantity_remaining, unit")
+                    .eq("id", params.rawMaterialLotId)
+                    .single();
+
+                if (lotError || !lot) {
+                    return this.failure("Lote de matéria-prima não encontrado.");
+                }
+
+                if (lot.quantity_remaining < params.quantity) {
+                    return this.failure(
+                        `Quantidade insuficiente. Disponível: ${lot.quantity_remaining} ${lot.unit}`
+                    );
+                }
+            }
+
+            // 4. Insert ingredient link
+            const { data: link, error: insertError } = await this.supabase
+                .from("intermediate_ingredients")
+                .insert({
+                    organization_id: intermediate.organization_id,
+                    plant_id: intermediate.plant_id,
+                    intermediate_product_id: params.intermediateId,
+                    raw_material_lot_id: params.rawMaterialLotId || null,
+                    raw_material_lot_code: params.rawMaterialLotCode,
+                    quantity: params.quantity,
+                    unit: params.unit
+                })
+                .select("id")
+                .single();
+
+            if (insertError) throw insertError;
+
+            // 5. Debit inventory (transactional via update)
+            if (params.rawMaterialLotId) {
+                const { data: currentLot } = await this.supabase
+                    .from("raw_material_lots")
+                    .select("quantity_remaining")
+                    .eq("id", params.rawMaterialLotId)
+                    .single();
+
+                if (currentLot) {
+                    const newQuantity = currentLot.quantity_remaining - params.quantity;
+                    const { error: debitError } = await this.supabase
+                        .from("raw_material_lots")
+                        .update({ quantity_remaining: newQuantity })
+                        .eq("id", params.rawMaterialLotId);
+
+                    if (debitError) {
+                        console.error("[IntermediateService] Inventory debit failed:", debitError);
+                        // Note: Link already created. Consider RPC for true atomicity.
+                    }
+                }
+            }
+
+            // 6. Audit
+            await this.auditAction('INGREDIENT_LINKED', 'intermediate_ingredients', link.id, {
+                intermediate_id: params.intermediateId,
+                lot_code: params.rawMaterialLotCode,
+                quantity: params.quantity,
+                unit: params.unit
+            });
+
+            return this.success({ id: link.id }, "Ingrediente vinculado com sucesso.");
+
+        } catch (error: any) {
+            console.error("[IntermediateService] Link ingredient failed:", error);
+            return this.failure("Falha ao vincular ingrediente.", error);
+        }
+    }
 }
+

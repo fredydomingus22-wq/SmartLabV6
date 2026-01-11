@@ -2,25 +2,19 @@
 
 import { useState, useMemo } from "react";
 import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    ReferenceLine,
-} from "recharts";
-import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { IndustrialCard } from "@/components/shared/industrial-card";
+import { IndustrialChart } from "@/components/shared/industrial-chart";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Filter } from "lucide-react";
+import { TrendingUp, Filter, Activity } from "lucide-react";
+import type { EChartsOption } from "echarts";
+import { Box, Typography, Stack } from "@mui/material";
+import { getTrendDataAction } from "@/app/(dashboard)/dashboard/actions";
 
 interface DashboardTrendsClientProps {
     products: any[];
@@ -33,29 +27,20 @@ interface DashboardTrendsClientProps {
     } | null;
 }
 
-import { getTrendDataAction } from "@/app/(dashboard)/dashboard/actions";
-
 export function DashboardTrendsClient({ products, parameters, initialData, initialSpecs }: DashboardTrendsClientProps) {
     const [selectedProduct, setSelectedProduct] = useState(products[0]?.id || "");
     const [selectedParameter, setSelectedParameter] = useState(parameters[0]?.id || "");
 
-    // Local state to handle updates
     const [data, setData] = useState(initialData);
     const [specs, setSpecs] = useState(initialSpecs);
     const [loading, setLoading] = useState(false);
 
-    // Fetch new data when filters change
-    // Using a simple effect that skips the very first render if needed, 
-    // but here we simply compare with initial props or just fetch.
-    // To avoid double fetch on mount (since initialData is already there), user interaction triggers change.
-
     const handleFilterChange = async (prodId: string, paramId: string) => {
         if (!prodId || !paramId) return;
-
         setLoading(true);
         try {
             const result = await getTrendDataAction(prodId, paramId);
-            setData(result.data);
+            setData(result.data || []);
             setSpecs(result.specs);
         } catch (error) {
             console.error("Failed to fetch trend data", error);
@@ -65,176 +50,148 @@ export function DashboardTrendsClient({ products, parameters, initialData, initi
     };
 
     const chartData = useMemo(() => {
-        return data.map(d => ({
-            name: d.batchCode || d.sampleCode,
-            value: d.value,
-            sampleCode: d.sampleCode,
-            batchCode: d.batchCode
-        })).reverse();
+        return [...data].reverse();
     }, [data]);
+
+    const categories = chartData.map(d => d.batchCode || d.sampleCode);
+    const values = chartData.map(d => d.value);
 
     const LSL = specs?.min_value;
     const USL = specs?.max_value;
 
+    const option: EChartsOption = {
+        xAxis: {
+            type: "category",
+            data: categories,
+            axisLabel: { color: "#64748b", fontSize: 10 }
+        },
+        yAxis: {
+            type: "value",
+            scale: true,
+            axisLabel: { color: "#64748b", fontSize: 10 },
+            splitLine: { lineStyle: { color: "rgba(255,255,255,0.03)" } }
+        },
+        series: [
+            {
+                name: "Valor",
+                type: "line",
+                data: values,
+                smooth: true,
+                symbol: "circle",
+                symbolSize: 8,
+                itemStyle: { color: "#10b981" },
+                lineStyle: { width: 3, color: "#10b981" },
+                areaStyle: {
+                    color: {
+                        type: 'linear',
+                        x: 0, y: 0, x2: 0, y2: 1,
+                        colorStops: [
+                            { offset: 0, color: '#10b981' },
+                            { offset: 1, color: 'transparent' }
+                        ]
+                    },
+                    opacity: 0.1
+                },
+                markLine: {
+                    symbol: ["none", "none"],
+                    data: [
+                        ...(USL != null ? [{ yAxis: USL, label: { formatter: 'USL' }, lineStyle: { color: "#ef4444", type: "dashed" as const } }] : []),
+                        ...(LSL != null ? [{ yAxis: LSL, label: { formatter: 'LSL' }, lineStyle: { color: "#ef4444", type: "dashed" as const } }] : [])
+                    ]
+                }
+            }
+        ],
+        tooltip: {
+            trigger: "axis",
+            formatter: (params: any) => {
+                const p = params[0];
+                const d = chartData[p.dataIndex];
+                return `
+                    <div style="padding: 4px">
+                        <div style="font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
+                            ${d.sampleCode}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; gap: 20px;">
+                            <span style="color: #94a3b8">Valor:</span>
+                            <span style="font-weight: bold; color: #10b981">${p.value}</span>
+                        </div>
+                        ${d.batchCode ? `<div style="display: flex; justify-content: space-between; gap: 20px; font-size: 10px;">
+                            <span style="color: #64748b">Lote:</span>
+                            <span style="color: #cbd5e1">${d.batchCode}</span>
+                        </div>` : ''}
+                    </div>
+                `;
+            }
+        }
+    };
+
+    const actions = (
+        <Stack direction="row" spacing={1}>
+            <Select
+                value={selectedProduct}
+                onValueChange={(val) => {
+                    setSelectedProduct(val);
+                    handleFilterChange(val, selectedParameter);
+                }}
+            >
+                <SelectTrigger className="w-[140px] h-7 text-[10px] bg-slate-950/50 border-slate-800 text-slate-300">
+                    <SelectValue placeholder="Produto" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-950 border-slate-800">
+                    {products.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select
+                value={selectedParameter}
+                onValueChange={(val) => {
+                    setSelectedParameter(val);
+                    handleFilterChange(selectedProduct, val);
+                }}
+            >
+                <SelectTrigger className="w-[130px] h-7 text-[10px] bg-slate-950/50 border-slate-800 text-slate-300">
+                    <SelectValue placeholder="Parâmetro" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-950 border-slate-800">
+                    {parameters.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </Stack>
+    );
+
+    const footer = (
+        <Box className="flex flex-wrap items-center justify-between gap-4">
+            <Stack direction="row" spacing={3}>
+                <Box className="flex items-center gap-2">
+                    <Box className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <Typography className="text-[10px] font-bold uppercase text-slate-400">Resultado Atual</Typography>
+                </Box>
+                <Box className="flex items-center gap-2">
+                    <Box className="h-0.5 w-6 border-t border-dashed border-red-500/50" />
+                    <Typography className="text-[10px] font-bold uppercase text-slate-400">Limites Críticos</Typography>
+                </Box>
+            </Stack>
+            <Badge variant="outline" className="bg-blue-500/10 border-blue-500/20 text-[10px] text-blue-400 font-bold uppercase tracking-widest flex items-center gap-1.5 h-6">
+                <Activity className="h-3 w-3" />
+                Engine: SmartLab Analytics 4.0
+            </Badge>
+        </Box>
+    );
+
     return (
-        <Card className="glass border-slate-800/50 overflow-hidden">
-            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/50 bg-slate-900/20 px-4 py-4 md:px-8 md:py-6">
-                <div>
-                    <CardTitle className="text-xl font-extrabold text-slate-100 flex items-center gap-2 tracking-tight">
-                        <TrendingUp className="h-5 w-5 text-emerald-400" />
-                        Tendências de Qualidade
-                    </CardTitle>
-                    <CardDescription className="text-slate-400 font-medium italic mt-0.5">
-                        Performance real vs. Limites de Especificação.
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-                    <Select
-                        value={selectedProduct}
-                        onValueChange={(val) => {
-                            setSelectedProduct(val);
-                            handleFilterChange(val, selectedParameter);
-                        }}
-                    >
-                        <SelectTrigger className="w-[140px] h-8 md:h-9 text-[10px] md:text-xs bg-slate-950/50 border-slate-800 text-slate-300">
-                            <SelectValue placeholder="Produto" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-950 border-slate-800">
-                            {products.map(p => (
-                                <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={selectedParameter}
-                        onValueChange={(val) => {
-                            setSelectedParameter(val);
-                            handleFilterChange(selectedProduct, val);
-                        }}
-                    >
-                        <SelectTrigger className="w-[130px] h-8 md:h-9 text-[10px] md:text-xs bg-slate-950/50 border-slate-800 text-slate-300">
-                            <SelectValue placeholder="Parâmetro" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-950 border-slate-800">
-                            {parameters.map(p => (
-                                <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </CardHeader>
-            <CardContent className="p-4 md:p-8">
-                <div className={`h-[250px] md:h-[350px] w-full transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.5} />
-                            <XAxis
-                                dataKey="name"
-                                stroke="#475569"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={{ fill: '#64748b', fontWeight: 600 }}
-                            />
-                            <YAxis
-                                stroke="#475569"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={{ fill: '#64748b', fontWeight: 600 }}
-                                domain={['auto', 'auto']}
-                            />
-                            <Tooltip
-                                content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                        const d = payload[0].payload;
-                                        return (
-                                            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl shadow-2xl space-y-2 min-w-[160px]">
-                                                <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-                                                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Amostra</span>
-                                                    <Badge variant="outline" className="text-[10px] font-mono">{d.sampleCode}</Badge>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="flex justify-between items-center text-xs">
-                                                        <span className="text-slate-400">Valor:</span>
-                                                        <span className="font-bold text-emerald-400">{d.value}</span>
-                                                    </div>
-                                                    {d.batchCode && (
-                                                        <div className="flex justify-between items-center text-[10px]">
-                                                            <span className="text-slate-500">Lote:</span>
-                                                            <span className="text-slate-300 font-medium">{d.batchCode}</span>
-                                                        </div>
-                                                    )}
-                                                    {USL != null && d.value > USL && (
-                                                        <div className="text-[10px] text-red-400 flex items-center gap-1 font-bold pt-1">
-                                                            ⚠ Fora de Limite (Alto)
-                                                        </div>
-                                                    )}
-                                                    {LSL != null && d.value < LSL && (
-                                                        <div className="text-[10px] text-red-400 flex items-center gap-1 font-bold pt-1">
-                                                            ⚠ Fora de Limite (Baixo)
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }}
-                            />
-
-                            {USL != null && (
-                                <ReferenceLine
-                                    y={USL}
-                                    stroke="#ef4444"
-                                    strokeDasharray="4 4"
-                                    label={{ value: 'USL', position: 'right', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }}
-                                />
-                            )}
-                            {LSL != null && (
-                                <ReferenceLine
-                                    y={LSL}
-                                    stroke="#ef4444"
-                                    strokeDasharray="4 4"
-                                    label={{ value: 'LSL', position: 'right', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }}
-                                />
-                            )}
-
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#10b981"
-                                fillOpacity={1}
-                                fill="url(#colorValue)"
-                                strokeWidth={3}
-                                animationDuration={1500}
-                                dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#020617' }}
-                                activeDot={{ r: 6, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-
-                <div className="mt-4 md:mt-8 flex flex-wrap items-center justify-center gap-3 md:gap-8 border-t border-slate-800/50 pt-4 md:pt-6">
-                    <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resultado Atual</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="h-0.5 w-6 border-t-2 border-dashed border-red-500/50" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Limites Críticos</span>
-                    </div>
-                    <Badge variant="outline" className="hidden sm:inline-flex bg-slate-900 border-slate-800 text-[10px] text-slate-500 font-mono">
-                        Amostragem: Últimos 10 Pontos
-                    </Badge>
-                </div>
-            </CardContent>
-        </Card>
+        <IndustrialCard
+            title="Tendências de Qualidade"
+            subtitle="Performance real vs. Limites de Especificação"
+            icon={TrendingUp}
+            actions={actions}
+            footer={footer}
+            loading={loading}
+            className="h-full"
+        >
+            <IndustrialChart option={option} height={350} />
+        </IndustrialCard>
     );
 }

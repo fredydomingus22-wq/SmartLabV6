@@ -60,14 +60,19 @@ export async function getProductBatchesAction(productId: string) {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data: batches } = await supabase
+    const query = supabase
         .from("production_batches")
         .select("id, code, start_date")
         .eq("product_id", productId)
         .eq("organization_id", user.organization_id)
-        .eq("plant_id", user.plant_id)
         .order("start_date", { ascending: false })
         .limit(50);
+
+    if (user.plant_id) {
+        query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: batches } = await query;
 
     return batches || [];
 }

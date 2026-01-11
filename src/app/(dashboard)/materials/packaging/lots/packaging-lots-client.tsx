@@ -97,7 +97,7 @@ export function PackagingLotsClient({ lots }: PackagingLotsClientProps) {
 
     return (
         <>
-            <DataGrid data={lots} columns={columns} />
+            <DataGrid data={lots} columns={columns} className="border-none shadow-none" rowClassName="hover:bg-blue-500/5 transition-colors" />
 
             <Sheet open={!!selectedLot} onOpenChange={(open) => !open && setSelectedLot(null)}>
                 <SheetContent side="right" className="w-[400px] sm:w-[540px] border-l border-slate-800 bg-slate-950 p-0 overflow-y-auto">

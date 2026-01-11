@@ -75,7 +75,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
     // Discovery 2: Direct Intermediates (Linked via production_batch_id)
     const { data: directIntermediates } = await supabase
         .from("intermediate_products")
-        .select("id, equipment_id")
+        .select("id, tank_id")
         .eq("production_batch_id", batchId);
 
     const directIntermediateIds = directIntermediates?.map(i => i.id) || [];
@@ -116,7 +116,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
         supabase
             .from("intermediate_products")
             .select(`
-                id, code, status, equipment_id
+                id, code, status, tank_id
             `).in("id", finalIntermediateIds),
         batch.created_by ? supabase
             .from("user_profiles")
@@ -274,7 +274,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
 
     // 4.1 Manual Enrichment for Intermediate Equipment (Polymorphic: Tank or Equipment)
     const tankIds = processIntermediates
-        .map(p => p.equipment_id)
+        .map(p => p.tank_id)
         .filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)); // Validate only UUIDs
 
     let tankAssets: any[] = [];
@@ -288,7 +288,7 @@ export async function getBatchTraceabilityAction(batchId: string) {
 
     const tanks = finalIntermediateIds.map(id => {
         const ip = processIntermediates?.find(p => p.id === id);
-        const tankAsset = tankAssets.find(t => t.id === ip?.equipment_id);
+        const tankAsset = tankAssets.find(t => t.id === ip?.tank_id);
 
         // Find last CIP for this tank
         const lastCip = tankAsset ? cips.filter((c: any) => c.equipment_uid === tankAsset.id).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())[0] : null;

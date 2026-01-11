@@ -235,6 +235,7 @@ export function ParameterDialog({ mode, parameter }: ParameterDialogProps) {
                                         <SelectItem value="physico_chemical">Físico-Químico</SelectItem>
                                         <SelectItem value="microbiological">Microbiológico</SelectItem>
                                         <SelectItem value="sensory">Sensorial</SelectItem>
+                                        <SelectItem value="process">Processo / Engenharia</SelectItem>
                                         <SelectItem value="other">Outro</SelectItem>
                                     </SelectContent>
                                 </Select>

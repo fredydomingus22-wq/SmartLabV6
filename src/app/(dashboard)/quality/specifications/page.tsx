@@ -103,6 +103,7 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
             physico_chemical: "bg-blue-100 text-blue-700",
             microbiological: "bg-green-100 text-green-700",
             sensory: "bg-purple-100 text-purple-700",
+            process: "bg-amber-100 text-amber-700",
             other: "bg-gray-100 text-gray-700"
         };
         return colors[cat] || "bg-gray-100 text-gray-700";
@@ -354,8 +355,9 @@ export default async function SpecificationsPage({ searchParams }: PageProps) {
  * Helper to split specs by Lab Category using NESTED TABS for reduced stress
  */
 function LabTypeTabs({ specs, productId, sampleTypes, samplingPoints, getCategoryColor, getFrequencyLabel }: any) {
-    const fqSpecs = specs.filter((s: any) => s.parameter?.category !== 'microbiological');
+    const fqSpecs = specs.filter((s: any) => s.parameter?.category !== 'microbiological' && s.parameter?.category !== 'process');
     const microSpecs = specs.filter((s: any) => s.parameter?.category === 'microbiological');
+    const processSpecs = specs.filter((s: any) => s.parameter?.category === 'process');
 
     if (specs.length === 0) {
         return (
@@ -381,6 +383,13 @@ function LabTypeTabs({ specs, productId, sampleTypes, samplingPoints, getCategor
                 >
                     <Microscope className="h-3.5 w-3.5" />
                     <span className="text-xs font-semibold">Microbiologia ({microSpecs.length})</span>
+                </TabsTrigger>
+                <TabsTrigger
+                    value="process"
+                    className="flex items-center gap-2 py-1.5 px-4 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400"
+                >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold">Engenharia / Processo ({specs.filter((s: any) => s.parameter?.category === 'process').length})</span>
                 </TabsTrigger>
             </TabsList>
 
@@ -414,6 +423,23 @@ function LabTypeTabs({ specs, productId, sampleTypes, samplingPoints, getCategor
                 ) : (
                     <div className="p-8 text-center text-muted-foreground italic text-sm">
                         Nenhuma especificação Microbiológica definida.
+                    </div>
+                )}
+            </TabsContent>
+
+            <TabsContent value="process" className="mt-4 focus-visible:outline-none">
+                {processSpecs.length > 0 ? (
+                    <SpecsTable
+                        specs={processSpecs}
+                        productId={productId}
+                        sampleTypes={sampleTypes}
+                        samplingPoints={samplingPoints}
+                        getCategoryColor={getCategoryColor}
+                        getFrequencyLabel={getFrequencyLabel}
+                    />
+                ) : (
+                    <div className="p-8 text-center text-muted-foreground italic text-sm">
+                        Nenhuma especificação de Processo definida.
                     </div>
                 )}
             </TabsContent>

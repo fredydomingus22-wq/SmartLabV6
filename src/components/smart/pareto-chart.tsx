@@ -1,18 +1,10 @@
 "use client";
 
-import {
-    BarChart,
-    Bar,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    ComposedChart,
-    Cell
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React from "react";
+import { IndustrialCard } from "@/components/shared/industrial-card";
+import { IndustrialChart } from "@/components/shared/industrial-chart";
+import type { EChartsOption } from "echarts";
+import { Box, Typography } from "@mui/material";
 
 interface ParetoDataPoint {
     name: string;
@@ -28,6 +20,10 @@ interface ParetoChartProps {
     height?: number;
 }
 
+/**
+ * ParetoChart: Quality Tool using ECharts.
+ * Visualizes the 80/20 rule for root cause analysis.
+ */
 export function ParetoChart({
     data,
     title,
@@ -35,112 +31,93 @@ export function ParetoChart({
     height = 400
 }: ParetoChartProps) {
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 shadow-xl">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                            {label}
-                        </span>
-                        <div className="flex items-center justify-between gap-4 mt-1">
-                            <span className="text-sm text-slate-300">Frequência:</span>
-                            <span className="text-sm font-bold text-white">{payload[0].value}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm text-slate-300">Acumulado:</span>
-                            <span className="text-sm font-bold text-emerald-400">{payload[1].value.toFixed(1)}%</span>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-        return null;
+    // Transform data for ECharts
+    const categories = data.map(d => d.name);
+    const counts = data.map(d => d.count);
+    const cumulative = data.map(d => d.cumulativePercentage);
+
+    const option: EChartsOption = {
+        xAxis: {
+            type: "category",
+            data: categories,
+            axisLabel: { interval: 0, rotate: data.length > 5 ? 30 : 0 }
+        },
+        yAxis: [
+            {
+                type: "value",
+                name: "Frequência",
+                splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } }
+            },
+            {
+                type: "value",
+                name: "Acumulado %",
+                min: 0,
+                max: 100,
+                axisLabel: { formatter: "{value}%" },
+                splitLine: { show: false }
+            }
+        ],
+        series: [
+            {
+                name: "Frequência",
+                type: "bar",
+                data: counts,
+                barWidth: "60%",
+                itemStyle: {
+                    color: (params: any) => {
+                        // Highlight 80% rule
+                        return data[params.dataIndex].cumulativePercentage <= 80
+                            ? "#3b82f6" // blue-500
+                            : "#64748b"; // slate-500
+                    },
+                    borderRadius: [4, 4, 0, 0]
+                }
+            },
+            {
+                name: "Acumulado",
+                type: "line",
+                yAxisIndex: 1,
+                data: cumulative,
+                smooth: true,
+                symbol: "circle",
+                symbolSize: 8,
+                lineStyle: { width: 3, color: "#10b981" }, // emerald-500
+                itemStyle: { color: "#10b981", borderWidth: 2, borderColor: "#0f172a" }
+            }
+        ]
     };
 
+    const footer = (
+        <Box className="flex items-center justify-between">
+            <Box>
+                <Typography className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    Princípio de Pareto (80/20)
+                </Typography>
+                <Typography className="text-[10px] text-slate-400">
+                    80% dos problemas costumam provir de 20% das causas.
+                </Typography>
+            </Box>
+            <Box className="flex gap-4">
+                <Box className="flex items-center gap-2">
+                    <Box className="h-2 w-2 rounded-sm bg-blue-500" />
+                    <Typography className="text-[9px] font-bold text-slate-300 uppercase">Prioritário</Typography>
+                </Box>
+                <Box className="flex items-center gap-2">
+                    <Box className="h-2 w-2 rounded-sm bg-slate-500" />
+                    <Typography className="text-[9px] font-bold text-slate-300 uppercase">Secundário</Typography>
+                </Box>
+            </Box>
+        </Box>
+    );
+
     return (
-        <Card className="glass border-slate-800/50">
-            <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold text-white">{title}</CardTitle>
-                {description && <CardDescription className="text-sm text-slate-400">{description}</CardDescription>}
-            </CardHeader>
-            <CardContent>
-                <div style={{ width: "100%", height }}>
-                    <ResponsiveContainer>
-                        <ComposedChart
-                            data={data}
-                            margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                            <XAxis
-                                dataKey="name"
-                                stroke="#475569"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                dy={10}
-                            />
-                            <YAxis
-                                yAxisId="left"
-                                stroke="#475569"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                label={{ value: 'Frequência', angle: -90, position: 'insideLeft', fill: '#475569', fontSize: 10 }}
-                            />
-                            <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                stroke="#475569"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                domain={[0, 100]}
-                                label={{ value: 'Acumulado %', angle: 90, position: 'insideRight', fill: '#475569', fontSize: 10 }}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-
-                            <Bar
-                                yAxisId="left"
-                                dataKey="count"
-                                fill="#3b82f6"
-                                radius={[4, 4, 0, 0]}
-                                barSize={40}
-                            >
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.cumulativePercentage <= 80 ? '#3b82f6' : '#64748b'} fillOpacity={0.8} />
-                                ))}
-                            </Bar>
-
-                            <Line
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="cumulativePercentage"
-                                stroke="#10b981"
-                                strokeWidth={3}
-                                dot={{ fill: '#10b981', r: 4, strokeWidth: 2, stroke: '#0f172a' }}
-                                activeDot={{ r: 6 }}
-                            />
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="mt-6 p-4 rounded-xl bg-slate-900/50 border border-slate-800 flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Princípio de Pareto (80/20)</span>
-                        <p className="text-xs text-slate-400">80% dos problemas costumam provir de 20% das causas.</p>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-sm bg-blue-500/80" />
-                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Prioritário</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-sm bg-slate-500/80" />
-                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Secundário</span>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+        <IndustrialCard
+            title={title}
+            subtitle={description}
+            footer={footer}
+            className="h-full"
+        >
+            <IndustrialChart option={option} height={height - 100} />
+        </IndustrialCard>
     );
 }

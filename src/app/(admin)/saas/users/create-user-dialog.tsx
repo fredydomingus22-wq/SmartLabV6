@@ -138,6 +138,7 @@ export function CreateGlobalUserDialog({
                                         <SelectItem value="auditor">Auditor</SelectItem>
                                         <SelectItem value="quality">Equipa Qualidade</SelectItem>
                                         <SelectItem value="haccp">Equipa HACCP</SelectItem>
+                                        <SelectItem value="rmpm_lab">Analista RMPM (Recebimento)</SelectItem>
                                         <SelectItem value="warehouse">Armazém / Logística</SelectItem>
                                         <SelectItem value="lab_tech">Lab Tech (Legacy)</SelectItem>
                                     </SelectContent>

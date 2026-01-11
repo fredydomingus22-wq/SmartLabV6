@@ -290,6 +290,44 @@ export async function exportDataAction(formData: FormData) {
             data = analysis || [];
             filename = `lab_analysis_${startDate}_${endDate}.csv`;
             break;
+
+        case "pcc_logs":
+            const { data: pccLogs } = await supabase
+                .from("pcc_logs")
+                .select(`
+                    id,
+                    checked_at,
+                    equipment_id,
+                    critical_limit_min,
+                    critical_limit_max,
+                    actual_value,
+                    is_compliant,
+                    action_taken,
+                    notes,
+                    hazard:haccp_hazards(process_step, hazard_description),
+                    batch:production_batches(code)
+                `)
+                .eq("organization_id", userData.organization_id)
+                .eq("plant_id", userData.plant_id)
+                .gte("checked_at", startDate)
+                .lte("checked_at", endDate);
+
+            data = pccLogs?.map((log: any) => ({
+                id: log.id,
+                date: log.checked_at,
+                step: log.hazard?.process_step,
+                hazard: log.hazard?.hazard_description,
+                equipment: log.equipment_id,
+                batch: log.batch?.code,
+                min: log.critical_limit_min,
+                max: log.critical_limit_max,
+                value: log.actual_value,
+                compliant: log.is_compliant ? "YES" : "NO",
+                action: log.action_taken,
+                notes: log.notes
+            })) || [];
+            filename = `haccp_pcc_logs_${startDate}_${endDate}.csv`;
+            break;
     }
 
     // Return data for client-side CSV generation

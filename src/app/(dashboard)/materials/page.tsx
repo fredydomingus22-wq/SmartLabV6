@@ -14,49 +14,13 @@ import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-function StatCard({ title, value, subtitle, icon, color = "cyan", href }: any) {
-    const colorClasses: Record<string, string> = {
-        cyan: "text-cyan-400 bg-cyan-950/30 border-cyan-500/20",
-        emerald: "text-emerald-400 bg-emerald-950/30 border-emerald-500/20",
-        amber: "text-amber-400 bg-amber-950/30 border-amber-500/20",
-        violet: "text-violet-400 bg-violet-950/30 border-violet-500/20",
-    };
+import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-card";
+import { PremiumActionCard } from "@/components/dashboard/premium-action-card";
+import { Sparkles, CheckCircle } from "lucide-react";
 
-    const scheme = colorClasses[color] || colorClasses.cyan;
-
-    return (
-        <Link href={href || "#"}>
-            <div className="glass hover:bg-slate-800/50 transition-all duration-300 p-6 rounded-2xl border border-slate-800 group relative overflow-hidden">
-                <div className={`absolute top-0 right-0 p-3 rounded-bl-2xl border-b border-l ${scheme} transition-all`}>
-                    {icon}
-                </div>
-                <div className="relative z-10">
-                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{title}</p>
-                    <h3 className="text-3xl font-bold text-slate-100 group-hover:scale-105 transition-transform origin-left">
-                        {value}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 font-mono">{subtitle}</p>
-                </div>
-            </div>
-        </Link>
-    );
-}
-
-function QuickActionCard({ title, icon, href, color }: any) {
-    return (
-        <Link href={href}>
-            <div className="bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800 hover:border-slate-700 p-4 rounded-xl flex items-center gap-4 transition-all group">
-                <div className={`p-2 rounded-lg ${color === 'cyan' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                    {icon}
-                </div>
-                <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">{title}</h4>
-                </div>
-                <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
-            </div>
-        </Link>
-    );
-}
+// Local helper for trend simulation (since we don't have real trend data yet for all)
+const mockTrend = { value: 2.5, isPositive: true };
+const mockSeries = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, value: Math.floor(Math.random() * 100) }));
 
 export default async function MaterialsDashboardPage() {
     const supabase = await createClient();
@@ -88,22 +52,51 @@ export default async function MaterialsDashboardPage() {
 
     // Fornecedores
     const { count: suppliersCount } = await supabase.from("suppliers").select("*", { count: "exact", head: true });
+    // Fetch last 7 days data for trends (lightweight)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    const dateStr = sevenDaysAgo.toISOString();
+
+    const { data: rawLotTrend } = await supabase.from("raw_material_lots").select("created_at").gte("created_at", dateStr);
+    const { data: packLotTrend } = await supabase.from("packaging_lots").select("created_at").gte("created_at", dateStr);
+    const { data: reagentTrend } = await supabase.from("reagent_movements").select("created_at").gte("created_at", dateStr).eq('movement_type', 'in');
+
+    const getLast7DaysData = (items: any[] | null) => {
+        const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(today.getDate() - (6 - i));
+            return { date: format(d, 'dd/MM', { locale: pt }), value: 0, rawDate: d.toDateString() };
+        });
+
+        items?.forEach(item => {
+            if (!item.created_at) return;
+            const itemDate = new Date(item.created_at).toDateString();
+            const day = days.find(d => d.rawDate === itemDate);
+            if (day) day.value++;
+        });
+
+        return days.map(({ date, value }) => ({ date, value }));
+    };
+
+    const rawTrendData = getLast7DaysData(rawLotTrend);
+    const packTrendData = getLast7DaysData(packLotTrend);
+    const reagentTrendData = getLast7DaysData(reagentTrend);
 
 
     return (
-        <div className="container max-w-7xl mx-auto py-8 space-y-8">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Sistema Operacional
+        <div className="container max-w-[1600px] mx-auto py-8 space-y-10 pb-20">
+            {/* Header Section - Industrial Premium */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-cyan-400">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-80">Inventory Intelligence</span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                        {greeting}, {user?.full_name?.split(' ')[0] || 'Utilizador'}
+                    <h1 className="text-4xl font-extrabold tracking-tight text-white">
+                        Materiais e Inventário
                     </h1>
-                    <p className="text-slate-400 mt-2 text-lg">
-                        Visão Geral de Materiais & Inventário
+                    <p className="text-slate-400 text-lg">
+                        Gestão centralizada de insumos, stock e qualificação de fornecedores.
                     </p>
                 </div>
 
@@ -113,49 +106,53 @@ export default async function MaterialsDashboardPage() {
                         <input
                             type="text"
                             placeholder="Pesquisar lotes..."
-                            className="bg-slate-900/50 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 w-64"
+                            className="bg-slate-950/50 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 w-64 transition-all"
                         />
                     </div>
-                    <Button className="bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg shadow-cyan-900/20">
+                    <Button className="bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg shadow-cyan-900/20 h-10 px-6 font-semibold tracking-wide">
                         <Filter className="h-4 w-4 mr-2" />
                         <span>Filtros</span>
                     </Button>
                 </div>
             </div>
 
-            {/* Main Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
+            {/* Main Stats Grid - Premium Analytics Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <PremiumAnalyticsCard
                     title="Matérias-Primas"
-                    value={rawMaterialsCount || 0}
-                    subtitle={`${rawMaterialLots?.length || 0} Lotes Ativos`}
-                    icon={<Package className="h-5 w-5" />}
-                    color="cyan"
-                    href="/materials/raw"
+                    value={String(rawMaterialsCount || 0)}
+                    description={`${rawMaterialLots?.length || 0} Lotes Ativos no sistema`}
+                    trend={{ value: rawLotTrend?.length || 0, isPositive: true }}
+                    data={rawTrendData}
+                    dataKey="value"
+                    color="#06b6d4" // cyan
                 />
-                <StatCard
+                <PremiumAnalyticsCard
                     title="Embalagem"
-                    value={packagingCount || 0}
-                    subtitle={`${activePackagingLots} Lotes Disponíveis`}
-                    icon={<Box className="h-5 w-5" />}
-                    color="emerald"
-                    href="/materials/packaging"
+                    value={String(packagingCount || 0)}
+                    description={`${activePackagingLots} Lotes Disponíveis para uso`}
+                    trend={{ value: packLotTrend?.length || 0, isPositive: true }}
+                    data={packTrendData}
+                    dataKey="value"
+                    color="#10b981" // emerald
                 />
-                <StatCard
+                <PremiumAnalyticsCard
                     title="Reagentes"
-                    value={reagents?.length || 0}
-                    subtitle={`${lowStockReagents} Stock Baixo`}
-                    icon={<Beaker className="h-5 w-5" />}
-                    color="violet"
-                    href="/materials/reagents"
+                    value={String(reagents?.length || 0)}
+                    description={`${lowStockReagents} com stock abaixo do mínimo`}
+                    trend={{ value: reagentTrend?.length || 0, isPositive: true }}
+                    data={reagentTrendData}
+                    dataKey="value"
+                    color="#8b5cf6" // violet
                 />
-                <StatCard
+                <PremiumAnalyticsCard
                     title="Fornecedores"
-                    value={suppliersCount || 0}
-                    subtitle="Base qualificada"
-                    icon={<Truck className="h-5 w-5" />}
-                    color="amber"
-                    href="/materials/suppliers"
+                    value={String(suppliersCount || 0)}
+                    description="Base de fornecedores qualificados"
+                    trend={{ value: 0, isPositive: true }}
+                    data={mockSeries}
+                    dataKey="value"
+                    color="#f59e0b" // amber
                 />
             </div>
 
@@ -163,19 +160,43 @@ export default async function MaterialsDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Shortcuts */}
-                <Card className="glass border-slate-800 col-span-1">
-                    <CardHeader>
-                        <CardTitle className="text-lg text-white font-semibold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-cyan-400" />
-                            Acesso Rápido
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <QuickActionCard title="Receber Matéria-Prima" icon={<Package className="h-4 w-4" />} href="/materials/raw" color="cyan" />
-                        <QuickActionCard title="Registar Embalagem" icon={<Box className="h-4 w-4" />} href="/materials/packaging" color="emerald" />
-                        <QuickActionCard title="Gestão de Stock" icon={<Beaker className="h-4 w-4" />} href="/materials/reagents" color="violet" />
-                    </CardContent>
-                </Card>
+                {/* Shortcuts */}
+                <div className="col-span-1">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-white">
+                        <CheckCircle className="h-5 w-5 text-cyan-400" />
+                        Acesso Rápido
+                    </h2>
+                    <div className="space-y-4">
+                        <PremiumActionCard
+                            title="Receber Matéria-Prima"
+                            description="Registo de entrada de lotes"
+                            href="/materials/raw"
+                            icon={<Package className="h-5 w-5" />}
+                            color="#06b6d4"
+                        />
+                        <PremiumActionCard
+                            title="Registar Embalagem"
+                            description="Controlo de material de embalagem"
+                            href="/materials/packaging"
+                            icon={<Box className="h-5 w-5" />}
+                            color="#10b981"
+                        />
+                        <PremiumActionCard
+                            title="Gestão de Stock"
+                            description="Reagentes e consumíveis"
+                            href="/materials/reagents"
+                            icon={<Beaker className="h-5 w-5" />}
+                            color="#8b5cf6"
+                        />
+                        <PremiumActionCard
+                            title="Fornecedores"
+                            description="Gestão da base de fornecedores"
+                            href="/materials/suppliers"
+                            icon={<Truck className="h-5 w-5" />}
+                            color="#f59e0b"
+                        />
+                    </div>
+                </div>
 
                 {/* Alerts Panel */}
                 <Card className="glass border-slate-800 col-span-1 lg:col-span-2">

@@ -60,5 +60,5 @@ export function MovementsPageClient({ movements }: MovementsPageClientProps) {
         { key: "notes", label: "Notas" },
     ];
 
-    return <DataGrid data={movements} columns={columns} />;
+    return <DataGrid data={movements} columns={columns} className="border-none shadow-none" rowClassName="hover:bg-purple-500/5 transition-colors" />;
 }

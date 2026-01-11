@@ -39,6 +39,7 @@ interface Product {
     shelf_life_days?: number;
     storage_conditions?: string;
     parent_id?: string | null;
+    bev_category?: string | null;
 }
 
 interface ProductDialogProps {
@@ -62,6 +63,7 @@ export function ProductDialog({ mode, product }: ProductDialogProps) {
         shelf_life_days: "",
         storage_conditions: "",
         parent_id: "",
+        bev_category: "",
     });
 
     useEffect(() => {
@@ -76,6 +78,7 @@ export function ProductDialog({ mode, product }: ProductDialogProps) {
                 shelf_life_days: product.shelf_life_days ? String(product.shelf_life_days) : "",
                 storage_conditions: product.storage_conditions || "",
                 parent_id: product.parent_id || "",
+                bev_category: product.bev_category || "",
             });
         } else if (open && mode === "create") {
             setFormData({
@@ -88,6 +91,7 @@ export function ProductDialog({ mode, product }: ProductDialogProps) {
                 shelf_life_days: "",
                 storage_conditions: "",
                 parent_id: "",
+                bev_category: "",
             });
         }
 
@@ -117,6 +121,7 @@ export function ProductDialog({ mode, product }: ProductDialogProps) {
         fd.set("shelf_life_days", formData.shelf_life_days);
         fd.set("storage_conditions", formData.storage_conditions);
         fd.set("parent_id", formData.parent_id);
+        fd.set("bev_category", formData.bev_category);
 
         if (product?.id) {
             fd.set("id", product.id);
@@ -255,14 +260,34 @@ export function ProductDialog({ mode, product }: ProductDialogProps) {
                                         </Select>
                                     </div>
                                 )}
-                                <div className="space-y-2">
-                                    <Label htmlFor="unit">Unidade</Label>
-                                    <Input
-                                        id="unit"
-                                        value={formData.unit}
-                                        onChange={(e) => updateField("unit", e.target.value)}
-                                        placeholder="e.g., L, kg, unit"
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="unit">Unidade</Label>
+                                        <Input
+                                            id="unit"
+                                            value={formData.unit}
+                                            onChange={(e) => updateField("unit", e.target.value)}
+                                            placeholder="e.g., L, kg, unit"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bev_category">Categoria de Bebida</Label>
+                                        <Select
+                                            value={formData.bev_category || "none"}
+                                            onValueChange={(v) => updateField("bev_category", v === "none" ? "" : v)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecionar categoria..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Nenhuma</SelectItem>
+                                                <SelectItem value="Leites">Leites</SelectItem>
+                                                <SelectItem value="Sumos">Sumos</SelectItem>
+                                                <SelectItem value="Refrigerantes">Refrigerantes</SelectItem>
+                                                <SelectItem value="Águas">Águas</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
 

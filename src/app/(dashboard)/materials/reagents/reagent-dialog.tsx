@@ -22,10 +22,12 @@ export function ReagentDialog({ plantId }: ReagentDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo Reagente
-                </Button>
+                <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl shadow-lg shadow-purple-900/20 font-semibold tracking-wide border border-transparent hover:border-purple-400/30 transition-all duration-300">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Novo Reagente
+                    </Button>
+                </DialogTrigger>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] glass border-slate-800 bg-slate-900/95 text-slate-100">
                 <DialogHeader>
@@ -44,7 +46,7 @@ export function ReagentDialog({ plantId }: ReagentDialogProps) {
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right text-slate-400">Nome</Label>
-                            <Input id="name" name="name" placeholder="Ácido Sulfúrico" className="col-span-3 bg-slate-800/50 border-slate-700 text-slate-100" required />
+                            <Input id="name" name="name" placeholder="Ácido Sulfúrico" className="col-span-3 bg-slate-900/50 border-slate-700/50 text-slate-100 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all" required />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -66,17 +68,17 @@ export function ReagentDialog({ plantId }: ReagentDialogProps) {
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="cas_number" className="text-right text-slate-400">Nº CAS</Label>
-                            <Input id="cas_number" name="cas_number" placeholder="7664-93-9" className="col-span-3 bg-slate-800/50 border-slate-700 text-slate-100" />
+                            <Input id="cas_number" name="cas_number" placeholder="7664-93-9" className="col-span-3 bg-slate-900/50 border-slate-700/50 text-slate-100 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all" />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="supplier" className="text-right text-slate-400">Fornecedor</Label>
-                            <Input id="supplier" name="supplier" placeholder="Sigma-Aldrich" className="col-span-3 bg-slate-800/50 border-slate-700 text-slate-100" />
+                            <Input id="supplier" name="supplier" placeholder="Sigma-Aldrich" className="col-span-3 bg-slate-900/50 border-slate-700/50 text-slate-100 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all" />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="min_stock_level" className="text-right text-slate-400">Stock Mín.</Label>
-                            <Input id="min_stock_level" name="min_stock_level" type="number" defaultValue="0" className="col-span-3 bg-slate-800/50 border-slate-700 text-slate-100" required />
+                            <Input id="min_stock_level" name="min_stock_level" type="number" defaultValue="0" className="col-span-3 bg-slate-900/50 border-slate-700/50 text-slate-100 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all" required />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -100,7 +102,7 @@ export function ReagentDialog({ plantId }: ReagentDialogProps) {
 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="storage_location" className="text-right text-slate-400">Localização</Label>
-                            <Input id="storage_location" name="storage_location" placeholder="Armário A" className="col-span-3 bg-slate-800/50 border-slate-700 text-slate-100" />
+                            <Input id="storage_location" name="storage_location" placeholder="Armário A" className="col-span-3 bg-slate-900/50 border-slate-700/50 text-slate-100 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all" />
                         </div>
 
                     </div>

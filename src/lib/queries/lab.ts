@@ -165,10 +165,10 @@ export async function getSampleWithResults(sampleId: string) {
             attachment_url,
             ai_risk_status,
             ai_risk_message,
-            type:sample_types(id, name),
+            type:sample_types(id, name, code),
             batch:production_batches(id, code, product_id, product:products(name)),
             intermediate:intermediate_products(
-                id, code,
+                id, code, product_id,
                 batch:production_batches(product_id)
             )
         `)
@@ -203,9 +203,21 @@ export async function getSampleWithResults(sampleId: string) {
     // No more secondary queries or brittle fallbacks.
     const batchData: any = Array.isArray(sample.batch) ? sample.batch[0] : sample.batch;
     const interData: any = Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate;
+    const sampleType: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
 
-    // Direct resolution favored: Batch Product > Intermediate Batch Product
-    const productId = batchData?.product_id || interData?.batch?.product_id;
+    // Direct resolution favored: Batch Product > Intermediate Product (based on Sample Type)
+    const typeCode = sampleType?.code || "";
+    const isFinishedProduct = typeCode.startsWith("FP");
+    const isIntermediate = typeCode.startsWith("IP") || (interData && !isFinishedProduct);
+
+    let productId = null;
+    if (isFinishedProduct) {
+        productId = batchData?.product_id;
+    } else if (isIntermediate) {
+        productId = interData?.product_id || batchData?.product_id;
+    } else {
+        productId = batchData?.product_id;
+    }
 
 
     let specsMap: Record<string, any> = {};
@@ -215,7 +227,7 @@ export async function getSampleWithResults(sampleId: string) {
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical")
             .eq("product_id", productId)
-            .eq("sample_type_id", sampleType.id);
+            .or(`sample_type_id.eq.${sampleType.id},sample_type_id.is.null`);
 
         specData?.forEach(s => {
             specsMap[s.qa_parameter_id] = s;
@@ -471,7 +483,7 @@ export async function getActiveTanks() {
             status,
             volume,
             unit,
-            equipment_id,
+            tank_id,
             batch:production_batches(id, code, product:products(id, name))
         `)
         .eq("organization_id", user.organization_id)
@@ -483,7 +495,7 @@ export async function getActiveTanks() {
 
     // 2. Fetch Equipment/Tank Details manually
     const tankIds = intermediates
-        ?.map(i => i.equipment_id)
+        ?.map(i => i.tank_id)
         .filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) || [];
 
     let equipmentMap = new Map<string, any>();
@@ -502,7 +514,7 @@ export async function getActiveTanks() {
     // 3. Attach equipment info back to intermediates
     return intermediates?.map(i => ({
         ...i,
-        equipment: equipmentMap.get(i.equipment_id) || null
+        equipment: equipmentMap.get(i.tank_id) || null
     })) || [];
 }
 

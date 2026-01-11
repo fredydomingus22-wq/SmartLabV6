@@ -1,16 +1,7 @@
 "use client";
 
-import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    AreaChart,
-    Area
-} from "recharts";
+import type { EChartsOption } from "echarts";
+import { IndustrialChart } from "@/components/shared/industrial-chart";
 
 interface ChartData {
     name: string;
@@ -23,25 +14,53 @@ interface DashboardChartsProps {
 }
 
 export function DashboardCharts({ data }: DashboardChartsProps) {
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-                <defs>
-                    <linearGradient id="colorSamples" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                    contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '8px' }}
-                    itemStyle={{ fontSize: '12px' }}
-                />
-                <Area type="monotone" dataKey="samples" stroke="#3b82f6" fillOpacity={1} fill="url(#colorSamples)" strokeWidth={2} />
-                <Line type="monotone" dataKey="quality" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} />
-            </AreaChart>
-        </ResponsiveContainer>
-    );
+    const option: EChartsOption = {
+        grid: { top: 20, right: 20, bottom: 30, left: 40 },
+        xAxis: {
+            type: "category",
+            data: data.map(d => d.name),
+            axisLabel: { color: "#94a3b8", fontSize: 10 },
+            axisLine: { show: false },
+            axisTick: { show: false }
+        },
+        yAxis: {
+            type: "value",
+            axisLabel: { color: "#94a3b8", fontSize: 10 },
+            splitLine: { lineStyle: { color: "rgba(255,255,255,0.03)" } }
+        },
+        tooltip: {
+            trigger: "axis",
+            backgroundColor: "#020617",
+            borderColor: "#1e293b",
+            textStyle: { color: "#f8fafc", fontSize: 12 }
+        },
+        series: [
+            {
+                name: "Amostras",
+                type: "line",
+                data: data.map(d => d.samples),
+                smooth: true,
+                lineStyle: { color: "#3b82f6", width: 2 },
+                areaStyle: {
+                    color: {
+                        type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                        colorStops: [{ offset: 0, color: '#3b82f6' }, { offset: 1, color: 'transparent' }]
+                    },
+                    opacity: 0.2
+                }
+            },
+            {
+                name: "Qualidade",
+                type: "line",
+                data: data.map(d => d.quality),
+                smooth: true,
+                symbol: "circle",
+                symbolSize: 6,
+                itemStyle: { color: "#10b981" },
+                lineStyle: { color: "#10b981", width: 2 }
+            }
+        ]
+    };
+
+    return <IndustrialChart option={option} height="100%" />;
 }

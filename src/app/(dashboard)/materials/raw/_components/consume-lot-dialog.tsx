@@ -84,12 +84,12 @@ export function ConsumeLotDialog({ lotId, lotCode, maxQuantity, unit }: ConsumeL
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[10px] border-slate-700 hover:bg-slate-800">
+                <Button variant="outline" size="sm" className="bg-slate-950/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 border-slate-800 hover:border-amber-500/50 rounded-lg transition-all duration-300 h-8 shadow-sm">
                     <Minus className="h-3 w-3 mr-1" />
                     Consumir
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px] bg-slate-950 border-slate-800 text-slate-200">
+            <DialogContent className="sm:max-w-[400px] bg-slate-950 border-slate-800 text-slate-200 shadow-2xl shadow-amber-900/10">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Minus className="h-5 w-5 text-amber-400" />
@@ -114,7 +114,7 @@ export function ConsumeLotDialog({ lotId, lotCode, maxQuantity, unit }: ConsumeL
                                                 type="number"
                                                 step="0.01"
                                                 {...field}
-                                                className="bg-slate-900 border-slate-800 pr-12"
+                                                className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all text-white pr-12 text-lg font-mono tracking-tight"
                                             />
                                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">
                                                 {unit}
@@ -133,7 +133,7 @@ export function ConsumeLotDialog({ lotId, lotCode, maxQuantity, unit }: ConsumeL
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>
                                 Cancelar
                             </Button>
-                            <Button type="submit" disabled={loading} className="bg-amber-600 hover:bg-amber-700 text-white">
+                            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-900/20 border border-transparent hover:border-amber-400/30 transition-all duration-300">
                                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 Confirmar Consumo
                             </Button>

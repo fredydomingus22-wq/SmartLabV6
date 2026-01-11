@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { ProductDetailClientPage } from "./product-detail-client-page";
+import { getProductBOM } from "@/lib/queries/engineering";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
         .order("superseded_at", { ascending: false })
         .limit(50);
 
+    // 6. Fetch BOM
+    const bom = await getProductBOM(id);
+
+    // 7. Fetch All Products & Raw Materials for BOM selection
+    const { data: allProducts } = await supabase
+        .from("products")
+        .select("id, name, sku, unit, category")
+        .eq("status", "active")
+        .order("name");
+
+    const { data: allRawMaterials } = await supabase
+        .from("raw_materials")
+        .select("id, name, code, unit, category")
+        .eq("status", "active")
+        .order("name");
+
     return (
         <ProductDetailClientPage
             product={product}
@@ -70,6 +87,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
             recentBatches={recentBatches || []}
             productHistory={productHistory || []}
             specHistory={specHistory || []}
+            bom={bom || []}
+            allProducts={allProducts || []}
+            allRawMaterials={allRawMaterials || []}
         />
     );
 }

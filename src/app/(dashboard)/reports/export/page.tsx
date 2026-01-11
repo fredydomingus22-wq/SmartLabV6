@@ -119,6 +119,7 @@ export default function ExportPage() {
                                 { value: "ncs", label: "Nonconformities" },
                                 { value: "capas", label: "CAPA Actions" },
                                 { value: "analysis", label: "Lab Analysis Results" },
+                                { value: "pcc_logs", label: "HACCP PCC Logs" },
                             ]}
                         />
                     </div>

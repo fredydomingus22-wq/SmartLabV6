@@ -278,3 +278,113 @@ export async function getBatchesForReport() {
     return { data: data || [], error };
 }
 
+
+/**
+ * Get analytics for reports dashboard (last 7 days)
+ */
+export async function getReportsAnalytics() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // 1. Get Analysis Volume (Daily counts)
+    const { data: volumeData, error: volumeError } = await supabase
+        .from("lab_analysis")
+        .select("analyzed_at")
+        .eq("organization_id", user.organization_id)
+        .neq("is_valid", false)
+        .gte("analyzed_at", sevenDaysAgo.toISOString());
+
+    if (volumeError) throw volumeError;
+
+    // 2. Get Quality Conformity
+    const { data: qualityData, error: qualityError } = await supabase
+        .from("lab_analysis")
+        .select("is_conforming, analyzed_at")
+        .eq("organization_id", user.organization_id)
+        .neq("is_valid", false)
+        .gte("analyzed_at", sevenDaysAgo.toISOString());
+
+    if (qualityError) throw qualityError;
+
+    // 3. Get Samples for Lead Time
+    const { data: sampleData, error: sampleError } = await supabase
+        .from("samples")
+        .select("id, collected_at, status")
+        .eq("organization_id", user.organization_id)
+        .gte("collected_at", sevenDaysAgo.toISOString());
+
+    if (sampleError) throw sampleError;
+
+    // Process daily volume
+    const dailyVolumeMap = new Map();
+    const dailyQualityMap = new Map();
+
+    // Initialize last 7 days
+    for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        dailyVolumeMap.set(key, 0);
+        dailyQualityMap.set(key, { total: 0, conforming: 0 });
+    }
+
+    volumeData?.forEach(v => {
+        const key = v.analyzed_at.split('T')[0];
+        if (dailyVolumeMap.has(key)) {
+            dailyVolumeMap.set(key, dailyVolumeMap.get(key) + 1);
+        }
+    });
+
+    qualityData?.forEach(q => {
+        const key = q.analyzed_at.split('T')[0];
+        if (dailyQualityMap.has(key)) {
+            const stats = dailyQualityMap.get(key);
+            stats.total++;
+            if (q.is_conforming) stats.conforming++;
+        }
+    });
+
+    const sortedDates = Array.from(dailyVolumeMap.keys()).sort();
+
+    const volumeSeries = sortedDates.map(date => ({
+        name: date.split('-').slice(1).join('/'),
+        value: dailyVolumeMap.get(date)
+    }));
+
+    const qualitySeries = sortedDates.map(date => {
+        const stats = dailyQualityMap.get(date);
+        return {
+            name: date.split('-').slice(1).join('/'),
+            value: stats.total > 0 ? Number(((stats.conforming / stats.total) * 100).toFixed(1)) : 100
+        };
+    });
+
+    // Calculate overall stats
+    const totalAnalyses = volumeData?.length || 0;
+    const conformingTotal = qualityData?.filter(q => q.is_conforming).length || 0;
+    const globalQuality = totalAnalyses > 0 ? ((conformingTotal / totalAnalyses) * 100).toFixed(1) : "100";
+
+    // Quick and dirty trend (last 24h vs previous 24h)
+    // This is a placeholder for real trend logic
+    const trend = 12.5;
+
+    return {
+        volume: {
+            total: totalAnalyses,
+            series: volumeSeries,
+            trend: { value: trend, isPositive: true }
+        },
+        quality: {
+            rate: globalQuality,
+            series: qualitySeries,
+            trend: { value: 0.4, isPositive: true }
+        },
+        leadTime: {
+            value: "2.4h", // Mocked for now as we need deeper analysis logic
+            trend: { value: 5.2, isPositive: false }
+        }
+    };
+}

@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Save, RotateCcw, ClipboardCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { IndustrialCard } from "@/components/shared/industrial-card";
+import { Box, Typography, Stack } from "@mui/material";
 
 interface CheckItem {
     id: string;
@@ -43,9 +43,7 @@ export function CheckSheet({
     };
 
     const handleReset = () => {
-        if (confirm("Deseja zerar todas as contagens?")) {
-            setItems(prev => prev.map(item => ({ ...item, count: 0 })));
-        }
+        setItems(prev => prev.map(item => ({ ...item, count: 0 })));
     };
 
     const handleSave = async () => {
@@ -59,69 +57,66 @@ export function CheckSheet({
 
     const total = items.reduce((acc, item) => acc + item.count, 0);
 
-    return (
-        <Card className="glass border-slate-800/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                    <CardTitle className="text-lg font-bold flex items-center gap-2">
-                        <ClipboardCheck className="h-5 w-5 text-emerald-400" />
-                        {title}
-                    </CardTitle>
-                    <CardDescription>{description}</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={handleReset} title="Reiniciar">
-                        <RotateCcw className="h-4 w-4 text-slate-500" />
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 h-8">
-                        <Save className="h-4 w-4 mr-2" />
-                        {saving ? "A guardar..." : "Guardar"}
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-3 mt-4">
-                    {items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 bg-slate-900/50 border border-slate-800 rounded-xl group transition-all hover:border-slate-700">
-                            <span className="text-sm font-medium text-slate-200">{item.label}</span>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => updateCount(item.id, -1)}
-                                        className="h-7 w-7 text-slate-500 hover:text-red-400"
-                                    >
-                                        <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <div className="w-10 text-center font-mono font-bold text-white text-sm">
-                                        {item.count}
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => updateCount(item.id, 1)}
-                                        className="h-7 w-7 text-slate-500 hover:text-emerald-400"
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                                <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-emerald-500 transition-all duration-500"
-                                        style={{ width: `${total > 0 ? (item.count / total) * 100 : 0}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+    const actions = (
+        <Stack direction="row" spacing={1}>
+            <Button variant="ghost" size="icon" onClick={handleReset} className="h-7 w-7 text-slate-500 hover:text-white transition-colors">
+                <RotateCcw className="h-3 w-3" />
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 h-7 text-[10px] font-black uppercase tracking-widest border-none px-4">
+                <Save className="h-3 w-3 mr-2" />
+                {saving ? "A guardar..." : "Guardar"}
+            </Button>
+        </Stack>
+    );
 
-                <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center text-xs font-bold uppercase tracking-widest text-slate-500">
-                    <span>Total de Ocorrências</span>
-                    <span className="text-lg text-white font-black">{total}</span>
-                </div>
-            </CardContent>
-        </Card>
+    return (
+        <IndustrialCard
+            title={title}
+            subtitle={description}
+            icon={ClipboardCheck}
+            actions={actions}
+        >
+            <Box className="space-y-3 mt-4">
+                {items.map((item) => (
+                    <Box key={item.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl group transition-all hover:border-blue-500/30">
+                        <Typography className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{item.label}</Typography>
+                        <Box className="flex items-center gap-4">
+                            <Box className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => updateCount(item.id, -1)}
+                                    className="h-7 w-7 text-slate-500 hover:text-red-400"
+                                >
+                                    <Minus className="h-3 w-3" />
+                                </Button>
+                                <Typography className="w-10 text-center font-mono font-black text-white text-sm">
+                                    {item.count}
+                                </Typography>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => updateCount(item.id, 1)}
+                                    className="h-7 w-7 text-slate-500 hover:text-emerald-400"
+                                >
+                                    <Plus className="h-3 w-3" />
+                                </Button>
+                            </Box>
+                            <Box className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                                <Box
+                                    className="h-full bg-blue-500 transition-all duration-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                                    sx={{ width: `${total > 0 ? (item.count / total) * 100 : 0}%` }}
+                                />
+                            </Box>
+                        </Box>
+                    </Box>
+                ))}
+            </Box>
+
+            <Box className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center">
+                <Typography className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total de Ocorrências</Typography>
+                <Typography className="text-xl font-black text-white">{total}</Typography>
+            </Box>
+        </IndustrialCard>
     );
 }

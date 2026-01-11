@@ -5,11 +5,14 @@ import { StockPageClient } from "./stock-page-client";
 import { MovementsPageClient } from "./movements-page-client";
 import { InventoryDashboard } from "./inventory-dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Beaker, History, ArrowLeft, Plus } from "lucide-react";
+import { Beaker, History, ArrowLeft, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
+
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 
 export default async function ReagentsPage() {
     const supabase = await createClient();
@@ -83,6 +86,29 @@ export default async function ReagentsPage() {
             };
         });
 
+    // Trend Calculation
+    const today = new Date();
+    const getLast7DaysMovement = (type: 'in' | 'out') => {
+        const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(today.getDate() - (6 - i));
+            return { date: format(d, 'dd/MM', { locale: pt }), value: 0, rawDate: d.toDateString() };
+        });
+
+        movements?.forEach(m => {
+            if (m.movement_type !== type || !m.created_at) return;
+            const itemDate = new Date(m.created_at).toDateString();
+            const day = days.find(d => d.rawDate === itemDate);
+            if (day) day.value += Number(m.quantity);
+        });
+
+        return days.map(({ date, value }) => ({ date, value }));
+    };
+
+    const stockInTrend = getLast7DaysMovement('in');
+    const stockOutTrend = getLast7DaysMovement('out');
+    const totalTrend = stockInTrend.map((item, i) => ({ ...item, value: item.value + stockOutTrend[i].value }));
+
     const { data: plants } = await supabase.from("plants").select("id").limit(1);
     const plantId = plants?.[0]?.id || "";
 
@@ -90,19 +116,16 @@ export default async function ReagentsPage() {
         <div className="container py-8 space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/materials">
-                        <Button variant="ghost" size="icon" className="text-slate-400">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                            <Beaker className="h-8 w-8 text-purple-400" />
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                        <Sparkles className="h-8 w-8 text-purple-400" />
+                        <span className="bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
                             Stock de Reagentes
-                        </h1>
-                        <p className="text-slate-400 mt-1">Gestão de inventário químico e consumíveis de laboratório.</p>
-                    </div>
+                        </span>
+                    </h1>
+                    <p className="text-slate-400 mt-2 pl-11 max-w-2xl">
+                        Gestão de inventário químico, controlo de validades e registo de movimentos de consumíveis.
+                    </p>
                 </div>
             </div>
 
@@ -113,6 +136,9 @@ export default async function ReagentsPage() {
                 lowStockItems={lowStockItems.map(i => ({ name: i.name, current: i.current_stock, min: i.min_stock_level || 0, unit: i.unit || 'units' }))}
                 mostUsed={mostUsed}
                 expiringBatches={expiringBatches}
+                stockInTrend={stockInTrend}
+                stockOutTrend={stockOutTrend}
+                totalTrend={totalTrend}
             />
 
             <Tabs defaultValue="stock" className="space-y-4">

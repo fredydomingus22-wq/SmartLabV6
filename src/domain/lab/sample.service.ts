@@ -1,6 +1,7 @@
 import { BaseDomainService } from "../shared/base.service";
 import { DomainResponse } from "../shared/industrial.context";
 import { SampleFSM, SampleStatus } from "./sample.fsm";
+import { ProductionOrchestratorService } from "../production/production-orchestrator.service";
 
 export interface CreateSampleDTO {
     sample_type_id: string;
@@ -11,6 +12,8 @@ export interface CreateSampleDTO {
     sampling_point_id?: string;
     collected_at?: string;
     assignee_id?: string;
+    process_context?: string;
+    spec_version_id?: string;
 }
 
 /**
@@ -54,6 +57,8 @@ export class SampleDomainService extends BaseDomainService {
                     collected_by: this.context.user_id,
                     collected_at: dto.collected_at || null,
                     status: dto.collected_at ? 'collected' : 'registered', // Industrial FSM compliance
+                    process_context: dto.process_context || null,
+                    spec_version_id: dto.spec_version_id || null
                 })
                 .select("id")
                 .single();
@@ -62,7 +67,7 @@ export class SampleDomainService extends BaseDomainService {
 
             // 4. Initialize Analysis Queue (The "Plan")
             if (categoryFilter.length > 0) {
-                await this.initializeAnalysisQueue(newSample.id, productIds, categoryFilter, dto.sample_type_id, dto.plant_id);
+                await this.initializeAnalysisQueue(newSample.id, productIds, categoryFilter, dto.sample_type_id, dto.plant_id, dto.spec_version_id);
             }
 
             // 5. Create Technical Task
@@ -105,8 +110,21 @@ export class SampleDomainService extends BaseDomainService {
         let productIds: string[] = [];
 
         // Industrial Enforcements:
-        // 1. If it's a Tank/Intermediate Sample, it MUST follow ONLY the tank's recipe.
-        if (dto.intermediate_product_id) {
+
+        // 1. FINISHED PRODUCT Override: Always prioritize the Batch's final product.
+        const isFinishedProduct = sampleTypeCode.startsWith("FP");
+
+        if (isFinishedProduct && dto.production_batch_id) {
+            const { data: batch } = await this.supabase
+                .from("production_batches")
+                .select("product_id")
+                .eq("id", dto.production_batch_id)
+                .single();
+            if (batch?.product_id) productIds.push(batch.product_id);
+        }
+
+        // 2. If it's a Tank/Intermediate Sample (and NOT forced FP), follow the tank's recipe.
+        else if (dto.intermediate_product_id) {
             const { data: ip } = await this.supabase
                 .from("intermediate_products")
                 .select("product_id")
@@ -116,7 +134,7 @@ export class SampleDomainService extends BaseDomainService {
             if (ip?.product_id) productIds.push(ip.product_id);
         }
 
-        // 2. If it's a Batch sample (no tank context), use the batch's product.
+        // 3. Fallback for Batch samples (if logic falls through)
         else if (dto.production_batch_id) {
             const { data: batch } = await this.supabase
                 .from("production_batches")
@@ -156,7 +174,7 @@ export class SampleDomainService extends BaseDomainService {
         return `${sampleCodePrefix}-${typeCode}-${y}${m}${d}-${h}${min}`;
     }
 
-    private async initializeAnalysisQueue(sampleId: string, productIds: string[], categoryFilter: string[], sampleTypeId: string, plantId: string) {
+    private async initializeAnalysisQueue(sampleId: string, productIds: string[], categoryFilter: string[], sampleTypeId: string, plantId: string, specVersionId?: string) {
         // Optimized query: Use original table names for filtering to avoid alias/PostgREST issues.
         let query = this.supabase
             .from("product_specifications")
@@ -166,11 +184,16 @@ export class SampleDomainService extends BaseDomainService {
             .eq("qa_parameters.status", "active")
             .in("qa_parameters.category", categoryFilter);
 
-        // Industrial Logic: If we have product IDs, they represent the "mandatário" (authority).
-        // For product-based samples, the sample_type is secondary to the product identification.
-        if (productIds.length > 0) {
-            query = query.in("product_id", productIds);
-        } else {
+        // Industrial Logic: If we have a locked spec version, use it EXCLUSIVELY.
+        if (specVersionId) {
+            query = query.eq("technical_sheet_id", specVersionId);
+        }
+        // Fallback A: Use current product specs
+        else if (productIds.length > 0) {
+            query = query.in("product_id", productIds).eq("is_current", true);
+        }
+        // Fallback B: General sampling (Environment/Utilities)
+        else {
             query = query.is("product_id", null).eq("sample_type_id", sampleTypeId);
         }
 
@@ -389,7 +412,7 @@ export class SampleDomainService extends BaseDomainService {
 
             const { data: sample } = await this.supabase
                 .from("samples")
-                .select("status")
+                .select("status, production_batch_id")
                 .eq("id", sampleId)
                 .single();
 
@@ -411,6 +434,23 @@ export class SampleDomainService extends BaseDomainService {
                 .eq("id", sampleId);
 
             if (error) throw error;
+
+            // --- FEEDBACK LOOP TO MES ---
+            if (sample.production_batch_id) {
+                const mesService = new ProductionOrchestratorService(this.supabase, {
+                    organization_id: this.context.organization_id,
+                    user_id: this.context.user_id,
+                    role: this.context.role,
+                    plant_id: (this.context.plant_id || "") as string,
+                    correlation_id: this.context.correlation_id
+                });
+                const mesDecision = decision === 'released' ? 'APPROVED' : 'REJECTED';
+                await mesService.logReleaseDecision(sample.production_batch_id, mesDecision, {
+                    sample_id: sampleId,
+                    correlation_id: this.context.correlation_id,
+                    message: notes
+                });
+            }
 
             await this.auditAction('SAMPLE_FINAL_RELEASE', 'samples', sampleId, { status: decision, notes });
             return this.success({ id: sampleId, status: decision });

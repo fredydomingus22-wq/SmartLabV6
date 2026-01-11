@@ -49,8 +49,11 @@ export function DashboardToolbar() {
     };
 
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-lg border border-slate-800/50 backdrop-blur-sm">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 glass border-white/10 p-5 rounded-2xl backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <CalendarIcon className="h-5 w-5 text-emerald-500" />
+                </div>
                 {/* Date Range Picker */}
                 <Popover>
                     <PopoverTrigger asChild>
@@ -58,11 +61,10 @@ export function DashboardToolbar() {
                             id="date"
                             variant={"outline"}
                             className={cn(
-                                "w-full sm:w-[260px] justify-start text-left font-normal bg-slate-950 border-slate-800",
+                                "w-full sm:w-[280px] justify-start text-left font-semibold h-11 glass border-white/5 hover:bg-white/5 transition-all text-sm",
                                 !date.from && "text-muted-foreground"
                             )}
                         >
-                            <CalendarIcon className="mr-2 h-4 w-4 text-emerald-500" />
                             {date.from ? (
                                 date.to ? (
                                     <>
@@ -73,11 +75,11 @@ export function DashboardToolbar() {
                                     format(date.from, "dd MMM, yyyy", { locale: pt })
                                 )
                             ) : (
-                                <span>Filtrar por data...</span>
+                                <span>Filtrar período...</span>
                             )}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 glass border-white/10" align="start">
                         <Calendar
                             initialFocus
                             mode="range"
@@ -86,29 +88,34 @@ export function DashboardToolbar() {
                             onSelect={setDate as any}
                             numberOfMonths={2}
                             locale={pt}
-                            className="bg-slate-950 border-slate-800"
+                            className="bg-transparent"
                         />
                     </PopoverContent>
                 </Popover>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
                 {/* Scope Filter */}
                 <Select value={scope} onValueChange={setScope}>
-                    <SelectTrigger className="w-[180px] bg-slate-950 border-slate-800">
+                    <SelectTrigger className="w-[200px] h-11 glass border-white/5 font-semibold text-sm">
                         <SelectValue placeholder="Escopo" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800">
-                        <SelectItem value="all">Todas as Áreas</SelectItem>
-                        <SelectItem value="lab">Laboratório Físico-Químico</SelectItem>
-                        <SelectItem value="micro">Microbiologia</SelectItem>
-                        <SelectItem value="production">Produção</SelectItem>
+                    <SelectContent className="glass border-white/10">
+                        <SelectItem value="all">🌏 Todas as Áreas</SelectItem>
+                        <SelectItem value="lab">🧪 Lab Físico-Químico</SelectItem>
+                        <SelectItem value="micro">🔬 Microbiologia</SelectItem>
+                        <SelectItem value="production">🏭 Produção MES</SelectItem>
                     </SelectContent>
                 </Select>
 
                 {/* Clear Button */}
                 {(date.from || scope !== "all") && (
-                    <Button variant="ghost" size="icon" onClick={clearFilters} className="text-muted-foreground hover:text-red-400">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={clearFilters}
+                        className="h-11 w-11 rounded-xl text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    >
                         <FilterX className="h-4 w-4" />
                     </Button>
                 )}

@@ -27,5 +27,5 @@ export function PackagingPageClient({ materials }: PackagingPageClientProps) {
         },
     ];
 
-    return <DataGrid data={materials} columns={columns} />;
+    return <DataGrid data={materials} columns={columns} className="border-none shadow-none" rowClassName="hover:bg-emerald-500/5 transition-colors" />;
 }

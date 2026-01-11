@@ -56,7 +56,7 @@ export function StockMovementDialog({ reagents }: StockMovementDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-lg shadow-emerald-900/20 font-semibold tracking-wide border border-transparent hover:border-emerald-400/30 transition-all duration-300">
                     <ArrowLeftRight className="mr-2 h-4 w-4" />
                     Registar Movimento
                 </Button>
@@ -70,12 +70,12 @@ export function StockMovementDialog({ reagents }: StockMovementDialogProps) {
                 </DialogHeader>
 
                 <Tabs defaultValue="receive" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-slate-800">
-                        <TabsTrigger value="receive" className="data-[state=active]:bg-slate-700">
+                    <TabsList className="grid w-full grid-cols-2 bg-slate-900/50 border border-slate-700/50 p-1">
+                        <TabsTrigger value="receive" className="data-[state=active]:bg-slate-800/80 data-[state=active]:text-emerald-400 data-[state=active]:shadow-md transition-all">
                             <ArrowDownLeft className="mr-2 h-4 w-4 text-emerald-400" />
                             Entrada (IN)
                         </TabsTrigger>
-                        <TabsTrigger value="consume" className="data-[state=active]:bg-slate-700">
+                        <TabsTrigger value="consume" className="data-[state=active]:bg-slate-800/80 data-[state=active]:text-red-400 data-[state=active]:shadow-md transition-all">
                             <ArrowUpRight className="mr-2 h-4 w-4 text-red-400" />
                             Consumo (OUT)
                         </TabsTrigger>
@@ -91,7 +91,7 @@ export function StockMovementDialog({ reagents }: StockMovementDialogProps) {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="quantity-in" className="text-slate-400">Quantidade</Label>
-                                    <Input id="quantity-in" name="quantity" type="number" step="0.01" min="0" className="bg-slate-800/50 border-slate-700" required />
+                                    <Input id="quantity-in" name="quantity" type="number" step="0.01" min="0" className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all" required />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="batch" className="text-slate-400">Nº de Lote</Label>
@@ -105,12 +105,12 @@ export function StockMovementDialog({ reagents }: StockMovementDialogProps) {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="supplier" className="text-slate-400">Fornecedor</Label>
-                                    <Input id="supplier" name="external_supplier" placeholder="Ex: Sigma-Aldrich" className="bg-slate-800/50 border-slate-700" />
+                                    <Input id="supplier" name="external_supplier" placeholder="Ex: Sigma-Aldrich" className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all" />
                                 </div>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="notes-in" className="text-slate-400">Notas/Observações</Label>
-                                <Textarea id="notes-in" name="notes" placeholder="Detalhes da entrega..." className="bg-slate-800/50 border-slate-700" />
+                                <Textarea id="notes-in" name="notes" placeholder="Detalhes da entrega..." className="bg-slate-900/50 border-slate-700/50 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all" />
                             </div>
                             <DialogFooter>
                                 <Button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700">

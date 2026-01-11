@@ -4,6 +4,7 @@ import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { MaterialsDomainService } from "@/domain/materials/materials.service";
 
 const action = createSafeActionClient();
 
@@ -97,23 +98,29 @@ export async function createPackagingLot(formData: FormData) {
     if (!profile) return { success: false, message: "Profile not found" };
     if (!profile.plant_id) return { success: false, message: "Must be in a plant to create lots" };
 
-    const { error } = await supabase.from("packaging_lots").insert({
-        organization_id: profile.organization_id,
-        plant_id: profile.plant_id,
-        packaging_material_id: validation.data.packaging_material_id,
-        lot_code: validation.data.lot_code,
-        quantity: validation.data.quantity,
-        remaining_quantity: validation.data.quantity,
-        received_at: validation.data.received_at || new Date().toISOString(),
-        expiry_date: validation.data.expiry_date,
-        status: 'active'
-    });
+    // Use Domain Service
+    const service = new MaterialsDomainService(supabase);
 
-    if (error) return { success: false, message: error.message };
+    try {
+        const { error } = await service.createPackagingLot({
+            packaging_material_id: validation.data.packaging_material_id,
+            lot_code: validation.data.lot_code,
+            quantity: validation.data.quantity,
+            received_at: validation.data.received_at,
+            expiry_date: validation.data.expiry_date,
+            plant_id: profile.plant_id,
+            organization_id: profile.organization_id,
+            user_id: user.id
+        });
 
-    revalidatePath("/materials/packaging");
-    revalidatePath(`/materials/packaging/${validation.data.packaging_material_id}`);
-    return { success: true, message: "Lote registado com sucesso" };
+        if (error) throw error;
+
+        revalidatePath("/materials/packaging");
+        revalidatePath(`/materials/packaging/${validation.data.packaging_material_id}`);
+        return { success: true, message: "Lote registado com sucesso" };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
 }
 
 export async function recordPackagingUsage(formData: FormData) {
@@ -138,26 +145,24 @@ export async function recordPackagingUsage(formData: FormData) {
         .select("organization_id, plant_id")
         .eq("id", user.id)
         .single();
-
     if (!profile) return { success: false, message: "Profile not found" };
 
-    const { error } = await supabase.from("batch_packaging_usage").insert({
-        organization_id: profile.organization_id,
-        plant_id: profile.plant_id,
-        production_batch_id: validation.data.production_batch_id,
-        packaging_lot_id: validation.data.packaging_lot_id,
-        quantity_used: validation.data.quantity_used,
-        unit: validation.data.unit,
-        added_by: user.id
-    });
+    const service = new MaterialsDomainService(supabase);
 
-    if (error) return { success: false, message: error.message };
+    try {
+        await service.consumePackaging({
+            packaging_lot_id: validation.data.packaging_lot_id,
+            quantity: validation.data.quantity_used,
+            production_batch_id: validation.data.production_batch_id,
+            unit: validation.data.unit,
+            user_id: user.id,
+            organization_id: profile.organization_id,
+            plant_id: profile.plant_id
+        });
 
-    await supabase.rpc('decrement_packaging_stock', {
-        p_lot_id: validation.data.packaging_lot_id,
-        p_quantity: validation.data.quantity_used
-    });
-
-    revalidatePath("/production");
-    return { success: true, message: "Uso registado com sucesso" };
+        revalidatePath("/production");
+        return { success: true, message: "Uso registado com sucesso" };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
 }

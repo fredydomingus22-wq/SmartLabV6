@@ -1,246 +1,281 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, X, Edit2, MessageSquare, Save } from "lucide-react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
+import ReactFlow, {
+    Background,
+    Controls,
+    MiniMap,
+    useNodesState,
+    useEdgesState,
+    Position,
+    MarkerType,
+    NodeProps,
+    Handle,
+    Connection,
+    addEdge,
+    Edge,
+    Node,
+} from "reactflow";
+import "reactflow/dist/style.css";
+import { IndustrialCard } from "@/components/shared/industrial-card";
+import { Box, Typography, Button, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Plus, Trash2, Edit2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 
-interface Cause {
-    id: string;
-    text: string;
-}
+// --- Custom Node Types ---
 
-interface Category {
-    id: string;
-    name: string;
-    causes: Cause[];
-}
+const EffectNode = ({ data }: NodeProps) => (
+    <Box className="px-5 py-4 bg-rose-500/20 border-2 border-rose-500 rounded-xl text-center min-w-[200px] shadow-[0_0_30px_rgba(244,63,94,0.3)] relative">
+        <Typography className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Efeito / Problema (Target)</Typography>
+        <Typography className="text-sm font-black text-white">{data.label}</Typography>
+        <Handle type="target" position={Position.Left} className="w-4 h-4 !bg-rose-500 !border-none translate-x-1" />
+    </Box>
+);
+
+const CategoryNode = ({ data }: NodeProps) => (
+    <Box className="px-4 py-2 bg-slate-900 border-2 border-blue-500/50 rounded-lg text-center min-w-[140px] hover:border-blue-500 transition-all shadow-lg group">
+        <Typography className="text-[11px] font-black text-blue-400 uppercase tracking-widest group-hover:text-white transition-colors">
+            {data.label}
+        </Typography>
+        <Handle type="source" position={data.spinePosition === "top" ? Position.Bottom : Position.Top} className="!bg-blue-500 !border-none" />
+    </Box>
+);
+
+const CauseNode = ({ data }: NodeProps) => (
+    <Box className="px-3 py-1.5 bg-slate-800/80 border border-white/10 rounded-md text-left min-w-[120px] hover:border-white/30 transition-all shadow-md group relative">
+        <Typography className="text-[11px] text-slate-200 font-medium group-hover:text-white">
+            {data.label}
+        </Typography>
+        <Handle type="target" position={Position.Left} className="!bg-slate-600 !border-none w-2 h-2" />
+        <Handle type="source" position={Position.Right} className="!bg-slate-600 !border-none w-2 h-2" />
+    </Box>
+);
+
+const nodeTypes = {
+    effect: EffectNode,
+    category: CategoryNode,
+    cause: CauseNode,
+};
+
+// --- Helper Functions ---
+
+const createIshikawaLayout = (effectLabel: string, initialCategories?: any) => {
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+
+    // 1. Central Spine Target (Effect)
+    nodes.push({
+        id: "effect",
+        type: "effect",
+        position: { x: 900, y: 300 },
+        data: { label: effectLabel },
+        draggable: true,
+    });
+
+    // 2. Categories (ribs)
+    const mCategories = initialCategories || [
+        { id: "m1", label: "Mão de Obra", pos: "top", x: 100 },
+        { id: "m2", label: "Máquina", pos: "top", x: 350 },
+        { id: "m3", label: "Material", pos: "top", x: 600 },
+        { id: "m4", label: "Método", pos: "bottom", x: 100 },
+        { id: "m5", label: "Medição", pos: "bottom", x: 350 },
+        { id: "m6", label: "Meio Ambiente", pos: "bottom", x: 600 },
+    ];
+
+    mCategories.forEach((cat: any) => {
+        const yPos = cat.pos === "top" ? 50 : 550;
+        nodes.push({
+            id: cat.id,
+            type: "category",
+            position: { x: cat.x, y: yPos },
+            data: { label: cat.label, spinePosition: cat.pos },
+        });
+
+        // Rib lines (edges to spine)
+        edges.push({
+            id: `edge-${cat.id}`,
+            source: cat.id,
+            target: "effect",
+            type: "smoothstep",
+            style: { stroke: "#3b82f6", strokeWidth: 3, opacity: 0.6 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: "#3b82f6" },
+        });
+    });
+
+    return { nodes, edges };
+};
+
+// --- Main Component ---
 
 interface IshikawaChartProps {
     effect: string;
-    initialCategories?: Category[];
-    onUpdate?: (categories: Category[]) => void;
-    onSave?: (categories: Category[]) => void;
+    description?: string;
+    height?: number;
+    initialCategories?: any;
+    onSave?: (data: any) => void;
     isSaving?: boolean;
 }
 
-const DEFAULT_CATEGORIES: Category[] = [
-    { id: 'm1', name: 'Máquina', causes: [] },
-    { id: 'm2', name: 'Mão de Obra', causes: [] },
-    { id: 'm3', name: 'Material', causes: [] },
-    { id: 'm4', name: 'Método', causes: [] },
-    { id: 'm5', name: 'Medição', causes: [] },
-    { id: 'm6', name: 'Meio Ambiente', causes: [] },
-];
+export function IshikawaChart({ effect, description, height = 600, initialCategories, onSave, isSaving }: IshikawaChartProps) {
+    const layout = useMemo(() => createIshikawaLayout(effect, initialCategories), [effect, initialCategories]);
 
-export function IshikawaChart({ effect, initialCategories, onUpdate, onSave, isSaving }: IshikawaChartProps) {
-    const [categories, setCategories] = useState<Category[]>(initialCategories || DEFAULT_CATEGORIES);
-    const [activeCategory, setActiveCategory] = useState<string | null>(null);
-    const [newCause, setNewCause] = useState("");
+    const [nodes, setNodes, onNodesChange] = useNodesState(layout.nodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(layout.edges);
 
-    const addCause = (categoryId: string) => {
-        if (!newCause.trim()) return;
-        const updated = categories.map(cat => {
-            if (cat.id === categoryId) {
-                return {
-                    ...cat,
-                    causes: [...cat.causes, { id: Math.random().toString(36).substr(2, 9), text: newCause }]
-                };
-            }
-            return cat;
-        });
-        setCategories(updated);
-        setNewCause("");
-        setActiveCategory(null);
-        onUpdate?.(updated);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [newNodeLabel, setNewNodeLabel] = useState("");
+
+    const onConnect = useCallback(
+        (params: Connection) => setEdges((eds) => addEdge({ ...params, style: { stroke: "#475569", strokeWidth: 1.5 } }, eds)),
+        [setEdges]
+    );
+
+    const onNodeClick = (_: React.MouseEvent, node: Node) => {
+        if (node.id === "effect") return;
+        setSelectedNodeId(node.id);
     };
 
-    const removeCause = (categoryId: string, causeId: string) => {
-        const updated = categories.map(cat => {
-            if (cat.id === categoryId) {
-                return {
-                    ...cat,
-                    causes: cat.causes.filter(c => c.id !== causeId)
-                };
-            }
-            return cat;
-        });
-        setCategories(updated);
-        onUpdate?.(updated);
+    const handleAddCause = () => {
+        if (!selectedNodeId) return;
+        setIsDialogOpen(true);
+    };
+
+    const confirmAddCause = () => {
+        if (!newNodeLabel.trim() || !selectedNodeId) return;
+
+        const parentNode = nodes.find(n => n.id === selectedNodeId);
+        if (!parentNode) return;
+
+        const id = `cause-${Date.now()}`;
+        const newNode: Node = {
+            id,
+            type: "cause",
+            position: {
+                x: parentNode.position.x + (Math.random() * 50 + 50),
+                y: parentNode.position.y + (Math.random() * 50 + 20)
+            },
+            data: { label: newNodeLabel },
+        };
+
+        const newEdge: Edge = {
+            id: `e-${id}`,
+            source: selectedNodeId,
+            target: id,
+            style: { stroke: "#64748b", strokeWidth: 1.5 },
+        };
+
+        setNodes((nds) => nds.concat(newNode));
+        setEdges((eds) => eds.concat(newEdge));
+        setNewNodeLabel("");
+        setIsDialogOpen(false);
+    };
+
+    const handleDeleteNode = () => {
+        if (!selectedNodeId) return;
+        setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
+        setEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
+        setSelectedNodeId(null);
+    };
+
+    const handleSave = () => {
+        if (onSave) {
+            onSave({ nodes, edges });
+        }
     };
 
     return (
-        <Card className="glass border-slate-800/50 overflow-hidden">
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                            Diagrama de Ishikawa
-                        </CardTitle>
-                        <CardDescription className="text-sm text-slate-400">Análise de Causa Raiz (6M)</CardDescription>
+        <IndustrialCard
+            title="Professional Ishikawa (Fishbone) Analysis"
+            subtitle={description || "Análise de Causa Raiz (RCA) - Framework 6M"}
+            icon={Save}
+            actions={
+                <Stack direction="row" spacing={1}>
+                    {selectedNodeId && (
+                        <>
+                            <Button size="small" variant="outlined" className="h-8 text-[10px] uppercase font-black tracking-widest border-slate-700 hover:bg-white/5" onClick={handleAddCause}>
+                                <Plus className="h-3 w-3 mr-1" /> Add Causa
+                            </Button>
+                            <Button size="small" variant="outlined" className="h-8 text-[10px] uppercase font-black tracking-widest border-rose-900/40 text-rose-500 hover:bg-rose-500/10" onClick={handleDeleteNode}>
+                                <Trash2 className="h-3 w-3 mr-1" /> Remover
+                            </Button>
+                        </>
+                    )}
+                    <Button
+                        size="small"
+                        variant="contained"
+                        className="h-8 text-[10px] uppercase font-black tracking-widest bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                    >
+                        {isSaving ? "Gravando..." : "Salvar RCA"}
+                    </Button>
+                </Stack>
+            }
+        >
+            <Box style={{ height: height - 120 }} className="bg-slate-950/40 rounded-3xl overflow-hidden border border-white/5 mt-4 relative group">
+                {/* Central Horizontal Spine (Industrial Visual) */}
+                <div className="absolute top-1/2 left-[50px] right-[250px] h-1.5 bg-gradient-to-r from-slate-800 via-slate-700 to-rose-500/50 -translate-y-1/2 rounded-full hidden md:block opacity-40" />
+
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeClick={onNodeClick}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    snapToGrid
+                    snapGrid={[15, 15]}
+                    proOptions={{ hideAttribution: true }}
+                >
+                    <Background color="#1e293b" gap={25} size={1} />
+                    <Controls className="bg-slate-950 border-white/5 fill-white rounded-xl overflow-hidden" />
+                    <MiniMap
+                        nodeColor={(n) => {
+                            if (n.type === 'effect') return '#f43f5e';
+                            if (n.type === 'category') return '#3b82f6';
+                            return '#64748b';
+                        }}
+                        maskColor="rgba(15, 23, 42, 0.8)"
+                        className="bg-slate-950 border-white/5 rounded-2xl"
+                    />
+                </ReactFlow>
+
+                {/* Legend Overlay */}
+                <div className="absolute bottom-6 left-6 p-4 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl pointer-events-none">
+                    <Typography className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Instruções RCA</Typography>
+                    <div className="space-y-1">
+                        <Typography className="text-[10px] text-slate-400">1. Selecione uma Categoria (6M)</Typography>
+                        <Typography className="text-[10px] text-slate-400">2. Clique em "Add Causa" para desdobrar</Typography>
+                        <Typography className="text-[10px] text-slate-400">3. Arraste para organizar hierarquia</Typography>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onSave?.(categories)}
-                            disabled={isSaving}
-                            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 h-8"
-                        >
-                            <Save className="h-4 w-4 mr-2" />
-                            {isSaving ? "A guardar..." : "Guardar Análise"}
-                        </Button>
-                        <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                            <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest block">Efeito/Problema</span>
-                            <span className="text-sm font-bold text-white">{effect}</span>
-                        </div>
-                    </div>
                 </div>
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="relative w-full aspect-[21/9] bg-slate-950/50 min-h-[400px]">
-                    <svg viewBox="0 0 1000 400" className="w-full h-full">
-                        {/* Main Backbone */}
-                        <line x1="50" y1="200" x2="850" y2="200" stroke="#475569" strokeWidth="4" />
-                        <polygon points="850,200 830,185 830,215" fill="#475569" />
+            </Box>
 
-                        {/* Head */}
-                        <rect x="850" y="160" width="130" height="80" rx="4" fill="#1e293b" stroke="#ef4444" strokeWidth="2" />
-                        <foreignObject x="855" y="165" width="120" height="70">
-                            <div className="h-full flex items-center justify-center text-center p-1">
-                                <span className="text-[11px] font-bold text-white leading-tight uppercase">{effect}</span>
-                            </div>
-                        </foreignObject>
-
-                        {/* Top Bones */}
-                        {categories.slice(0, 3).map((cat, i) => {
-                            const x = 150 + i * 250;
-                            return (
-                                <g key={cat.id}>
-                                    <line x1={x} y1="200" x2={x + 100} y2="50" stroke="#334155" strokeWidth="2" />
-                                    <rect x={x + 30} y="15" width="120" height="30" rx="4" fill="#1e293b"
-                                        className="cursor-pointer hover:fill-slate-800 transition-colors"
-                                        onClick={() => setActiveCategory(cat.id)} />
-                                    <text x={x + 90} y="35" textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="bold" className="pointer-events-none uppercase tracking-tighter">
-                                        {cat.name}
-                                    </text>
-
-                                    {/* Causes list */}
-                                    {cat.causes.map((cause, ci) => (
-                                        <g key={cause.id} transform={`translate(${x + 40 + ci * 10}, ${70 + ci * 25})`}>
-                                            <line x1="0" y1="0" x2="60" y2="0" stroke="#1e293b" strokeWidth="1" />
-                                            <text x="5" y="-5" fill="#cbd5e1" fontSize="10">{cause.text}</text>
-                                            <circle cx="0" cy="0" r="2" fill="#3b82f6" />
-                                        </g>
-                                    ))}
-                                </g>
-                            );
-                        })}
-
-                        {/* Bottom Bones */}
-                        {categories.slice(3, 6).map((cat, i) => {
-                            const x = 150 + i * 250;
-                            return (
-                                <g key={cat.id}>
-                                    <line x1={x} y1="200" x2={x + 100} y2="350" stroke="#334155" strokeWidth="2" />
-                                    <rect x={x + 30} y="355" width="120" height="30" rx="4" fill="#1e293b"
-                                        className="cursor-pointer hover:fill-slate-800 transition-colors"
-                                        onClick={() => setActiveCategory(cat.id)} />
-                                    <text x={x + 90} y="375" textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="bold" className="pointer-events-none uppercase tracking-tighter">
-                                        {cat.name}
-                                    </text>
-
-                                    {/* Causes list */}
-                                    {cat.causes.map((cause, ci) => (
-                                        <g key={cause.id} transform={`translate(${x + 40 + ci * 10}, ${320 - ci * 25})`}>
-                                            <line x1="0" y1="0" x2="60" y2="0" stroke="#1e293b" strokeWidth="1" />
-                                            <text x="5" y="-5" fill="#cbd5e1" fontSize="10">{cause.text}</text>
-                                            <circle cx="0" cy="0" r="2" fill="#3b82f6" />
-                                        </g>
-                                    ))}
-                                </g>
-                            );
-                        })}
-                    </svg>
-
-                    {/* Interaction Overlay */}
-                    <AnimatePresence>
-                        {activeCategory && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="absolute inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm z-50 p-4"
-                            >
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-sm font-bold text-white uppercase tracking-widest">
-                                            Adicionar Causa: {categories.find(c => c.id === activeCategory)?.name}
-                                        </h3>
-                                        <Button variant="ghost" size="icon" onClick={() => setActiveCategory(null)} className="h-8 w-8 text-slate-500 hover:text-white">
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="relative">
-                                            <input
-                                                autoFocus
-                                                value={newCause}
-                                                onChange={(e) => setNewCause(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && addCause(activeCategory)}
-                                                placeholder="Descreva a causa encontrada..."
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            />
-                                            <Button
-                                                size="sm"
-                                                onClick={() => addCause(activeCategory)}
-                                                className="absolute right-2 top-2 h-8 bg-blue-600 hover:bg-blue-700"
-                                            >
-                                                Adicionar
-                                            </Button>
-                                        </div>
-
-                                        <div className="space-y-2 mt-4 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                            {categories.find(c => c.id === activeCategory)?.causes.map(cause => (
-                                                <div key={cause.id} className="flex items-center justify-between p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 group">
-                                                    <span className="text-xs text-slate-200">{cause.text}</span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => removeCause(activeCategory, cause.id)}
-                                                        className="h-6 w-6 text-slate-500 opacity-0 group-hover:opacity-100 hover:text-red-400"
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                <div className="grid grid-cols-6 gap-0 border-t border-slate-800 bg-slate-900/30">
-                    {categories.map(cat => (
-                        <div
-                            key={cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
-                            className={cn(
-                                "flex flex-col items-center justify-center p-3 cursor-pointer hover:bg-slate-800/50 transition-all border-r border-slate-800 last:border-0",
-                                activeCategory === cat.id && "bg-blue-600/10 border-b-2 border-b-blue-600"
-                            )}
-                        >
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter mb-1">{cat.name}</span>
-                            <span className="text-sm font-bold text-white">{cat.causes.length}</span>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
+            {/* Add Cause Dialog */}
+            <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} PaperProps={{ className: "bg-slate-900 border border-white/10 rounded-3xl" }}>
+                <DialogTitle className="text-white font-black uppercase tracking-tighter text-lg">Adicionar Causa Raiz</DialogTitle>
+                <DialogContent>
+                    <Typography className="text-slate-400 text-xs mb-4 uppercase font-bold tracking-widest">Descreva a causa identificada para esta ramificação:</Typography>
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        variant="standard"
+                        value={newNodeLabel}
+                        onChange={(e) => setNewNodeLabel(e.target.value)}
+                        placeholder="Ex: Fadiga de material, Erro de configuração..."
+                        InputProps={{ className: "text-white text-sm" }}
+                    />
+                </DialogContent>
+                <DialogActions className="p-4 pb-6 px-6">
+                    <Button onClick={() => setIsDialogOpen(false)} className="text-slate-400 text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+                    <Button onClick={confirmAddCause} variant="contained" className="bg-blue-600 hover:bg-blue-500 rounded-xl px-6 text-xs font-black uppercase tracking-widest">Adicionar</Button>
+                </DialogActions>
+            </Dialog>
+        </IndustrialCard>
     );
 }
+
+import { Stack } from "@mui/material";

@@ -16,10 +16,12 @@ export function PackagingDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo Material
-                </Button>
+                <DialogTrigger asChild>
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-900/20 font-semibold tracking-wide">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Novo Material
+                    </Button>
+                </DialogTrigger>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] glass">
                 <DialogHeader>

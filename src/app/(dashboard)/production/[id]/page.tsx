@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
     ArrowLeft, Factory, Beaker, Package, Plus,
     History as HistoryIcon, ClipboardList, PackageCheck, Thermometer,
-    LayoutDashboard
+    LayoutDashboard, AlertTriangle, RefreshCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -18,6 +18,12 @@ import { getBatchTraceabilityAction } from "@/app/actions/traceability";
 import { BatchDossier } from "./batch-dossier";
 import { ReleaseBatchButton } from "./release-batch-button";
 import { PackagingDialog } from "./packaging-dialog";
+import { ProductionEventControls } from "../_components/production-event-controls";
+import { ExecutionHeartbeat } from "../_components/execution-heartbeat";
+
+import { StoppagesPanel } from "./stoppages-panel";
+import { getProductionEvents } from "@/lib/queries/production";
+import { KPIUpdateDialog } from "./kpi-update-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +37,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
 
     // 1. Fetch user & profile
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) notFound();
 
     const { data: profile } = await supabase
         .from("user_profiles")
@@ -58,7 +64,11 @@ export default async function BatchDetailPage({ params }: PageProps) {
     const traceabilityResponse = await getBatchTraceabilityAction(id);
     const traceabilityData = traceabilityResponse.success ? traceabilityResponse.data : null;
 
-    // 2. Fetch intermediates
+    // 4. Fetch Last Production Event
+    const events = await getProductionEvents(id);
+    const lastEvent = events[0];
+
+    // 5. Fetch intermediates
     const { data: intermediates } = await supabase
         .from("intermediate_products")
         .select(`
@@ -259,9 +269,16 @@ export default async function BatchDetailPage({ params }: PageProps) {
                 </div>
             </div>
 
+            <ProductionEventControls
+                batchId={id}
+                currentStatus={batch.status}
+                lastEventType={lastEvent?.event_type}
+            />
+
             <Tabs defaultValue="overview" className="space-y-6">
                 <TabsList className="bg-transparent p-0 h-10 gap-8 border-b border-border/10 w-full justify-start rounded-none">
                     <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Vista Geral</TabsTrigger>
+                    <TabsTrigger value="events" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Eventos & Paragens</TabsTrigger>
                     <TabsTrigger value="tanks" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Tanques</TabsTrigger>
                     <TabsTrigger value="quality" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Laboratório</TabsTrigger>
                     <TabsTrigger value="packaging" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-[10px] px-0 h-10 font-bold uppercase tracking-widest text-muted-foreground/50 transition-none">Embalagem</TabsTrigger>
@@ -307,16 +324,39 @@ export default async function BatchDetailPage({ params }: PageProps) {
                             </CardContent>
                         </Card>
 
-                        <Card className="glass border-none shadow-sm rounded-2xl overflow-hidden">
-                            <CardHeader className="pb-2">
+                        <Card className="glass border-none shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-red-500/50">
+                            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                                 <CardTitle className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <Thermometer className="h-3 w-3" />
-                                    Rastreados
+                                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                                    Refugo / Perdas
                                 </CardTitle>
+                                <KPIUpdateDialog
+                                    batchId={id}
+                                    currentScrap={Number((batch as any).scrap_quantity || 0)}
+                                    currentRework={Number((batch as any).rework_quantity || 0)}
+                                />
                             </CardHeader>
                             <CardContent>
-                                <p className="text-lg font-bold">{intermediates?.length || 0}</p>
-                                <p className="text-[10px] font-medium text-muted-foreground uppercase opacity-50">Sub-Lotes (WIP)</p>
+                                <p className="text-lg font-bold">{(batch as any).scrap_quantity || "0"}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase opacity-50">Kg / Unidades</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass border-none shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-amber-500/50">
+                            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <RefreshCcw className="h-3 w-3 text-amber-500" />
+                                    Retrabalho
+                                </CardTitle>
+                                <KPIUpdateDialog
+                                    batchId={id}
+                                    currentScrap={Number((batch as any).scrap_quantity || 0)}
+                                    currentRework={Number((batch as any).rework_quantity || 0)}
+                                />
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-lg font-bold">{(batch as any).rework_quantity || "0"}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase opacity-50">Lotes / Qtd</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -345,7 +385,25 @@ export default async function BatchDetailPage({ params }: PageProps) {
                                 </div>
                             </div>
                         </Card>
+
+                        <Card className="glass border-none shadow-sm rounded-2xl p-6">
+                            <h3 className="text-xs font-bold uppercase tracking-widest mb-4">Métricas de OEE (Estimadas)</h3>
+                            <div className="space-y-4 text-[10px] font-medium text-muted-foreground">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span>Paragens Avaria</span>
+                                    <span className="text-white">{events.filter((e: any) => e.event_type === 'breakdown').length}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span>Paragens Operacionais</span>
+                                    <span className="text-white">{events.filter((e: any) => e.event_type === 'stop').length}</span>
+                                </div>
+                            </div>
+                        </Card>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="events" className="mt-6">
+                    <StoppagesPanel events={events} />
                 </TabsContent>
 
                 <TabsContent value="tanks" className="mt-6">

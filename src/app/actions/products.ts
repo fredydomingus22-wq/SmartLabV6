@@ -21,6 +21,7 @@ const ProductSchema = z.object({
     shelf_life_days: z.coerce.number().int().positive().optional(),
     storage_conditions: z.string().optional(),
     parent_id: z.string().uuid().optional().nullable(),
+    bev_category: z.string().optional().nullable(),
 });
 
 /**
@@ -50,6 +51,7 @@ export async function createProductAction(formData: FormData) {
         shelf_life_days: emptyToUndefined(formData.get("shelf_life_days")),
         storage_conditions: emptyToUndefined(formData.get("storage_conditions")),
         parent_id: emptyToUndefined(formData.get("parent_id")),
+        bev_category: emptyToUndefined(formData.get("bev_category")),
     };
 
     const validation = ProductSchema.safeParse(rawData);
@@ -113,6 +115,7 @@ export async function updateProductAction(formData: FormData) {
         shelf_life_days: emptyToUndefined(formData.get("shelf_life_days")),
         storage_conditions: emptyToUndefined(formData.get("storage_conditions")),
         parent_id: emptyToUndefined(formData.get("parent_id")),
+        bev_category: emptyToUndefined(formData.get("bev_category")),
     };
 
     const validation = ProductSchema.safeParse(rawData);
@@ -140,6 +143,7 @@ export async function updateProductAction(formData: FormData) {
             effective_date: currentProduct.created_at?.split('T')[0],
             superseded_at: new Date().toISOString(),
             changed_by: user.id,
+            bev_category: currentProduct.bev_category,
         });
 
     if (historyError) {

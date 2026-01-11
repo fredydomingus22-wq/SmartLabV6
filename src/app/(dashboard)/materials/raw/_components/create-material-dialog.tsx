@@ -89,12 +89,12 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl shadow-lg shadow-blue-900/20 font-semibold tracking-wide border border-transparent hover:border-blue-400/30 transition-all duration-300">
                     <Plus className="h-4 w-4 mr-2" />
                     Nova MP
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-slate-950 border-slate-800">
+            <DialogContent className="sm:max-w-[500px] bg-slate-950 border-slate-800 shadow-2xl shadow-blue-900/10">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-blue-400" />
@@ -115,7 +115,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                     <FormItem>
                                         <FormLabel>Nome</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: Farinha de Trigo" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: Farinha de Trigo" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -128,7 +128,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                     <FormItem>
                                         <FormLabel>Código Interno</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: MP-001" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: MP-001" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -155,7 +155,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                             value={field.value}
                                             onValueChange={field.onChange}
                                             placeholder="Selecione..."
-                                            className="bg-slate-900 border-slate-800"
+                                            className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100"
                                         />
                                         <FormMessage />
                                     </FormItem>
@@ -168,7 +168,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                     <FormItem>
                                         <FormLabel>Unidade Padrão</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Ex: kg, L, un" {...field} className="bg-slate-900 border-slate-800" />
+                                            <Input placeholder="Ex: kg, L, un" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -183,7 +183,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                 <FormItem>
                                     <FormLabel>Alérgenos</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Ex: Glúten, Soja (separados por vírgula)" {...field} className="bg-slate-900 border-slate-800" />
+                                        <Input placeholder="Ex: Glúten, Soja (separados por vírgula)" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100" />
                                     </FormControl>
                                     <FormDescription className="text-[10px]">
                                         Liste os alérgenos presentes.
@@ -200,7 +200,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                 <FormItem>
                                     <FormLabel>Condições de Armazenamento</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Ex: Local fresco e seco" {...field} className="bg-slate-900 border-slate-800" />
+                                        <Input placeholder="Ex: Local fresco e seco" {...field} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -217,7 +217,7 @@ export function CreateRawMaterialDialog({ plantId }: CreateRawMaterialDialogProp
                                         <Textarea
                                             placeholder="Detalhes adicionais sobre a MP..."
                                             {...field}
-                                            className="bg-slate-900 border-slate-800 min-h-[80px]"
+                                            className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all text-slate-100 min-h-[80px]"
                                         />
                                     </FormControl>
                                     <FormMessage />

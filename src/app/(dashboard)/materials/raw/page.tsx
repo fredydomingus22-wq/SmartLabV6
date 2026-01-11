@@ -19,7 +19,9 @@ import {
     ExternalLink,
     ChevronLeft,
     ChevronRight,
-    SearchCode
+    SearchCode,
+    Sparkles
+
 } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
@@ -27,6 +29,7 @@ import { pt } from "date-fns/locale";
 import { CreateRawMaterialDialog } from "./_components/create-material-dialog";
 import { ReceiveLotDialog } from "./_components/receive-lot-dialog";
 import { ConsumeLotDialog } from "./_components/consume-lot-dialog";
+import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-card";
 
 export const dynamic = "force-dynamic";
 
@@ -63,31 +66,28 @@ export default async function RawMaterialsPage({ searchParams }: PageProps) {
     const suppliers = await getSuppliers();
     const stats = await getRawMaterialStats();
 
+    // Local helper for trend simulation
+    const mockTrend = { value: 0, isPositive: true };
+    const mockSeries = Array.from({ length: 7 }, (_, i) => ({ date: `D${i}`, value: Math.floor(Math.random() * 100) }));
+
     const totalPagesCatalog = Math.ceil(totalMaterials / limit);
     const totalPagesLots = Math.ceil(totalLots / limit);
 
     return (
-        <div className="container py-8 space-y-8 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/materials">
-                        <Button variant="ghost" size="icon" className="text-slate-400 rounded-full hover:bg-slate-900">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-blue-500/5 text-blue-400 border-blue-500/20">
-                                Inventory Control
-                            </Badge>
-                        </div>
-                        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                            <Package className="h-8 w-8 text-blue-500" />
-                            Matérias-Primas
-                        </h1>
-                        <p className="text-slate-400 text-sm font-medium">Controlo técnico de insumos e rastreabilidade de lotes.</p>
+        <div className="container max-w-[1600px] mx-auto py-8 space-y-10 pb-20">
+            {/* Header - Industrial Premium */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-blue-400">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-80">Inventory Control</span>
                     </div>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        Matérias-Primas
+                    </h1>
+                    <p className="text-slate-400 text-lg">
+                        Controlo técnico de insumos e rastreabilidade de lotes.
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <CreateRawMaterialDialog plantId={user.plant_id!} />
@@ -99,28 +99,44 @@ export default async function RawMaterialsPage({ searchParams }: PageProps) {
                 </div>
             </div>
 
-            {/* Futuristic Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: "Catálogo MP", value: totalMaterials, sub: "Itens Registados", icon: Package, color: "text-blue-400", bg: "bg-blue-500/10" },
-                    { label: "Lotes Aprovados", value: stats.approved, sub: "Prontos para Produção", icon: Layers, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-                    { label: "Em Quarentena", value: stats.inQuarantine, sub: "Aguardando CQ", icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
-                    { label: "Críticos/Validade", value: stats.expiringSoon, sub: "Expira em < 30 dias", icon: Calendar, color: "text-rose-400", bg: "bg-rose-500/10" }
-                ].map((s, i) => (
-                    <Card key={i} className="bg-slate-900/40 border-slate-800 shadow-xl overflow-hidden group">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className={`p-2 rounded-xl ${s.bg} ${s.color}`}>
-                                    <s.icon className="h-5 w-5" />
-                                </div>
-                                <ArrowUpRight className="h-4 w-4 text-slate-700 group-hover:text-slate-400 transition-colors" />
-                            </div>
-                            <h3 className="text-2xl font-black text-white">{s.value}</h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{s.label}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{s.sub}</p>
-                        </CardContent>
-                    </Card>
-                ))}
+            {/* Premium Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <PremiumAnalyticsCard
+                    title="Catálogo MP"
+                    value={String(totalMaterials)}
+                    description="Itens registados"
+                    trend={mockTrend}
+                    data={mockSeries}
+                    dataKey="value"
+                    color="#3b82f6" // blue
+                />
+                <PremiumAnalyticsCard
+                    title="Lotes Aprovados"
+                    value={String(stats.approved)}
+                    description="Prontos para produção"
+                    trend={{ value: 2, isPositive: true }}
+                    data={mockSeries}
+                    dataKey="value"
+                    color="#10b981" // emerald
+                />
+                <PremiumAnalyticsCard
+                    title="Em Quarentena"
+                    value={String(stats.inQuarantine)}
+                    description="Aguardando CQ"
+                    trend={{ value: 1, isPositive: false }}
+                    data={mockSeries}
+                    dataKey="value"
+                    color="#f59e0b" // amber
+                />
+                <PremiumAnalyticsCard
+                    title="Críticos/Validade"
+                    value={String(stats.expiringSoon)}
+                    description="Expira em < 30 dias"
+                    trend={{ value: 0, isPositive: true }}
+                    data={mockSeries}
+                    dataKey="value"
+                    color="#f43f5e" // rose
+                />
             </div>
 
             {/* Tabs */}

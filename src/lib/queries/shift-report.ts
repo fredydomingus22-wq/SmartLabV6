@@ -345,14 +345,14 @@ export async function getShiftReportData(
         // 4. CIP Cycles
         const { data: cipCycles } = await supabase
             .from("cip_executions")
-            .select("id, status, equipment_id")
+            .select("id, status, equipment_uid")
             .eq("organization_id", user.organization_id)
             .gte("start_time", startDateTime)
             .lte("start_time", endDateTime);
 
         const cyclesCompleted = cipCycles?.filter(c => c.status === "completed").length || 0;
         const cyclesFailed = cipCycles?.filter(c => c.status === "failed").length || 0;
-        const equipmentCleaned = new Set(cipCycles?.filter(c => c.status === "completed").map(c => c.equipment_id)).size;
+        const equipmentCleaned = new Set(cipCycles?.filter(c => c.status === "completed").map(c => c.equipment_uid)).size;
 
         // 5. Blocks & NCs
         const { data: ncs } = await supabase
