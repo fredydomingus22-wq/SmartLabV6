@@ -3,6 +3,8 @@ import { getMyTrainingAssignments } from "@/app/actions/quality/training";
 import { MyTrainingClient } from "./my-training-client";
 import { FileText } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     title: "My Training | SmartLab",
     description: "Access your assigned training modules and quizzes."

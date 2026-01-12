@@ -54,11 +54,17 @@ export class IntermediateDomainService extends BaseDomainService {
             if (!resolvedProductId) {
                 const { data: batch } = await this.supabase
                     .from("production_batches")
-                    .select("product:products(parent_id)")
+                    .select(`
+                        id,
+                        product:products(parent_id)
+                    `)
                     .eq("id", dto.production_batch_id)
                     .single();
 
-                resolvedProductId = (batch?.product as any)?.parent_id;
+                const productData = batch?.product as any;
+                resolvedProductId = Array.isArray(productData)
+                    ? productData[0]?.parent_id
+                    : productData?.parent_id;
             }
 
             // 3. Status Strategy: Claim "planned" or Create New

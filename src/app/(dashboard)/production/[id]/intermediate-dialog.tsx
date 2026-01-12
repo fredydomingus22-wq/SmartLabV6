@@ -28,28 +28,40 @@ export function IntermediateDialog({ batchId, availableTanks, availableProducts 
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (!selectedTank) {
+            toast.error("Por favor selecione um tanque.");
+            return;
+        }
+
         setLoading(true);
 
-        const formData = new FormData(e.currentTarget);
-        formData.set("production_batch_id", batchId);
+        try {
+            const formData = new FormData(e.currentTarget);
+            formData.set("production_batch_id", batchId);
 
-        // Find selected tank to send name/code as 'code'
-        const tank = availableTanks.find(t => t.id === selectedTank);
-        if (tank) {
-            formData.set("code", tank.name); // Using Name as the friendly code/identifier
-            formData.set("tank_id", tank.id);
+            // Find selected tank to send name/code as 'code'
+            const tank = availableTanks.find(t => t.id === selectedTank);
+            if (tank) {
+                formData.set("code", tank.name); // Using Name as the friendly code/identifier
+                formData.set("tank_id", tank.id);
+            }
+
+            const result = await createIntermediateProductAction(formData);
+
+            if (result.success) {
+                toast.success(result.message);
+                setOpen(false);
+                router.refresh();
+            } else {
+                toast.error(result.message);
+            }
+        } catch (err: any) {
+            console.error("[IntermediateDialog] Submission error:", err);
+            toast.error("Erro inesperado ao processar o registo.");
+        } finally {
+            setLoading(false);
         }
-
-        const result = await createIntermediateProductAction(formData);
-
-        if (result.success) {
-            toast.success(result.message);
-            setOpen(false);
-            router.refresh();
-        } else {
-            toast.error(result.message);
-        }
-        setLoading(false);
     };
 
     return (

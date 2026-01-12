@@ -159,40 +159,60 @@ export async function planBatchFromOrderAction(formData: FormData) {
  * Create Intermediate Product (Tank/Silo Mapping)
  */
 export async function createIntermediateProductAction(formData: FormData) {
-    const user = await requirePermission('production', 'write');
-    const supabase = await createClient();
+    try {
+        const user = await requirePermission('production', 'write');
+        const supabase = await createClient();
 
-    const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("organization_id, plant_id, role")
-        .eq("id", user.id)
-        .single();
+        const { data: profile } = await supabase
+            .from("user_profiles")
+            .select("organization_id, plant_id, role")
+            .eq("id", user.id)
+            .single();
 
-    if (!profile) return { success: false, message: "Profile not found" };
+        if (!profile) return { success: false, message: "Profile not found" };
 
-    const service = new IntermediateDomainService(supabase, {
-        organization_id: profile.organization_id!,
-        user_id: user.id,
-        role: profile.role,
-        plant_id: profile.plant_id!,
-        correlation_id: crypto.randomUUID()
-    });
+        const rawData = {
+            production_batch_id: formData.get("production_batch_id"),
+            code: formData.get("code"),
+            tank_id: formData.get("tank_id"),
+            volume: formData.get("volume"),
+            unit: formData.get("unit") || "L",
+            product_id: formData.get("product_id") || undefined
+        };
 
-    const result = await service.registerIntermediate({
-        production_batch_id: formData.get("production_batch_id") as string,
-        code: formData.get("code") as string,
-        tank_id: formData.get("tank_id") as string,
-        volume: Number(formData.get("volume")) || undefined,
-        unit: (formData.get("unit") as string) || "L",
-        plant_id: profile.plant_id as string
-    });
+        const validation = CreateIntermediateSchema.safeParse(rawData);
+        if (!validation.success) {
+            return { success: false, message: validation.error.issues[0].message };
+        }
 
-    if (result.success) {
-        revalidatePath("/production");
-        revalidatePath(`/production/${formData.get("production_batch_id")}`);
+        const service = new IntermediateDomainService(supabase, {
+            organization_id: profile.organization_id!,
+            user_id: user.id,
+            role: profile.role,
+            plant_id: profile.plant_id!,
+            correlation_id: crypto.randomUUID()
+        });
+
+        const result = await service.registerIntermediate({
+            production_batch_id: validation.data.production_batch_id,
+            code: validation.data.code,
+            tank_id: validation.data.tank_id,
+            volume: validation.data.volume,
+            unit: validation.data.unit,
+            plant_id: profile.plant_id as string,
+            product_id: validation.data.product_id
+        });
+
+        if (result.success) {
+            revalidatePath("/production");
+            revalidatePath(`/production/${validation.data.production_batch_id}`);
+        }
+
+        return result;
+    } catch (error: any) {
+        console.error("[createIntermediateProductAction] Unhandled error:", error);
+        return { success: false, message: error.message || "Erro interno ao registar tanque." };
     }
-
-    return result;
 }
 
 /**

@@ -29,7 +29,7 @@ export async function getTrainingMatrixData() {
     // Using user_profiles for metadata
     const { data: userProfiles, error: profilesError } = await supabase
         .from("user_profiles")
-        .select("id, full_name, job_title")
+        .select("id, full_name, role")
         .order("full_name");
 
     if (profilesError) throw new Error(profilesError.message);
@@ -65,7 +65,7 @@ export async function getTrainingMatrixData() {
         return {
             user_id: p.id,
             user_name: p.full_name,
-            job_title: p.job_title || 'N/A',
+            job_title: p.role || 'N/A',
             modules: moduleMap
         };
     });
