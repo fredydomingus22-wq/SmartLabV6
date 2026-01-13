@@ -51,6 +51,57 @@ export async function getQualityKPIs() {
     // NC Rate (NCs per 100 analyses)
     const ncRate = totalAnalysis > 0 ? ((totalNCs / totalAnalysis) * 100).toFixed(1) : "0.0";
 
+    // Trending Data (Last 7 Days) for Sparklines
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // 1. FPY Trend (Daily conforming analyses vs total)
+    const { data: trendAnalysis } = await supabase
+        .from("lab_analysis")
+        .select("is_conforming, analyzed_at")
+        .eq("organization_id", user.organization_id)
+        .gte("analyzed_at", sevenDaysAgo.toISOString())
+        .order("analyzed_at", { ascending: true });
+
+    const fpyTrend = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const dayData = trendAnalysis?.filter(a => a.analyzed_at.startsWith(dateStr)) || [];
+        const conforming = dayData.filter(a => a.is_conforming).length;
+        return { value: dayData.length > 0 ? (conforming / dayData.length) * 100 : 100 };
+    });
+
+    // 2. NC Trend (Daily new NCs)
+    const { data: trendNCs } = await supabase
+        .from("nonconformities")
+        .select("detected_date")
+        .eq("organization_id", user.organization_id)
+        .gte("detected_date", sevenDaysAgo.toISOString());
+
+    const ncTrend = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const count = trendNCs?.filter(nc => nc.detected_date?.startsWith(dateStr)).length || 0;
+        return { value: count };
+    });
+
+    // 3. CAPA Trend (Daily new CAPAs)
+    const { data: trendCAPAs } = await supabase
+        .from("capa_actions")
+        .select("created_at")
+        .eq("organization_id", user.organization_id)
+        .gte("created_at", sevenDaysAgo.toISOString());
+
+    const capaTrend = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const count = trendCAPAs?.filter(capa => capa.created_at?.startsWith(dateStr)).length || 0;
+        return { value: count };
+    });
+
     return {
         kpis: {
             openNCs,
@@ -59,9 +110,14 @@ export async function getQualityKPIs() {
             totalNCs,
             openCAPAs,
             totalCAPAs,
-            fpy, // First Pass Yield %
+            fpy,
             ncRate,
             totalAnalysis,
+            sparklines: {
+                fpy: fpyTrend,
+                nc: ncTrend,
+                capa: capaTrend
+            }
         },
         error: null,
     };

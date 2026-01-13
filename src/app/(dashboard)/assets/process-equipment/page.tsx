@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 
 export const dynamic = "force-dynamic";
 
@@ -98,73 +100,71 @@ export default async function ProcessEquipmentPage() {
     const categories = Object.keys(equipmentByCategory);
 
     return (
-        <div className="container py-8 space-y-8 animate-in fade-in duration-700">
-            {/* Header Section */}
-            <div className="relative group perspective">
-                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                <div className="relative glass p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
-                    <div className="flex items-center gap-6">
-                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl shadow-inner group-hover:rotate-12 transition-transform duration-500">
-                            <Settings2 className="h-10 w-10 text-amber-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-4xl font-black tracking-tight text-white mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
-                                Equipamentos de Processo
-                            </h1>
-                            <div className="flex items-center gap-2 text-slate-400">
-                                <Zap className="h-4 w-4 text-amber-500" />
-                                <span className="text-sm font-medium">Gestão de Ativos de Produção & Manutenção Ativa</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Novo Equipamento
-                        </Button>
-                    </div>
-                </div>
-            </div>
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="amber"
+                icon={<Settings2 className="h-4 w-4" />}
+                overline="Production Assets • MES Hardware"
+                title="Equipamentos de Processo"
+                description="Gestão de Ativos de Produção & Manutenção Ativa com monitorização de estado."
+                backHref="/assets"
+                actions={
+                    <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold h-9 shadow-lg shadow-amber-600/20 px-6">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Equipamento
+                    </Button>
+                }
+            />
 
             {/* Summary Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                    { label: "Total Assets", value: equipment?.length || 0, icon: Boxes, color: "text-blue-400" },
-                    { label: "Operacionais", value: equipment?.filter(e => e.status === 'active').length || 0, icon: Activity, color: "text-emerald-400" },
-                    { label: "Em Manutenção", value: equipment?.filter(e => e.status === 'maintenance').length || 0, icon: Wrench, color: "text-amber-400" },
-                    {
-                        label: "Manutenção Vencida", value: equipment?.filter(e => {
-                            if (!e.next_maintenance_date) return false;
-                            return differenceInDays(new Date(e.next_maintenance_date), today) < 0;
-                        }).length || 0, icon: AlertTriangle, color: "text-rose-400"
-                    },
-                ].map((stat, i) => (
-                    <Card key={i} className="glass border-white/5 group hover:border-amber-500/20 transition-all">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <h3 className="text-3xl font-black text-white">{stat.value}</h3>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{stat.label}</p>
-                                </div>
-                                <div className={cn("p-2 rounded-lg bg-white/5 group-hover:bg-amber-500/10 transition-colors", stat.color)}>
-                                    <stat.icon className="h-6 w-6" />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KPISparkCard
+                    variant="blue"
+                    title="Total Assets"
+                    value={String(equipment?.length || 0).padStart(3, '0')}
+                    description="Ativos registrados"
+                    icon={<Boxes className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 5) + 10 }))}
+                />
+                <KPISparkCard
+                    variant="emerald"
+                    title="Operacionais"
+                    value={String(equipment?.filter(e => e.status === 'active').length || 0).padStart(3, '0')}
+                    description="Disponíveis para produção"
+                    icon={<Activity className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 5) + 8 }))}
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Em Manutenção"
+                    value={String(equipment?.filter(e => e.status === 'maintenance').length || 0).padStart(3, '0')}
+                    description="Intervenções ativas"
+                    icon={<Wrench className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 3) }))}
+                />
+                <KPISparkCard
+                    variant="destructive"
+                    title="Manutenção Vencida"
+                    value={String(equipment?.filter(e => {
+                        if (!e.next_maintenance_date) return false;
+                        return differenceInDays(new Date(e.next_maintenance_date), today) < 0;
+                    }).length || 0).padStart(3, '0')}
+                    description="Requer atenção imediata"
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 2) }))}
+                />
             </div>
 
             {/* Controls */}
             <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                     <Input
                         placeholder="Pesquisar por nome, código ou fabricante..."
-                        className="glass border-white/5 pl-10 h-12 rounded-xl text-white placeholder:text-slate-600 focus:border-amber-500/30 transition-all"
+                        className="bg-card border-slate-800 pl-12 h-11 rounded-xl text-white placeholder:text-slate-600 focus:border-amber-500/30 transition-all shadow-lg"
                     />
                 </div>
-                <Button variant="outline" className="glass border-white/5 text-slate-300 rounded-xl h-12">
+                <Button variant="outline" className="bg-card border-slate-800 text-slate-300 rounded-xl h-11 hover:bg-slate-900 px-6">
                     <Filter className="h-4 w-4 mr-2" />
                     Filtros
                 </Button>
@@ -172,17 +172,17 @@ export default async function ProcessEquipmentPage() {
 
             {/* Tabs & Content */}
             {categories.length > 0 ? (
-                <Tabs defaultValue={categories[0]} className="space-y-6">
-                    <TabsList className="glass p-1 h-auto bg-slate-950/40 border border-white/5 rounded-2xl flex-wrap justify-start">
+                <Tabs defaultValue={categories[0]} className="space-y-8">
+                    <TabsList className="bg-slate-900/50 border border-slate-800 p-1.5 h-auto rounded-2xl flex-wrap justify-start gap-2">
                         {categories.map(cat => (
                             <TabsTrigger
                                 key={cat}
                                 value={cat}
-                                className="rounded-xl px-6 py-3 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 transition-all font-bold text-xs uppercase tracking-widest gap-3"
+                                className="rounded-xl px-5 py-2.5 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg shadow-amber-600/20 text-slate-500 transition-all font-black text-[10px] uppercase tracking-widest gap-2.5"
                             >
-                                <span className="text-lg">{CATEGORY_ICONS[cat] || "⚙️"}</span>
+                                <span className="text-sm">{CATEGORY_ICONS[cat] || "⚙️"}</span>
                                 {CATEGORY_LABELS[cat] || cat}
-                                <Badge className="bg-white/10 text-white border-none ml-1">{countByCategory[cat] || 0}</Badge>
+                                <Badge className="bg-slate-950/50 text-[10px] text-white border-slate-800 ml-1.5 px-2 py-0 h-5 min-w-[20px] justify-center">{countByCategory[cat] || 0}</Badge>
                             </TabsTrigger>
                         ))}
                     </TabsList>
@@ -197,13 +197,13 @@ export default async function ProcessEquipmentPage() {
                                     const isOverdue = daysToMaintenance !== null && daysToMaintenance < 0;
 
                                     return (
-                                        <Card key={eq.id} className="glass border-white/5 group hover:border-amber-500/30 transition-all duration-500 overflow-hidden">
+                                        <Card key={eq.id} className="bg-card border-slate-800 group hover:border-amber-500/30 transition-all duration-300 overflow-hidden shadow-lg">
                                             <CardHeader className="pb-4">
                                                 <div className="flex items-center justify-between mb-4">
-                                                    <div className="p-2 bg-white/5 rounded-lg border border-white/10 text-lg">
+                                                    <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-lg group-hover:bg-amber-500/10 group-hover:border-amber-500/20 transition-colors">
                                                         {CATEGORY_ICONS[cat] || "⚙️"}
                                                     </div>
-                                                    <Badge className={cn("rounded-lg border-none font-bold text-[10px] uppercase", statusColors[eq.status] || statusColors.active)}>
+                                                    <Badge className={cn("rounded-lg border font-bold text-[9px] uppercase tracking-wider", statusColors[eq.status] || statusColors.active)}>
                                                         {eq.status === 'active' ? 'Operacional' : eq.status}
                                                     </Badge>
                                                 </div>
@@ -223,21 +223,21 @@ export default async function ProcessEquipmentPage() {
                                             <CardContent className="space-y-6">
                                                 {eq.next_maintenance_date && (
                                                     <div className={cn(
-                                                        "p-4 rounded-2xl border transition-all duration-300",
+                                                        "p-4 rounded-xl border transition-all duration-300",
                                                         isOverdue
                                                             ? "bg-rose-500/5 border-rose-500/20 group-hover:bg-rose-500/10"
-                                                            : "bg-white/5 border-white/5 group-hover:bg-amber-500/5"
+                                                            : "bg-slate-900/50 border-slate-800 group-hover:bg-amber-500/5 group-hover:border-amber-500/10"
                                                     )}>
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Próx. Manutenção</span>
                                                             <Wrench className={cn("h-3 w-3", isOverdue ? "text-rose-500" : "text-amber-500")} />
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className={cn("text-lg font-black", isOverdue ? "text-rose-400" : "text-slate-200")}>
+                                                            <span className={cn("text-lg font-black tracking-tight", isOverdue ? "text-rose-400" : "text-slate-200")}>
                                                                 {format(new Date(eq.next_maintenance_date), "dd/MM/yyyy")}
                                                             </span>
                                                             {isOverdue && (
-                                                                <span className="text-[9px] text-rose-500 font-bold uppercase mt-1 animate-pulse">
+                                                                <span className="text-[9px] text-rose-500 font-black uppercase mt-1 animate-pulse tracking-widest">
                                                                     Manutenção Urgente
                                                                 </span>
                                                             )}
@@ -262,15 +262,15 @@ export default async function ProcessEquipmentPage() {
                     ))}
                 </Tabs>
             ) : (
-                <div className="text-center py-32 glass rounded-[2.5rem] border border-dashed border-white/5 animate-in zoom-in duration-500">
-                    <div className="p-6 bg-white/5 rounded-full inline-block mb-6">
+                <div className="text-center py-32 bg-card rounded-[2.5rem] border border-dashed border-slate-800 animate-in zoom-in duration-500 shadow-xl">
+                    <div className="p-8 bg-slate-900 border border-slate-800 rounded-full inline-block mb-6">
                         <Settings2 className="h-16 w-16 text-slate-700 opacity-20" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-300 mb-2">Sem Equipamento</h3>
-                    <p className="text-slate-500 text-sm max-w-[300px] mx-auto">
-                        Inicie o inventário de produção para monitorar o seu OEE e planos de manutenção.
+                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">Sem Equipamento</h3>
+                    <p className="text-slate-500 text-sm max-w-[350px] mx-auto font-medium">
+                        Inicie o inventário de produção para monitorar o seu OEE e planos de manutenção automatizados.
                     </p>
-                    <Button className="mt-8 bg-amber-600 hover:bg-amber-500 text-white rounded-xl px-10 h-12 uppercase tracking-widest text-xs font-black shadow-lg shadow-amber-600/20">
+                    <Button className="mt-10 bg-amber-600 hover:bg-amber-500 text-white rounded-xl px-12 h-12 uppercase tracking-widest text-[10px] font-black shadow-lg shadow-amber-600/20 active:scale-95 transition-all">
                         Começar Agora
                     </Button>
                 </div>

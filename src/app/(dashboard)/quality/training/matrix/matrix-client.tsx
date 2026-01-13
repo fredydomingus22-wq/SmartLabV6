@@ -64,16 +64,6 @@ export default function TrainingMatrixClient({ data }: MatrixProps) {
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-blue-400 font-bold mb-1">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                        <span className="text-[10px] uppercase tracking-[0.2em]">Audit Ready Matrix</span>
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
-                        Matriz de Qualificação
-                    </h1>
-                </div>
-
                 <div className="relative w-full md:w-80 group">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
                     <Input

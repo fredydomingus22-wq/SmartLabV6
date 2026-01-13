@@ -4,6 +4,13 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription
+} from "@/components/ui/card";
+import {
     Factory,
     ClipboardCheck,
     Thermometer,
@@ -14,193 +21,300 @@ import {
     Clock,
     ShieldAlert,
     Zap,
-    LayoutGrid
+    LayoutGrid,
+    TestTube2,
+    TrendingUp
 } from "lucide-react";
 import Link from "next/link";
-import { IndustrialCard, IndustrialGrid } from "@/components/shared/industrial-card";
-import { IndustrialChart } from "@/components/shared/industrial-chart";
-import { PremiumListItem } from "@/components/dashboard/premium-list-item";
-import type { EChartsOption } from "echarts";
-import { Box, Typography, Stack } from "@mui/material";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
+import { cn } from "@/lib/utils";
+import { PremiumMetricCard } from "@/components/premium";
 
 interface OperatorViewProps {
     stats: any;
     activity: any;
 }
 
+
 export function OperatorView({ stats, activity }: OperatorViewProps) {
-    const getSparklineOption = (color: string, data: number[]): EChartsOption => ({
-        xAxis: { type: "category", show: false },
-        yAxis: { type: "value", show: false, min: "dataMin", max: "dataMax" },
-        series: [{
-            type: "line", data, smooth: true, showSymbol: false,
-            lineStyle: { color, width: 2 },
-            areaStyle: {
-                color: {
-                    type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [{ offset: 0, color }, { offset: 1, color: 'transparent' }]
-                },
-                opacity: 0.1
-            }
-        }],
-        grid: { left: 0, right: 0, top: 0, bottom: 0 }
-    });
+    const sparklines = stats?.sparklines || {
+        samples: Array(7).fill({ value: 0 }),
+        deviations: Array(7).fill({ value: 0 }),
+        compliance: Array(7).fill({ value: 100 })
+    };
 
     return (
-        <Box className="space-y-10">
+        <div className="space-y-12">
             {/* KPI Section */}
-            <IndustrialGrid cols={3}>
-                <IndustrialCard
-                    variant="analytics"
-                    title="Linhas em Operação"
-                    value="4 / 6"
-                    description="Status produtivo em tempo real"
-                    tooltip="Quantidade de linhas de produção com lotes ativos e processamento em curso."
-                    status="success"
-                >
-                    <IndustrialChart option={getSparklineOption("#10b981", [3, 4, 4, 5, 4, 3, 4])} height="100%" />
-                </IndustrialCard>
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 italic">
+                        <Activity className="h-3 w-3" />
+                        Performance Operacional
+                    </h2>
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest border-slate-800 text-emerald-500 bg-emerald-500/5">
+                        Live Shopfloor
+                    </Badge>
+                </div>
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Alarmes de Qualidade"
-                    value={stats.recentDeviations.toString()}
-                    description="Ocorrências nos últimos 60 min"
-                    tooltip="Desvios de conformidade ou falhas de controle detectadas por sensores de linha ou registros manuais."
-                    status={stats.recentDeviations > 0 ? "error" : "success"}
-                >
-                    <IndustrialChart option={getSparklineOption("#ef4444", [0, 1, 0, 2, 0, 3, 1])} height="100%" />
-                </IndustrialCard>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <PremiumMetricCard
+                        variant="amber"
+                        title="Amostras Pendentes"
+                        value={(stats.roleAlerts || stats.pendingSamples).toString()}
+                        description="Aguardando Processamento"
+                        data={sparklines.samples}
+                        dataKey="value"
+                        icon={<TestTube2 className="h-3 w-3" />}
+                    />
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Amostras Pendentes"
-                    value={stats.pendingSamples.toString()}
-                    description="Fluxo de amostragem do turno"
-                    tooltip="Total de amostras coletadas na linha que estão aguardando transporte ou processamento no laboratório."
-                    status="neutral"
-                >
-                    <IndustrialChart option={getSparklineOption("#3b82f6", [12, 15, 14, 18, 16, 17, 15])} height="100%" />
-                </IndustrialCard>
-            </IndustrialGrid>
+                    <PremiumMetricCard
+                        variant="blue"
+                        title="Em Análise"
+                        value={stats.inAnalysis.toString()}
+                        description="Work in Progress (WIP)"
+                        data={sparklines.samples}
+                        dataKey="value"
+                        icon={<Beaker className="h-3 w-3" />}
+                    />
+
+                    <PremiumMetricCard
+                        variant="indigo"
+                        title="Lead Time Médio"
+                        value={`${stats.avgLeadTime ? stats.avgLeadTime.toFixed(1) : '0.0'}h`}
+                        description="Ciclo de Liberação"
+                        trend={{ value: Math.abs(stats.trends?.leadTime || 0), isPositive: stats.trends?.leadTime < 0 }}
+                        data={sparklines.samples}
+                        dataKey="value"
+                        icon={<Activity className="h-3 w-3" />}
+                    />
+
+                    <PremiumMetricCard
+                        variant="purple"
+                        title="SLA de Turno"
+                        value={`${stats.slaCompliance ? stats.slaCompliance.toFixed(1) : '100'}%`}
+                        description="Concluintes < 8h"
+                        trend={{ value: Math.abs(stats.trends?.sla || 0), isPositive: stats.trends?.sla > 0 }}
+                        data={sparklines.compliance}
+                        dataKey="value"
+                        icon={<Clock className="h-3 w-3" />}
+                    />
+                </div>
+            </section>
 
             {/* Quick Actions */}
-            <Box className="space-y-4">
-                <Box className="flex items-center gap-2 px-1">
-                    <Zap className="h-5 w-5 text-yellow-400" />
-                    <Typography className="text-xl font-bold text-white">Ações de Chão de Fábrica</Typography>
-                </Box>
-                <IndustrialGrid cols={3}>
-                    <IndustrialCard
-                        title="Efetuar Carga"
-                        subtitle="Novo Lote / Ordem de Produção"
-                        icon={Plus}
-                        status="success"
-                        description={`${stats.activeBatches} lotes ativos no momento.`}
-                        footer={<Button asChild variant="ghost" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest"><Link href="/production/batches/new">Iniciar carga <ArrowRight className="h-3 w-3 ml-2" /></Link></Button>}
-                    />
-                    <IndustrialCard
-                        title="Registar CCP"
-                        subtitle="Segurança Alimentar"
-                        icon={Thermometer}
-                        status="warning"
-                        description={`${stats.recentDeviations} desvios detectados no turno.`}
-                        footer={<Button asChild variant="ghost" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest"><Link href="/haccp/readings/new">Efetuar leitura <ArrowRight className="h-3 w-3 ml-2" /></Link></Button>}
-                    />
-                    <IndustrialCard
-                        title="Coleta Lab"
-                        subtitle="Nova Amostra LIMS"
-                        icon={ClipboardCheck}
-                        status="neutral"
-                        description={`${stats.pendingSamples} amostras em fila analítica.`}
-                        footer={<Button asChild variant="ghost" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest"><Link href="/lab?create=true">Registar coleta <ArrowRight className="h-3 w-3 ml-2" /></Link></Button>}
-                    />
-                </IndustrialGrid>
-            </Box>
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 italic">
+                        <Zap className="h-3 w-3" />
+                        Ações de Chão de Fábrica
+                    </h2>
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest border-slate-800 text-slate-400">
+                        Quick Execution
+                    </Badge>
+                </div>
 
-            {/* Main Content */}
-            <Box className="grid gap-8 lg:grid-cols-2">
-                <Box className="space-y-4">
-                    <Box className="flex items-center justify-between px-1">
-                        <Typography className="text-xl font-bold flex items-center gap-2 text-white">
-                            <LayoutGrid className="h-5 w-5 text-primary" />
-                            Status por Linha
-                        </Typography>
-                        <Badge variant="outline" className="glass text-[9px] uppercase tracking-widest font-black">LIVE MONITORING</Badge>
-                    </Box>
-                    <IndustrialCard bodyClassName="p-0">
-                        <Box className="divide-y divide-white/5">
-                            {activity.recentBatches.filter((b: any) => b.status === 'open').length > 0 ? (
-                                activity.recentBatches.filter((b: any) => b.status === 'open').map((batch: any) => (
-                                    <PremiumListItem
-                                        key={batch.id}
-                                        title={`Linha 01 - ${batch.code}`}
-                                        subtitle="Produto Acabado"
-                                        status="Running"
-                                        variant="success"
-                                        icon={<Activity className="h-5 w-5 text-emerald-500 animate-pulse" />}
-                                        href={`/production/${batch.id}`}
-                                    />
-                                ))
-                            ) : (
-                                <Box className="p-12 text-center">
-                                    <Factory className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-                                    <Typography className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nenhuma linha ativa</Typography>
-                                </Box>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Link href="/production">
+                        <Card className="bg-card border-slate-800 shadow-xl hover:bg-slate-900/40 transition-all cursor-pointer group overflow-hidden border-l-4 border-l-emerald-500">
+                            <CardContent className="p-6 flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform shadow-inner">
+                                        <Plus className="h-6 w-6" />
+                                    </div>
+                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-none text-[10px] font-black uppercase tracking-widest">
+                                        {stats.activeBatches} Ativas
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-white italic uppercase tracking-tight">Efetuar Carga</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{stats.activeBatches} lotes ativos aguardando</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+
+                    <Link href="/haccp/readings/new">
+                        <Card className="bg-card border-slate-800 shadow-xl hover:bg-slate-900/40 transition-all cursor-pointer group overflow-hidden border-l-4 border-l-amber-500">
+                            <CardContent className="p-6 flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-12 w-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-inner">
+                                        <Thermometer className="h-6 w-6" />
+                                    </div>
+                                    <Badge className="bg-amber-500/10 text-amber-400 border-none text-[10px] font-black uppercase tracking-widest">
+                                        {stats.recentDeviations} Desvios
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-white italic uppercase tracking-tight">Registar CCP</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{stats.recentDeviations} desvios no turno atual</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+
+                    <Link href="/lab?create=true">
+                        <Card className="bg-card border-slate-800 shadow-xl hover:bg-slate-900/40 transition-all cursor-pointer group overflow-hidden border-l-4 border-l-blue-500">
+                            <CardContent className="p-6 flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-12 w-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform shadow-inner">
+                                        <ClipboardCheck className="h-6 w-6" />
+                                    </div>
+                                    <Badge className="bg-blue-500/10 text-blue-400 border-none text-[10px] font-black uppercase tracking-widest">
+                                        {stats.pendingSamples} Pendente
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-white italic uppercase tracking-tight">Coleta Lab</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{stats.pendingSamples} amostras em fila de coleta</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                </div>
+            </section>
+
+            {/* Main Content Area */}
+            <div className="grid gap-8 lg:grid-cols-2">
+                <div className="space-y-6">
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 italic">
+                                <LayoutGrid className="h-3 w-3" />
+                                Monitoramento de Linha
+                            </h2>
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest border-slate-800 text-slate-400">
+                                Production Status
+                            </Badge>
+                        </div>
+
+                        <Card className="bg-card border-slate-800 shadow-xl overflow-hidden">
+                            <CardHeader className="border-b border-slate-800 bg-slate-900/50 pb-4">
+                                <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-white italic flex items-center gap-2">
+                                    Status por Linha
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {activity.recentBatches.filter((b: any) => b.status === 'open').length > 0 ? (
+                                    <div className="divide-y divide-slate-800/50">
+                                        {activity.recentBatches.filter((b: any) => b.status === 'open').map((batch: any) => (
+                                            <Link key={batch.id} href={`/production/${batch.id}`} className="flex items-center justify-between p-4 hover:bg-slate-900/40 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                                                        <Activity className="h-4 w-4 animate-pulse" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-white italic uppercase tracking-tight">Linha 01 - {batch.code}</p>
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Produto Acabado em Processamento</p>
+                                                    </div>
+                                                </div>
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-black uppercase tracking-widest">
+                                                    Ativa
+                                                </Badge>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-20 text-center space-y-4">
+                                        <div className="p-5 rounded-3xl bg-slate-900/20 w-16 h-16 flex items-center justify-center mx-auto mb-4 border border-slate-800 shadow-inner">
+                                            <Factory className="h-8 w-8 text-slate-700" />
+                                        </div>
+                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Nenhuma linha ativa no momento</h3>
+                                    </div>
+                                )}
+                            </CardContent>
+                            <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+                                <Link href="/production/lines" className="text-[10px] font-black uppercase tracking-widest text-cyan-400 hover:text-cyan-300 transition-colors flex items-center justify-center gap-2">
+                                    Gestão de Linhas
+                                    <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        </Card>
+                    </section>
+                </div>
+
+                <div className="space-y-6">
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 italic">
+                                <ShieldAlert className="h-3 w-3" />
+                                Atenção Necessária
+                            </h2>
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest border-slate-800 text-rose-400 bg-rose-500/5">
+                                Priority Alerts
+                            </Badge>
+                        </div>
+
+                        <div className="space-y-6">
+                            {stats.recentDeviations > 0 && (
+                                <Card className="bg-rose-500/5 border-rose-500/20 shadow-xl overflow-hidden">
+                                    <CardHeader className="bg-rose-500/10 border-b border-rose-500/10 pb-4">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-400 italic">
+                                                {stats.recentDeviations} Desvios Detectados
+                                            </CardTitle>
+                                            <Badge className="bg-rose-500 text-white border-none text-[8px] font-black uppercase">Critical</Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-6 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-12 w-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shadow-inner">
+                                                <ShieldAlert className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <p className="text-3xl font-black text-rose-400 italic tracking-tighter leading-none">{stats.recentDeviations}</p>
+                                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Iniciação de Investigação NC</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             )}
-                        </Box>
-                    </IndustrialCard>
-                </Box>
 
-                <Box className="space-y-4">
-                    <Typography className="text-xl font-bold flex items-center gap-2 px-1 text-white">
-                        <ShieldAlert className="h-5 w-5 text-red-500" />
-                        Alarmes Críticos
-                    </Typography>
+                            <Card className="bg-card border-slate-800 shadow-xl overflow-hidden">
+                                <div className="p-6 space-y-8">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-inner">
+                                                <Clock className="h-5 w-5 text-amber-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Próxima Amostragem</p>
+                                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Industrial Schedule</p>
+                                            </div>
+                                        </div>
+                                        <Badge variant="outline" className="border-amber-500/20 text-amber-500 bg-amber-500/5 text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1">T-MINUS 15M</Badge>
+                                    </div>
 
-                    <Box className="space-y-4">
-                        {stats.recentDeviations > 0 && (
-                            <Box className="p-6 rounded-2xl glass border-red-500/20 bg-red-500/5 relative overflow-hidden group">
-                                <Box className="absolute top-0 right-0 p-3 opacity-10 group-hover:rotate-12 transition-transform">
-                                    <AlertCircle className="h-12 w-12 text-red-500" />
-                                </Box>
-                                <Stack spacing={2}>
-                                    <Typography className="text-[9px] font-black text-red-400 uppercase tracking-widest">Desvio de Segurança (CCP)</Typography>
-                                    <Typography className="text-2xl font-black text-white">{stats.recentDeviations} Ocorrências</Typography>
-                                    <Typography className="text-[10px] text-slate-400 leading-relaxed mb-2">
-                                        Fora dos limites críticos detectados nos sensores. Workflow de Não Conformidade (NC) automático.
-                                    </Typography>
-                                    <Button asChild size="sm" className="h-9 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest border-none">
-                                        <Link href="/haccp/deviations">Investigar agora</Link>
-                                    </Button>
-                                </Stack>
-                            </Box>
-                        )}
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                <span>Linha 02 - Água de Processo</span>
+                                                <span className="text-amber-500">75% Concluído</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-900/50 rounded-full overflow-hidden border border-slate-800/50 p-[1px]">
+                                                <div className="h-full bg-amber-500 rounded-full w-[75%] shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all duration-1000" />
+                                            </div>
+                                        </div>
 
-                        <IndustrialCard className="p-6" bodyClassName="p-0">
-                            <Box className="flex items-center justify-between mb-4">
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Clock className="h-4 w-4 text-orange-400" />
-                                    <Typography className="text-[9px] font-black uppercase tracking-widest text-white">Planos de Amostragem</Typography>
-                                </Stack>
-                                <Badge className="bg-orange-500/10 text-orange-400 border-none text-[8px] font-black">SHIFT TASK</Badge>
-                            </Box>
-                            <Stack spacing={3}>
-                                <Box className="flex justify-between items-center">
-                                    <Typography className="text-[10px] text-slate-400 font-medium italic">Linha 02 - Próximo ponto: 15min</Typography>
-                                    <Box className="h-1.5 w-24 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <Box className="h-full bg-orange-500" sx={{ width: "75%" }} />
-                                    </Box>
-                                </Box>
-                                <Box className="flex justify-between items-center">
-                                    <Typography className="text-[10px] text-slate-400 font-medium italic">Linha 04 - Amostra em atraso</Typography>
-                                    <Typography className="text-red-400 font-black text-[9px] uppercase tracking-widest">Retardado</Typography>
-                                </Box>
-                            </Stack>
-                        </IndustrialCard>
-                    </Box>
-                </Box>
-            </Box>
-        </Box>
+                                        <div className="flex items-center justify-between p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-rose-400 italic uppercase tracking-tight">Linha 04 - Microbiologia</p>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Coleta de amostra em atraso</p>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="text-rose-400 text-[10px] p-0 font-black italic border-none">ATRASO</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
     );
 }

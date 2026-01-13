@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PCCCheckDialog } from "./pcc-check-dialog";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Warehouse } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +49,15 @@ export default async function PCCDashboardPage() {
         .order("created_at", { ascending: false });
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Monitorização de Processos (PCC & OPRP)</h1>
-                    <p className="text-muted-foreground">Estado em tempo real dos Pontos de Controlo Críticos e Operacionais.</p>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="destructive"
+                icon={<AlertTriangle className="h-4 w-4" />}
+                overline="Food Safety • Critical Limits"
+                title="Monitorização de Processos (PCC & OPRP)"
+                description="Estado em tempo real dos Pontos de Controlo Críticos e Operacionais."
+                backHref="/haccp"
+            />
 
             {/* CCP Section */}
             <div className="space-y-4">
@@ -73,7 +76,7 @@ export default async function PCCDashboardPage() {
                     ))}
 
                     {ccps.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-muted-foreground border border-dashed rounded-xl glass">
+                        <div className="col-span-full text-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/20">
                             Nenhum Ponto de Controlo Crítico definido.
                         </div>
                     )}
@@ -81,7 +84,7 @@ export default async function PCCDashboardPage() {
             </div>
 
             {/* OPRP Section */}
-            <div className="space-y-4 pt-8 border-t">
+            <div className="space-y-4 pt-8 border-t border-slate-800">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                     <Badge variant="outline" className="border-amber-500 text-amber-500">OPRP</Badge> PRPs Operacionais
                 </h2>
@@ -96,7 +99,7 @@ export default async function PCCDashboardPage() {
                         />
                     ))}
                     {oprps.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-muted-foreground border border-dashed rounded-xl glass">
+                        <div className="col-span-full text-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/20">
                             Nenhum PRP Operacional definido.
                         </div>
                     )}
@@ -124,7 +127,7 @@ function CCPItemCard({ ccp, latestLog, equipments, activeBatches }: { ccp: any, 
     }
 
     return (
-        <Card className="glass relative overflow-hidden transition-all hover:shadow-lg">
+        <Card className="bg-card border-slate-800 relative overflow-hidden transition-all hover:shadow-lg">
             <div className={`absolute top-0 left-0 w-full h-1 ${statusColor}`} />
             <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">

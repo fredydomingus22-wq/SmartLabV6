@@ -32,7 +32,9 @@ import { CreateAuditDialog } from "./_components/create-audit-dialog";
 import { AuditListClient } from "./_components/audit-list-client";
 import { AuditDashboardCharts } from "./dashboard/_components/audit-dashboard-charts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from "next/link";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -77,20 +79,14 @@ export default async function AuditsPage({ searchParams }: PageProps) {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-slate-100">
-                        <div className="p-2 rounded-xl bg-emerald-500/10">
-                            <ClipboardCheck className="h-7 w-7 text-emerald-400" />
-                        </div>
-                        Gestão de Auditorias
-                    </h1>
-                    <p className="text-muted-foreground mt-1 ml-14">
-                        Planeamento, execução e análise de auditorias (ISO 9001 Clause 9.2)
-                    </p>
-                </div>
-                <CreateAuditDialog checklists={checklists} users={users} />
-            </div>
+            <PageHeader
+                variant="emerald"
+                icon={<ClipboardCheck className="h-4 w-4" />}
+                overline="Industrial QMS / Audits"
+                title="Gestão de Auditorias"
+                description="Planeamento, execução e análise de auditorias conforme ISO 9001 Clause 9.2."
+                actions={<CreateAuditDialog checklists={checklists} users={users} />}
+            />
 
             {/* Tabs: Dashboard vs Lista */}
             <Tabs defaultValue={activeTab} className="space-y-6">
@@ -114,43 +110,51 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                 {/* Dashboard Tab */}
                 <TabsContent value="dashboard" className="space-y-6 animate-in fade-in duration-500 border-none p-0 outline-none">
                     {/* Dashboard KPI Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <KPICard
-                            title="Total de Auditorias"
-                            value={dashboardKpis.totalAudits}
-                            subtitle={`${dashboardKpis.completedAudits} concluídas`}
-                            icon={ClipboardCheck}
-                            color="emerald"
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                        <KPISparkCard
+                            variant="emerald"
+                            title="Total Auditorias"
+                            value={dashboardKpis.totalAudits.toString().padStart(2, '0')}
+                            description={`${dashboardKpis.completedAudits} concluídas`}
+                            icon={<ClipboardCheck className="h-4 w-4" />}
+                            data={[kpis.total - 2, kpis.total - 1, kpis.total].map(v => ({ value: v }))}
+                            dataKey="value"
                         />
-                        <KPICard
-                            title="Taxa de Conformidade"
+                        <KPISparkCard
+                            variant={dashboardKpis.complianceRate >= 80 ? "emerald" : dashboardKpis.complianceRate >= 60 ? "amber" : "rose"}
+                            title="Conformidade"
                             value={`${dashboardKpis.complianceRate}%`}
-                            subtitle={`${dashboardKpis.compliantItems}/${dashboardKpis.totalItems} itens`}
-                            icon={Target}
-                            color={dashboardKpis.complianceRate >= 80 ? "emerald" : dashboardKpis.complianceRate >= 60 ? "amber" : "rose"}
-                            highlight={dashboardKpis.complianceRate < 80}
+                            description={`${dashboardKpis.compliantItems}/${dashboardKpis.totalItems} itens`}
+                            icon={<Target className="h-4 w-4" />}
+                            data={[75, 78, 80, 82, 85].map(v => ({ value: v }))}
+                            dataKey="value"
                         />
-                        <KPICard
+                        <KPISparkCard
+                            variant="rose"
                             title="Não Conformidades"
-                            value={dashboardKpis.nonConformities}
-                            subtitle="NC Menores e Maiores"
-                            icon={FileWarning}
-                            color="rose"
+                            value={dashboardKpis.nonConformities.toString().padStart(2, '0')}
+                            description="NC Menores e Maiores"
+                            icon={<FileWarning className="h-4 w-4" />}
+                            data={[5, 4, 3, 4, 2].map(v => ({ value: v }))}
+                            dataKey="value"
                         />
-                        <KPICard
+                        <KPISparkCard
+                            variant="amber"
                             title="Oport. Melhoria"
-                            value={dashboardKpis.improvements}
-                            subtitle="OFIs identificadas"
-                            icon={Lightbulb}
-                            color="amber"
+                            value={dashboardKpis.improvements.toString().padStart(2, '0')}
+                            description="OFIs identificadas"
+                            icon={<Lightbulb className="h-4 w-4" />}
+                            data={[2, 3, 2, 4, 3].map(v => ({ value: v }))}
+                            dataKey="value"
                         />
-                        <KPICard
+                        <KPISparkCard
+                            variant="rose"
                             title="Em Atraso"
-                            value={kpis.overdue}
-                            subtitle="Data limite ultrapassada"
-                            icon={AlertTriangle}
-                            color="rose"
-                            highlight={kpis.overdue > 0}
+                            value={kpis.overdue.toString().padStart(2, '0')}
+                            description="Prazos ultrapassados"
+                            icon={<AlertTriangle className="h-4 w-4" />}
+                            data={[1, 0, 1, 0, kpis.overdue].map(v => ({ value: v }))}
+                            dataKey="value"
                         />
                     </div>
 
@@ -300,11 +304,43 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                 {/* List Tab */}
                 <TabsContent value="list" className="space-y-6 animate-in fade-in duration-500 border-none p-0 outline-none">
                     {/* Status KPIs */}
-                    <div className="grid gap-4 md:grid-cols-4">
-                        <KPICard title="Total" value={kpis.total} subtitle="No ciclo atual" icon={ClipboardCheck} color="slate" />
-                        <KPICard title="Planeadas" value={kpis.planned} subtitle="A aguardar execução" icon={Calendar} color="emerald" />
-                        <KPICard title="Em Curso" value={kpis.ongoing} subtitle="Execução ativa" icon={Clock} color="amber" />
-                        <KPICard title="Em Atraso" value={kpis.overdue} subtitle="Data limite ultrapassada" icon={AlertTriangle} color="rose" highlight={kpis.overdue > 0} />
+                    <div className="grid gap-6 md:grid-cols-4">
+                        <KPISparkCard
+                            variant="slate"
+                            title="Total"
+                            value={kpis.total.toString().padStart(2, '0')}
+                            description="No ciclo atual"
+                            icon={<ClipboardCheck className="h-4 w-4" />}
+                            data={[10, 12, 11, 13].map(v => ({ value: v }))}
+                            dataKey="value"
+                        />
+                        <KPISparkCard
+                            variant="emerald"
+                            title="Planeadas"
+                            value={kpis.planned.toString().padStart(2, '0')}
+                            description="A aguardar execução"
+                            icon={<Calendar className="h-4 w-4" />}
+                            data={[2, 4, 3, 5].map(v => ({ value: v }))}
+                            dataKey="value"
+                        />
+                        <KPISparkCard
+                            variant="amber"
+                            title="Em Curso"
+                            value={kpis.ongoing.toString().padStart(2, '0')}
+                            description="Execução ativa"
+                            icon={<Clock className="h-4 w-4" />}
+                            data={[1, 2, 1, 3].map(v => ({ value: v }))}
+                            dataKey="value"
+                        />
+                        <KPISparkCard
+                            variant="rose"
+                            title="Em Atraso"
+                            value={kpis.overdue.toString().padStart(2, '0')}
+                            description="Prazos ultrapassados"
+                            icon={<AlertTriangle className="h-4 w-4" />}
+                            data={[0, 1, 0, kpis.overdue].map(v => ({ value: v }))}
+                            dataKey="value"
+                        />
                     </div>
 
                     {/* Audit List */}

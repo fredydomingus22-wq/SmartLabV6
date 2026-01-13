@@ -22,7 +22,7 @@ interface SampleData {
     sample_code: string;
     product_name: string;
     batch_code: string;
-    collection_date: string;
+    collected_at: string;
     client_name?: string;
     description?: string;
 }
@@ -79,7 +79,7 @@ export const CertificateOfAnalysis = ({ sample, analyses, organization, plant, a
                     <Text style={styles.label}>Sample Code:</Text>
                     <Text style={styles.value}>{sample.sample_code}</Text>
                     <Text style={styles.label}>Date:</Text>
-                    <Text style={styles.value}>{sample.collection_date}</Text>
+                    <Text style={styles.value}>{sample.collected_at}</Text>
                 </View>
                 <View style={styles.row}>
                     <Text style={styles.label}>Product:</Text>

@@ -15,6 +15,8 @@ import { Plus, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { ManagerTabs } from "../manager-tabs";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { GraduationCap } from "lucide-react";
 
 // Schema for client
 const formSchema = z.object({
@@ -54,104 +56,104 @@ export default function ModulesPage({ modules }: { modules: any[] }) {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl font-black tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
-                        Gestor de Treinamentos
-                    </h1>
-                    <p className="text-slate-400 text-sm font-medium">
-                        Crie e gerencie módulos de qualificação para a equipe.
-                    </p>
-                </div>
-
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="gap-2 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-11 shadow-[0_0_20px_rgba(37,99,235,0.2)] border-0">
-                            <Plus className="w-4 h-4" /> Novo Módulo
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px] bg-black/90 border-white/10 backdrop-blur-2xl shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-black tracking-tight">Criar Módulo Academy</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-4">
-                                <FormField
-                                    control={form.control}
-                                    name="title"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Título do Módulo</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="ex: Boas Práticas de Fabricação (GMP)" {...field} className="bg-white/5 border-white/10 focus:border-blue-500/50 h-11" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-8">
+            <PageHeader
+                variant="blue"
+                icon={<GraduationCap className="h-4 w-4" />}
+                overline="LIMS Academy Control"
+                title="Gestor de Treinamentos"
+                description="Crie e gerencie módulos de qualificação para a equipe."
+                backHref="/quality"
+                actions={
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="gap-2 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-11 shadow-[0_0_20px_rgba(37,99,235,0.2)] border-0">
+                                <Plus className="w-4 h-4" /> Novo Módulo
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px] bg-black/90 border-white/10 backdrop-blur-2xl shadow-2xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-black tracking-tight">Criar Módulo Academy</DialogTitle>
+                                <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Configuração de Protocolo de Qualificação</p>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-4">
                                     <FormField
                                         control={form.control}
-                                        name="type"
+                                        name="title"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Tipo de Conteúdo</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger className="bg-white/5 border-white/10 h-11">
-                                                            <SelectValue placeholder="Selecione" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent className="bg-slate-900 border-white/10">
-                                                        <SelectItem value="document">Documento (PDF)</SelectItem>
-                                                        <SelectItem value="video">Vídeo Aula</SelectItem>
-                                                        <SelectItem value="quiz">Avaliação (Quiz)</SelectItem>
-                                                        <SelectItem value="external">Link Externo</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="duration_minutes"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Duração (min)</FormLabel>
+                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Título do Módulo</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" {...field} className="bg-white/5 border-white/10 h-11" />
+                                                    <Input placeholder="ex: Boas Práticas de Fabricação (GMP)" {...field} className="bg-white/5 border-white/10 focus:border-blue-500/50 h-11" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
-                                </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="content_url"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Caminho / URL do Conteúdo</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="storage/path/to/file.pdf ou http://..." {...field} className="bg-white/5 border-white/10 h-11" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="type"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Tipo de Conteúdo</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="bg-white/5 border-white/10 h-11">
+                                                                <SelectValue placeholder="Selecione" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent className="bg-slate-900 border-white/10">
+                                                            <SelectItem value="document">Documento (PDF)</SelectItem>
+                                                            <SelectItem value="video">Vídeo Aula</SelectItem>
+                                                            <SelectItem value="quiz">Avaliação (Quiz)</SelectItem>
+                                                            <SelectItem value="external">Link Externo</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="duration_minutes"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Duração (min)</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" {...field} className="bg-white/5 border-white/10 h-11" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
-                                <Button type="submit" disabled={isPending} className="w-full bg-blue-600 hover:bg-blue-500 h-12 font-black uppercase text-xs tracking-widest mt-4">
-                                    {isPending ? "Processando..." : "Finalizar Criação"}
-                                </Button>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="content_url"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Caminho / URL do Conteúdo</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="storage/path/to/file.pdf ou http://..." {...field} className="bg-white/5 border-white/10 h-11" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <Button type="submit" disabled={isPending} className="w-full bg-blue-600 hover:bg-blue-500 h-12 font-black uppercase text-xs tracking-widest mt-4">
+                                        {isPending ? "Processando..." : "Finalizar Criação"}
+                                    </Button>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                }
+            />
 
             <ManagerTabs />
 

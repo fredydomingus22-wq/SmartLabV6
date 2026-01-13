@@ -17,6 +17,8 @@ import {
 import Link from "next/link";
 import { differenceInDays, format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +99,7 @@ export default async function AssetsPage() {
             icon: FlaskConical,
             count: stats.totalInstruments,
             color: "text-blue-400",
-            bg: "bg-blue-500/10",
+            bg: "bg-blue-500/10 border-blue-500/20",
         },
         {
             title: "Equipamentos Prod.",
@@ -106,7 +108,7 @@ export default async function AssetsPage() {
             icon: Factory,
             count: stats.totalProcessEquipment,
             color: "text-amber-400",
-            bg: "bg-amber-500/10",
+            bg: "bg-amber-500/10 border-amber-500/20",
         },
         {
             title: "Calibrações",
@@ -115,7 +117,7 @@ export default async function AssetsPage() {
             icon: Settings2,
             count: stats.calibrationsDue,
             color: "text-emerald-400",
-            bg: "bg-emerald-500/10",
+            bg: "bg-emerald-500/10 border-emerald-500/20",
             alert: stats.calibrationsDue > 0,
         },
         {
@@ -125,61 +127,65 @@ export default async function AssetsPage() {
             icon: Wrench,
             count: stats.maintenanceDue,
             color: "text-violet-400",
-            bg: "bg-violet-500/10",
+            bg: "bg-violet-500/10 border-violet-500/20",
             alert: stats.maintenanceDue > 0,
         },
     ];
 
     return (
-        <div className="container py-8 space-y-8 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-violet-500/5 text-violet-400 border-violet-500/20">
-                            Asset Control
-                        </Badge>
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                        <Wrench className="h-8 w-8 text-violet-500" />
-                        Gestão de Ativos
-                    </h1>
-                    <p className="text-slate-400 text-sm font-medium">
-                        Monitorização centralizada de instrumentos, equipamentos, calibrações e manutenção.
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="purple"
+                icon={<Wrench className="h-4 w-4" />}
+                overline="Maintenance Intelligence • Site Assets"
+                title="Gestão de Ativos"
+                description="Monitorização centralizada de instrumentos, equipamentos, calibrações e manutenção."
+            />
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: "Instrumentos Lab", value: stats.totalInstruments, icon: FlaskConical, color: "text-blue-400", bg: "bg-blue-500/10" },
-                    { label: "Equip. Processo", value: stats.totalProcessEquipment, icon: Factory, color: "text-amber-400", bg: "bg-amber-500/10" },
-                    { label: "Calibrações Pendentes", value: stats.calibrationsDue, icon: Calendar, color: stats.calibrationsDue > 0 ? "text-rose-400" : "text-emerald-400", bg: stats.calibrationsDue > 0 ? "bg-rose-500/10" : "bg-emerald-500/10" },
-                    { label: "Fora de Serviço", value: stats.outOfService, icon: AlertTriangle, color: stats.outOfService > 0 ? "text-amber-400" : "text-slate-400", bg: stats.outOfService > 0 ? "bg-amber-500/10" : "bg-slate-500/10" },
-                ].map((stat, i) => (
-                    <Card key={i} className="bg-slate-900/40 border-slate-800 shadow-xl">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className={`p-2 rounded-xl ${stat.bg} ${stat.color}`}>
-                                    <stat.icon className="h-5 w-5" />
-                                </div>
-                            </div>
-                            <h3 className="text-2xl font-black text-white">{stat.value}</h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{stat.label}</p>
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KPISparkCard
+                    variant="blue"
+                    title="Instrumentos Lab"
+                    value={stats.totalInstruments.toString().padStart(3, '0')}
+                    description="Registrados no site"
+                    icon={<FlaskConical className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 5) + 10 }))}
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Equip. Processo"
+                    value={stats.totalProcessEquipment.toString().padStart(3, '0')}
+                    description="Ativos de produção"
+                    icon={<Factory className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 5) + 5 }))}
+                />
+                <KPISparkCard
+                    variant={stats.calibrationsDue > 0 ? "destructive" : "emerald"}
+                    title="Calibrações"
+                    value={stats.calibrationsDue.toString().padStart(3, '0')}
+                    description="Próximos 30 dias"
+                    icon={<Calendar className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 10) }))}
+                />
+                <KPISparkCard
+                    variant={stats.outOfService > 0 ? "amber" : "blue"}
+                    title="Fora de Serviço"
+                    value={stats.outOfService.toString().padStart(3, '0')}
+                    description="Requer atenção"
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 3) }))}
+                />
             </div>
 
             {/* Quick Links */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {quickLinks.map((link) => (
                     <Link key={link.href} href={link.href}>
-                        <Card className="bg-slate-950/40 border-slate-800 hover:border-slate-700 transition-all group cursor-pointer h-full">
+                        <Card className="bg-card border-slate-800 hover:border-slate-700 transition-all group cursor-pointer h-full">
                             <CardContent className="p-6">
                                 <div className="flex items-start gap-4">
-                                    <div className={`p-3 rounded-2xl ${link.bg} ${link.color} group-hover:scale-110 transition-transform`}>
+                                    <div className={`p-3 rounded-2xl ${link.bg} ${link.color} group-hover:scale-110 transition-transform shadow-inner border`}>
                                         <link.icon className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1">
@@ -205,7 +211,7 @@ export default async function AssetsPage() {
             </div>
 
             {/* Status Overview */}
-            <Card className="bg-slate-900/40 border-slate-800">
+            <Card className="bg-card border-slate-800">
                 <CardHeader>
                     <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-emerald-400" />
@@ -214,7 +220,7 @@ export default async function AssetsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/50 border border-slate-800">
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/20 border border-slate-800">
                             <div className={`p-2 rounded-full ${stats.calibrationsDue === 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
                                 {stats.calibrationsDue === 0 ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                             </div>
@@ -225,7 +231,7 @@ export default async function AssetsPage() {
                                 <p className="text-[10px] text-slate-500">Próximos 30 dias</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/50 border border-slate-800">
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/20 border border-slate-800">
                             <div className={`p-2 rounded-full ${stats.maintenanceDue === 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
                                 {stats.maintenanceDue === 0 ? <CheckCircle2 className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
                             </div>
@@ -236,7 +242,7 @@ export default async function AssetsPage() {
                                 <p className="text-[10px] text-slate-500">Próximos 30 dias</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/50 border border-slate-800">
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-950/20 border border-slate-800">
                             <div className={`p-2 rounded-full ${stats.outOfService === 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}`}>
                                 {stats.outOfService === 0 ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                             </div>

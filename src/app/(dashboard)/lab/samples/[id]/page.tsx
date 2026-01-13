@@ -14,6 +14,7 @@ import { RealtimeAIBadge } from "@/components/lab/realtime-ai-badge";
 import { PDFDownloadButton } from "@/components/reports/PDFDownloadButton";
 import { CertificateOfAnalysis } from "@/components/reports/templates/CertificateOfAnalysis";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/layout/page-header";
 import { AiInsightsCard } from "@/components/lab/ai-insights-card";
 import { reviewSampleAction } from "@/app/actions/lab_modules/approvals";
 import { getSafeUser } from "@/lib/auth.server";
@@ -58,9 +59,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
         .select(`
             id,
             code,
-            collection_date,
-            collected_at: collection_date,
-            description,
+            collected_at,
             organization_id,
             status,
             collected_by,
@@ -97,7 +96,7 @@ export default async function SampleDetailPage({ params }: PageProps) {
                 status,
                 notes,
                 qa_parameter_id,
-                parameter: qa_parameters!inner(
+                parameter: qa_parameters(
                     id, name, code, unit, category
                 ),
                 analyst: user_profiles!lab_analysis_analyzed_by_profile_fkey(full_name),
@@ -114,10 +113,12 @@ export default async function SampleDetailPage({ params }: PageProps) {
     const { data: sample, error: sampleError } = await sampleQuery.single();
 
     if (sampleError || !sample) {
-        console.error("Sample fetch error:", {
+        console.error("Sample fetch error detail:", {
             error: sampleError,
-            message: sampleError?.message,
+            msg: sampleError?.message,
             code: sampleError?.code,
+            details: sampleError?.details,
+            hint: sampleError?.hint,
             id
         });
         notFound();
@@ -320,126 +321,104 @@ export default async function SampleDetailPage({ params }: PageProps) {
 
     return (
         <div className="container py-8 space-y-6">
-            {/* Premium Header Container */}
-            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
-
-                <div className="space-y-6 relative z-10">
-                    <SampleStepper currentStatus={sample.status} className="mb-2" />
-
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
-                        <div className="space-y-4">
-                            <Link href="/lab">
-                                <Button variant="ghost" size="sm" className="pl-0 text-slate-400 hover:text-white -ml-2 mb-2 group">
-                                    <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                                    Voltar ao Laboratório
-                                </Button>
-                            </Link>
-
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-4 rounded-3xl bg-blue-500/20 border border-blue-500/30 shadow-inner">
-                                        <FlaskConical className="h-8 w-8 text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                                {sample.code}
-                                            </h1>
-                                            {getStatusBadge(sample.status)}
-                                            {aiStatus && (
-                                                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[aiStatus].bg, riskConfig[aiStatus].color)}>
-                                                    {(() => {
-                                                        const Icon = riskConfig[aiStatus].icon;
-                                                        return <Icon className="h-3 w-3 inline mr-1" />;
-                                                    })()}
-                                                    IA: {riskConfig[aiStatus].label}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="text-lg text-slate-400 font-medium tracking-wide">
-                                            {sampleType?.name || "Tipo Desconhecido"}
-                                        </p>
-                                    </div>
+            <PageHeader
+                variant="blue"
+                icon={<FlaskConical className="h-4 w-4 text-blue-400" />}
+                overline={sampleType?.name || "Tipo Desconhecido"}
+                title={sample.code}
+                description={sample.notes || "Identificação industrial & Rastreabilidade LIMS"}
+                backHref="/lab"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 mr-4">
+                            {getStatusBadge(sample.status)}
+                            {aiStatus && (
+                                <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5", riskConfig[aiStatus].bg, riskConfig[aiStatus].color)}>
+                                    {(() => {
+                                        const Icon = riskConfig[aiStatus].icon;
+                                        return <Icon className="h-3 w-3 inline mr-1" />;
+                                    })()}
+                                    IA: {riskConfig[aiStatus].label}
                                 </div>
-                            </div>
+                            )}
                         </div>
 
-                        <div className="flex flex-col items-end gap-4">
-                            <div className="flex flex-wrap justify-end gap-3">
-                                {/* FSM: Review Action */}
-                                {sample.status === 'in_analysis' && (
-                                    <form action={async () => {
-                                        "use server";
-                                        await reviewSampleAction(sample.id);
-                                    }}>
-                                        <Button
-                                            type="submit"
-                                            className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20"
-                                            disabled={!canValidate}
-                                        >
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            Submeter p/ Revisão Técnica
-                                        </Button>
-                                    </form>
-                                )}
+                        {/* FSM: Review Action */}
+                        {sample.status === 'in_analysis' && (
+                            <form action={async () => {
+                                "use server";
+                                await reviewSampleAction(sample.id);
+                            }}>
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    className="h-9 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
+                                    disabled={!canValidate}
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Submeter p/ Revisão
+                                </Button>
+                            </form>
+                        )}
 
-                                {/* Decision Dialog for Technical Review (Level 2) */}
-                                {sample.status === 'under_review' && (
-                                    <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
-                                )}
+                        {/* Decision Dialog for Technical Review (Level 2) */}
+                        {sample.status === 'under_review' && (
+                            <ValidateDialog sampleId={sample.id} sampleCode={sample.code} />
+                        )}
 
-                                {/* Decision Dialog for Quality Release (Level 3) */}
-                                {sample.status === 'approved' && (
-                                    <ReleaseDialog sampleId={sample.id} sampleCode={sample.code} />
-                                )}
+                        {/* Decision Dialog for Quality Release (Level 3) */}
+                        {sample.status === 'approved' && (
+                            <ReleaseDialog sampleId={sample.id} sampleCode={sample.code} />
+                        )}
 
-                                {sample.status === 'released' ? (
-                                    <>
-                                        <PDFDownloadButton
-                                            document={
-                                                <CertificateOfAnalysis
-                                                    sample={{
-                                                        id: sample.id,
-                                                        sample_code: sample.code || 'N/A',
-                                                        product_name: batchData?.product?.name || (Array.isArray(batchData?.product) ? batchData?.product[0]?.name : 'Unknown Product'),
-                                                        batch_code: batchData?.code || 'N/A',
-                                                        collection_date: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
-                                                        description: sample.description || undefined
-                                                    }}
-                                                    analyses={filteredAnalyses.map(a => ({
-                                                        parameter_name: a.parameter?.name || 'Unknown Parameter',
-                                                        method_name: a.parameter?.code,
-                                                        result: a.final_value?.toString() || 'Pending',
-                                                        unit: a.parameter?.unit || '',
-                                                        min_limit: specs[a.qa_parameter_id]?.min_value,
-                                                        max_limit: specs[a.qa_parameter_id]?.max_value,
-                                                        status: a.is_conforming === true ? 'compliant' : a.is_conforming === false ? 'non_compliant' : 'pending'
-                                                    }))}
-                                                    organization={{
-                                                        name: "SmartLab Enterprise",
-                                                        address: "123 Quality Street, Innovation City",
-                                                    }}
-                                                    approver={{
-                                                        name: validatedByName,
-                                                        role: "Quality Manager"
-                                                    }}
-                                                />
-                                            }
-                                            fileName={`CoA_${sample.code || sample.id}.pdf`}
-                                            label="Certificado"
+                        {sample.status === 'released' ? (
+                            <>
+                                <PDFDownloadButton
+                                    document={
+                                        <CertificateOfAnalysis
+                                            sample={{
+                                                id: sample.id,
+                                                sample_code: sample.code || 'N/A',
+                                                product_name: batchData?.product?.name || (Array.isArray(batchData?.product) ? batchData?.product[0]?.name : 'Unknown Product'),
+                                                batch_code: batchData?.code || 'N/A',
+                                                collected_at: sample.collected_at ? format(new Date(sample.collected_at), "dd/MM/yyyy HH:mm") : 'N/A',
+                                                description: sample.notes || undefined
+                                            }}
+                                            analyses={filteredAnalyses.map(a => ({
+                                                parameter_name: a.parameter?.name || 'Unknown Parameter',
+                                                method_name: a.parameter?.code,
+                                                result: a.final_value?.toString() || 'Pending',
+                                                unit: a.parameter?.unit || '',
+                                                min_limit: specs[a.qa_parameter_id]?.min_value,
+                                                max_limit: specs[a.qa_parameter_id]?.max_value,
+                                                status: a.is_conforming === true ? 'compliant' : a.is_conforming === false ? 'non_compliant' : 'pending'
+                                            }))}
+                                            organization={{
+                                                name: "SmartLab Enterprise",
+                                                address: "123 Quality Street, Innovation City",
+                                            }}
+                                            approver={{
+                                                name: validatedByName,
+                                                role: "Quality Manager"
+                                            }}
                                         />
-                                        <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold shadow-lg shadow-emerald-500/10">
-                                            <CheckCircle className="h-5 w-5" />
-                                            <span>Validado</span>
-                                        </div>
-                                    </>
-                                ) : null}
-                            </div>
-                        </div>
+                                    }
+                                    fileName={`CoA_${sample.code || sample.id}.pdf`}
+                                    label="Certificado"
+                                />
+                                <div className="flex items-center gap-2 px-4 py-1.5 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/10">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span>Validado</span>
+                                </div>
+                            </>
+                        ) : null}
                     </div>
+                }
+            >
+                <div className="py-2">
+                    <SampleStepper currentStatus={sample.status} />
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Error Display for Debugging */}
             {

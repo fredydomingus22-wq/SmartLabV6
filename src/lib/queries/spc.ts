@@ -136,6 +136,7 @@ export async function getSPCData(
             )
         `)
         .eq("qa_parameter_id", parameterId)
+        .in("status", ["completed", "reviewed", "validated"])
         .gte("analyzed_at", dateFromStr)
         .not("value_numeric", "is", null)
         .order("analyzed_at", { ascending: true });

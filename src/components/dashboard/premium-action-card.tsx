@@ -3,7 +3,7 @@
 import React from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { motion } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -29,44 +29,45 @@ export function PremiumActionCard({
     return (
         <Link href={href} className="block group h-full">
             <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 className="h-full"
             >
-                <GlassCard className="p-5 h-full flex flex-col relative overflow-hidden transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-xl">
+                <div className="h-full relative overflow-hidden rounded-[2rem] border border-white/5 bg-slate-950/40 backdrop-blur-xl p-8 transition-all duration-500 hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/40 flex flex-col">
                     {/* Background Glow */}
                     <div
-                        className="absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-10 group-hover:opacity-20 transition-opacity"
+                        className="absolute -right-8 -top-8 w-32 h-32 blur-[60px] opacity-10 transition-opacity duration-500 group-hover:opacity-20 pointer-events-none"
                         style={{ backgroundColor: color }}
                     />
 
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-6 mb-6">
                         <div
-                            className="p-3 rounded-xl glass flex items-center justify-center transition-transform duration-500 group-hover:rotate-12"
+                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 shadow-inner"
                             style={{ color }}
                         >
                             {icon}
                         </div>
-                        <div>
-                            <h3 className="font-semibold text-base tracking-tight">{title}</h3>
-                            <p className="text-[11px] text-muted-foreground line-clamp-1">{description}</p>
+                        <div className="space-y-1">
+                            <h3 className="font-black text-lg text-white italic uppercase tracking-tighter leading-none">{title}</h3>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest italic opacity-60 line-clamp-1">{description}</p>
                         </div>
                     </div>
 
                     <div className="mt-auto flex items-end justify-between">
                         {stats !== undefined && (
-                            <div>
-                                <p className="text-xl font-bold tracking-tighter">{stats}</p>
-                                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold">
+                            <div className="space-y-1">
+                                <p className="text-2xl font-black text-white italic leading-none tracking-tighter">{stats}</p>
+                                <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black italic">
                                     {statsLabel}
                                 </p>
                             </div>
                         )}
-                        <div className="flex items-center text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-300">
-                            Acessar →
+                        <div className="flex items-center gap-2 text-[10px] font-black text-blue-400 uppercase tracking-widest italic opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
+                            Acessar
+                            <ArrowRight className="h-3 w-3" />
                         </div>
                     </div>
-                </GlassCard>
+                </div>
             </motion.div>
         </Link>
     );

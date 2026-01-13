@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,10 +10,10 @@ import {
     CheckCircle2,
     AlertTriangle,
     Clock,
-    ArrowLeft,
     Plus,
     FileCheck
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -59,124 +60,137 @@ export default async function CalibrationsPage() {
     const scheduled = calibrations.filter(c => differenceInDays(new Date(c.next_calibration_date), today) > 30);
 
     return (
-        <div className="container py-8 space-y-8 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/assets">
-                        <Button variant="ghost" size="icon" className="text-slate-400 rounded-full hover:bg-slate-900">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-emerald-500/5 text-emerald-400 border-emerald-500/20">
-                                ISO 17025
-                            </Badge>
-                        </div>
-                        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                            <Settings2 className="h-8 w-8 text-emerald-500" />
-                            Gestão de Calibrações
-                        </h1>
-                        <p className="text-slate-400 text-sm font-medium">
-                            Acompanhamento de calibrações e verificações metrológicas.
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="emerald"
+                icon={<Settings2 className="h-4 w-4" />}
+                overline="ISO 17025 • Metrology Control"
+                title="Gestão de Calibrações"
+                description="Acompanhamento de calibrações e verificações metrológicas para instrumentos de laboratório."
+                backHref="/assets"
+                actions={
                     <RegisterCalibrationDialog assets={calibrations.map(c => ({ id: c.id, name: c.asset_name, code: c.asset_code }))}>
-                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-9 shadow-lg shadow-emerald-500/20 px-6">
                             <Plus className="h-4 w-4 mr-2" />
                             Registar Calibração
                         </Button>
                     </RegisterCalibrationDialog>
-                </div>
-            </div>
+                }
+            />
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6">
-                <Card className="bg-rose-900/20 border-rose-800">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-rose-500/20 text-rose-400">
-                            <AlertTriangle className="h-6 w-6" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="bg-card border-slate-800 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                    <CardContent className="p-6 flex items-center gap-5">
+                        <div className="p-3.5 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
+                            <AlertTriangle className="h-5 w-5" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-white">{overdue.length}</h3>
-                            <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Vencidas</p>
+                            <h3 className="text-3xl font-black text-white tracking-tighter">{overdue.length}</h3>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Vencidas</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-amber-900/20 border-amber-800">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400">
-                            <Clock className="h-6 w-6" />
+                <Card className="bg-card border-slate-800 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+                    <CardContent className="p-6 flex items-center gap-5">
+                        <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:scale-110 transition-transform">
+                            <Clock className="h-5 w-5" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-white">{upcoming.length}</h3>
-                            <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Próx. 30 Dias</p>
+                            <h3 className="text-3xl font-black text-white tracking-tighter">{upcoming.length}</h3>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Próx. 30 Dias</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-emerald-900/20 border-emerald-800">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
-                            <CheckCircle2 className="h-6 w-6" />
+                <Card className="bg-card border-slate-800 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                    <CardContent className="p-6 flex items-center gap-5">
+                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                            <CheckCircle2 className="h-5 w-5" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-white">{scheduled.length}</h3>
-                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Agendadas</p>
+                            <h3 className="text-3xl font-black text-white tracking-tighter">{scheduled.length}</h3>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Agendadas</p>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Calibration List */}
-            <Card className="bg-slate-950/40 border-slate-800">
-                <CardHeader>
-                    <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                        <FileCheck className="h-5 w-5 text-emerald-400" />
-                        Calendário de Calibrações
-                    </CardTitle>
+            <Card className="bg-card border-slate-800 shadow-2xl rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-slate-800 bg-slate-900/20 py-5">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-black text-white flex items-center gap-3 uppercase tracking-[0.15em]">
+                            <FileCheck className="h-5 w-5 text-emerald-500" />
+                            Calendário de Calibrações
+                        </CardTitle>
+                        <Badge variant="outline" className="border-slate-800 text-slate-500 font-mono text-[10px]">
+                            {calibrations.length} Instrumentos
+                        </Badge>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-800 bg-slate-900/20">
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Instrumento</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Código</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Última Calibração</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Próxima Calibração</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Estado</th>
+                                <tr className="border-b border-slate-800 bg-slate-900/50">
+                                    <th className="py-4 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Instrumento</th>
+                                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Código</th>
+                                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Última Calibração</th>
+                                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Próxima Calibração</th>
+                                    <th className="py-4 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-right">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-slate-800/40">
                                 {calibrations.map((cal) => {
                                     const days = differenceInDays(new Date(cal.next_calibration_date), today);
                                     const isOverdue = days < 0;
                                     const isNear = days >= 0 && days <= 30;
 
                                     return (
-                                        <tr key={cal.id} className="hover:bg-slate-900/20">
-                                            <td className="p-4">
-                                                <Link href={`/assets/instruments/${cal.id}`} className="font-bold text-white hover:text-emerald-400">
+                                        <tr key={cal.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/30 last:border-0">
+                                            <td className="py-3 px-6">
+                                                <Link href={`/assets/instruments/${cal.id}`} className="font-black text-sm text-slate-100 group-hover:text-emerald-400 transition-colors italic tracking-tight">
                                                     {cal.asset_name}
                                                 </Link>
                                             </td>
-                                            <td className="p-4">
-                                                <span className="font-mono text-xs text-slate-500">{cal.asset_code}</span>
-                                            </td>
-                                            <td className="p-4 text-center text-xs text-slate-400">
-                                                {cal.last_calibration_date ? format(new Date(cal.last_calibration_date), "dd/MM/yyyy") : "N/A"}
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <span className={`text-xs font-bold ${isOverdue ? 'text-rose-400' : isNear ? 'text-amber-400' : 'text-slate-300'}`}>
-                                                    {format(new Date(cal.next_calibration_date), "dd/MM/yyyy")}
+                                            <td className="py-3 px-4 text-center">
+                                                <span className="font-mono text-[11px] bg-slate-950/50 text-slate-400 px-2 py-1 rounded border border-slate-800 font-black">
+                                                    {cal.asset_code}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-center">
-                                                <Badge className={`text-[9px] uppercase ${isOverdue ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : isNear ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                                                    {isOverdue ? 'Vencida' : isNear ? `${days}d restantes` : 'Em Dia'}
+                                            <td className="py-3 px-4 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                                        {cal.last_calibration_date ? format(new Date(cal.last_calibration_date), "dd/MM/yyyy") : "— —"}
+                                                    </span>
+                                                    {cal.last_calibration_date && (
+                                                        <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest mt-0.5">Executada</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className={cn(
+                                                        "text-[11px] font-black tracking-tight px-2 py-0.5 rounded-md border",
+                                                        isOverdue ? "text-rose-400 bg-rose-500/5 border-rose-500/10" :
+                                                            isNear ? "text-amber-400 bg-amber-500/5 border-amber-500/10" :
+                                                                "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
+                                                    )}>
+                                                        {format(new Date(cal.next_calibration_date), "dd/MM/yyyy")}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-6 text-right">
+                                                <Badge className={cn(
+                                                    "px-3 py-1 rounded-xl font-black uppercase tracking-tighter text-[10px] border shadow-inner",
+                                                    isOverdue ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
+                                                        isNear ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                                            "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                )}>
+                                                    {isOverdue ? 'VENCIDA' : isNear ? `${days}d restantes` : 'CONCORDE'}
                                                 </Badge>
                                             </td>
                                         </tr>
@@ -184,13 +198,25 @@ export default async function CalibrationsPage() {
                                 })}
                                 {calibrations.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-12 text-center text-slate-500 italic">
-                                            Nenhuma calibração agendada.
+                                        <td colSpan={5} className="py-20 text-center">
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className="h-16 w-16 bg-slate-900/50 rounded-full flex items-center justify-center border border-dashed border-slate-700">
+                                                    <Clock className="h-8 w-8 text-slate-700" />
+                                                </div>
+                                                <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[11px]">
+                                                    Nenhuma calibração indexada no nó atual
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="p-4 bg-slate-950/20 border-t border-slate-800">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-700 text-center italic">
+                            Metrology Asset Control System • ISO 17025 Compliance
+                        </p>
                     </div>
                 </CardContent>
             </Card>

@@ -29,6 +29,8 @@ interface DashboardClientProps {
 
 import { motion, AnimatePresence } from "framer-motion";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export function DashboardClient({
     samples,
     stats,
@@ -57,57 +59,18 @@ export function DashboardClient({
         router.refresh();
     };
 
+    const headerTitle = userRole === 'lab_analyst' ? 'Laboratório FQ' : userRole === 'micro_analyst' ? 'Laboratório Micro' : 'Controlo de Amostras';
+    const headerIcon = userRole === 'lab_analyst' ? Beaker : userRole === 'micro_analyst' ? Beaker : Beaker; // Standardized for now
+
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
-            {/* Premium Header */}
-            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
-
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-2xl bg-blue-500/20 border border-blue-500/30">
-                                <Beaker className="h-6 w-6 text-blue-400" />
-                            </div>
-                            <div>
-                                <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
-                                    {userRole === 'lab_analyst' ? 'Laboratório FQ' : userRole === 'micro_analyst' ? 'Laboratório Micro' : 'Controlo de Amostras'}
-                                </h1>
-                                <p className="text-slate-400 font-medium">
-                                    {userRole === 'lab_analyst' ? 'Gestão de Análises Físico-Químicas' : userRole === 'micro_analyst' ? 'Gestão de Análises Microbiológicas' : 'Gestão integrada de análises Físico-Químicas e Microbiológicas'}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Quick Filter / Mode Toggle */}
-                        <div className="flex max-w-fit bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800 shadow-inner backdrop-blur-xl">
-                            {[
-                                { id: 'all', label: 'Global', color: 'text-slate-200', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'auditor'] },
-                                { id: 'FQ', label: 'Físico-Química', color: 'text-blue-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'lab_analyst', 'auditor'] },
-                                { id: 'MICRO', label: 'Microbiologia', color: 'text-purple-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'micro_analyst', 'auditor'] }
-                            ]
-                                .filter(m => !m.roles || m.roles.includes(userRole))
-                                .map((mode) => (
-                                    <Button
-                                        key={mode.id}
-                                        variant="ghost"
-                                        size="sm"
-                                        className={cn(
-                                            "h-9 px-6 text-xs font-bold uppercase tracking-widest rounded-xl transition-all relative overflow-hidden group",
-                                            labType === mode.id ? "bg-slate-800 text-white shadow-lg ring-1 ring-slate-700" : "text-slate-500 hover:text-slate-300"
-                                        )}
-                                        onClick={() => setLabType(mode.id as any)}
-                                    >
-                                        <span className={cn("relative z-10 font-black", labType === mode.id && mode.color)}>{mode.label}</span>
-                                        {labType === mode.id && (
-                                            <motion.div layoutId="activeTab" className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent" />
-                                        )}
-                                    </Button>
-                                ))}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
+            <PageHeader
+                title={headerTitle}
+                icon={<Beaker className="h-4 w-4" />}
+                overline="Laboratory Operations"
+                variant="blue"
+                actions={
+                    <div className="flex items-center gap-2">
                         <CreateSampleDialog
                             sampleTypes={sampleTypes}
                             tanks={tanks}
@@ -115,47 +78,62 @@ export function DashboardClient({
                             plantId={plantId}
                             users={users}
                         />
-
-                        <div className="h-10 w-px bg-slate-800 hidden sm:block mx-2" />
-
-                        <div className="flex bg-slate-950/50 p-1 rounded-xl border border-slate-800 shadow-inner">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn("h-9 w-9 rounded-lg transition-all", viewMode === "grid" ? "bg-slate-800 text-blue-400" : "text-slate-500")}
-                                onClick={() => setViewMode("grid")}
-                            >
-                                <LayoutGrid className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn("h-9 w-9 rounded-lg transition-all", viewMode === "list" ? "bg-slate-800 text-blue-400" : "text-slate-500")}
-                                onClick={() => setViewMode("list")}
-                            >
-                                <List className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn("h-9 w-9 rounded-lg transition-all", viewMode === "table" ? "bg-slate-800 text-blue-400" : "text-slate-500")}
-                                onClick={() => setViewMode("table")}
-                            >
-                                <Search className="h-4 w-4" />
-                            </Button>
+                        <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/5">
+                            {[
+                                { id: "list", icon: List },
+                                { id: "grid", icon: LayoutGrid },
+                                { id: "table", icon: Search }
+                            ].map((mode) => (
+                                <Button
+                                    key={mode.id}
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                        "h-8 w-8 rounded-lg transition-all",
+                                        viewMode === mode.id ? "bg-white/10 text-blue-400" : "text-slate-500 hover:text-slate-300"
+                                    )}
+                                    onClick={() => setViewMode(mode.id as any)}
+                                >
+                                    <mode.icon className="h-4 w-4" />
+                                </Button>
+                            ))}
                         </div>
                     </div>
+                }
+            >
+                {/* Minimal Mode Toggle */}
+                <div className="flex items-center gap-1">
+                    {[
+                        { id: 'all', label: 'Global', color: 'text-slate-200', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'auditor'] },
+                        { id: 'FQ', label: 'Físico-Química', color: 'text-blue-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'lab_analyst', 'auditor'] },
+                        { id: 'MICRO', label: 'Microbiologia', color: 'text-purple-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'micro_analyst', 'auditor'] }
+                    ]
+                        .filter(m => !m.roles || m.roles.includes(userRole))
+                        .map((mode) => (
+                            <button
+                                key={mode.id}
+                                onClick={() => setLabType(mode.id as any)}
+                                className={cn(
+                                    "px-4 h-8 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all",
+                                    labType === mode.id
+                                        ? "bg-white/10 text-white shadow-sm"
+                                        : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                                )}
+                            >
+                                {mode.label}
+                            </button>
+                        ))}
                 </div>
-            </div>
+            </PageHeader>
 
             <KPICards stats={stats} />
 
             <div className="pt-4">
                 <Tabs value={status} onValueChange={setStatus} className="w-full">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800/50">
-                        <TabsList className="bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800 shadow-inner h-12">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/5">
+                        <TabsList className="bg-slate-950/60 p-1.5 rounded-3xl border border-white/5 shadow-inner h-14">
                             {[
-                                { id: 'all', label: 'Todas', color: 'bg-slate-800 text-slate-100' },
+                                { id: 'all', label: 'Todas', color: 'data-[state=active]:bg-white/10 data-[state=active]:text-white' },
                                 { id: 'collected', label: 'Colhidas', color: 'data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400' },
                                 { id: 'in_analysis', label: 'Análise', color: 'data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400' },
                                 { id: 'under_review', label: 'Em Revisão', color: 'data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-400' },
@@ -165,7 +143,7 @@ export function DashboardClient({
                                     key={tab.id}
                                     value={tab.id}
                                     className={cn(
-                                        "rounded-xl text-[11px] px-6 h-9 font-black uppercase tracking-widest transition-all data-[state=active]:shadow-lg border border-transparent data-[state=active]:border-white/5",
+                                        "rounded-2xl text-[10px] px-8 h-full font-black uppercase tracking-widest transition-all data-[state=active]:shadow-lg border border-transparent data-[state=active]:border-white/5 italic",
                                         tab.color
                                     )}
                                 >
@@ -178,11 +156,11 @@ export function DashboardClient({
                         </div>
                     </div>
 
-                    <div className="mt-8 px-0">
+                    <div className="mt-10 px-0">
                         {samples.length === 0 ? (
-                            <div className="text-center py-20 bg-muted/5 rounded-2xl border border-dashed border-border/20">
-                                <Search className="h-6 w-6 mx-auto mb-3 text-muted-foreground/20" />
-                                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/40 text-center">Nenhuma amostra encontrada</p>
+                            <div className="text-center py-24 bg-slate-950/20 rounded-3xl border-2 border-dashed border-white/5">
+                                <Search className="h-8 w-8 mx-auto mb-4 text-slate-700" />
+                                <p className="text-[11px] uppercase font-black tracking-[0.2em] text-slate-600">Nenhuma amostra encontrada</p>
                                 <Button variant="link" size="sm" onClick={() => {
                                     setStatus("all");
                                     router.push("/lab");

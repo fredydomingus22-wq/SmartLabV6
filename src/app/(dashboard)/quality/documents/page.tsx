@@ -7,7 +7,9 @@ import { DocumentsClient } from "./_components/documents-client";
 import { getDocuments, getDocCategories, getPlants } from "@/lib/queries/dms";
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
-import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -52,48 +54,55 @@ export default async function DocumentsPage() {
     }
 
     return (
-        <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-            {/* Industrial Workstation Header */}
-            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 border-b border-white/5 pb-8">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-emerald-500 mb-1">
-                        <ShieldCheck className="h-5 w-5" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Industrial QMS / DMS Module</span>
-                    </div>
-                    <h1 className="text-5xl font-black tracking-tighter bg-gradient-to-b from-white to-slate-500 bg-clip-text text-transparent">
-                        Document Station
-                    </h1>
-                    <p className="text-slate-500 font-medium max-w-xl text-sm leading-relaxed">
-                        Controlo centralizado de integridade documental. Monitorize o ciclo de vida de SOPs, Métodos e Especificações em conformidade com normas ISO e GMP.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <CreateDocumentDialog categories={categories} plants={plants} />
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="emerald"
+                icon={<ShieldCheck className="h-4 w-4" />}
+                overline="Industrial QMS / DMS Module"
+                title="Document Station"
+                description="Controlo centralizado de integridade documental. Monitorize o ciclo de vida de SOPs, Métodos e Especificações."
+                backHref="/quality"
+                actions={<CreateDocumentDialog categories={categories} plants={plants} />}
+            />
 
             {/* Workstation KPI Ribbon */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: "Documentos Ativos", value: stats.published, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-                    { label: "Pendente Aprovação", value: stats.pending, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10" },
-                    { label: "Drafts / Revisão", value: stats.drafts, icon: FileText, color: "text-indigo-400", bg: "bg-indigo-500/10" },
-                    { label: "Próximas Revisões (30d)", value: stats.upcomingReview, icon: AlertTriangle, color: "text-rose-400", bg: "bg-rose-500/10" }
-                ].map((kpi, i) => (
-                    <Card key={i} className="glass-dark border-white/5 shadow-2xl overflow-hidden group hover:border-white/10 transition-all">
-                        <CardContent className="p-6 flex items-center justify-between relative">
-                            <div className="space-y-1 relative z-10">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{kpi.label}</p>
-                                <p className="text-3xl font-black text-white">{kpi.value.toString().padStart(2, '0')}</p>
-                            </div>
-                            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center relative z-10 transition-transform group-hover:scale-110 shadow-lg", kpi.bg, kpi.color)}>
-                                <kpi.icon className="h-6 w-6" />
-                            </div>
-                            {/* Decorative gauge line */}
-                            <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20 w-full" style={{ color: `var(--${kpi.color.split('-')[1]}-400)` }} />
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KPISparkCard
+                    variant="emerald"
+                    title="Documentos Ativos"
+                    value={stats.published.toString().padStart(2, '0')}
+                    description="Publicados e vigentes"
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                    data={[10, 12, 11, 13, 12, 14, 13].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Pendente Aprovação"
+                    value={stats.pending.toString().padStart(2, '0')}
+                    description="Aguardando revisão/assinatura"
+                    icon={<Clock className="h-4 w-4" />}
+                    data={[2, 3, 2, 4, 3, 4, 4].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="indigo"
+                    title="Drafts / Revisão"
+                    value={stats.drafts.toString().padStart(2, '0')}
+                    description="Em fase de elaboração"
+                    icon={<FileText className="h-4 w-4" />}
+                    data={[5, 4, 6, 5, 7, 6, 8].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="rose"
+                    title="Próximas Revisões"
+                    value={stats.upcomingReview.toString().padStart(2, '0')}
+                    description="Revisão periódica (30d)"
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    data={[1, 0, 1, 2, 1, 2, 2].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
             </div>
 
             <Tabs defaultValue="documents" className="space-y-8">
@@ -145,6 +154,3 @@ export default async function DocumentsPage() {
     );
 }
 
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(" ");
-}

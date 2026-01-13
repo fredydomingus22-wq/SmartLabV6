@@ -4,6 +4,8 @@ import { ArrowLeft, Microscope } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export const dynamic = "force-dynamic";
 
 export default async function MicroReportListPage() {
@@ -16,24 +18,15 @@ export default async function MicroReportListPage() {
         .limit(50);
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Microscope className="h-8 w-8 text-purple-500" />
-                        Microbiology Reports
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Test session reports
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                title="Microbiology Reports"
+                overline="Biological Safety"
+                description="Relatórios de sessões de testes microbiológicos e monitoramento ambiental."
+                icon={<Microscope className="h-4 w-4" />}
+                backHref="/reports"
+                variant="purple"
+            />
 
             {/* Sessions List */}
             <Card className="glass">

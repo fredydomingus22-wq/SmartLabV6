@@ -34,24 +34,18 @@ export default async function QMSPage({ searchParams }: PageProps) {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileWarning className="h-8 w-8 text-indigo-500" />
-                        Gestão da Qualidade (QMS)
-                    </h1>
-                    <p className="text-muted-foreground text-sm sm:text-base">
-                        Não Conformidades (NC), CAPA e Relatórios 8D
-                    </p>
-                </div>
-                <div className="flex-shrink-0">
-                    <CreateNCDialog users={users || []} />
-                </div>
-            </div>
+            <PageHeader
+                variant="indigo"
+                icon={<FileWarning className="h-4 w-4" />}
+                overline="Quality Management System"
+                title="Gestão da Qualidade (QMS)"
+                description="Não Conformidades (NC), CAPA e Relatórios 8D para assegurar conformidade normativa."
+                backHref="/quality"
+                actions={<CreateNCDialog users={users || []} />}
+            />
 
             <Tabs defaultValue={defaultTab} className="space-y-6">
-                <TabsList className="glass border-slate-800 p-1">
+                <TabsList className="bg-slate-900/50 border border-slate-800 p-1">
                     <TabsTrigger value="dashboard" className="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 gap-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Dashboard
@@ -81,8 +75,8 @@ export default async function QMSPage({ searchParams }: PageProps) {
                     </Suspense>
 
                     {/* Nonconformities List */}
-                    <div className="glass border-none shadow-xl rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-border/50 flex items-center justify-between">
+                    <div className="bg-card border border-slate-800 shadow-xl rounded-2xl overflow-hidden">
+                        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                             <div>
                                 <h3 className="text-lg font-bold">Lista de Não Conformidades</h3>
                                 <p className="text-sm text-muted-foreground">
@@ -98,7 +92,7 @@ export default async function QMSPage({ searchParams }: PageProps) {
                 </TabsContent>
 
                 <TabsContent value="capa" className="animate-in fade-in duration-500 border-none p-0 outline-none">
-                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
+                    <div className="bg-card p-12 rounded-3xl border border-slate-800 shadow-xl text-center space-y-4">
                         <div className="h-20 w-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
                             <Target className="h-10 w-10 text-emerald-400" />
                         </div>
@@ -115,7 +109,7 @@ export default async function QMSPage({ searchParams }: PageProps) {
                 </TabsContent>
 
                 <TabsContent value="8d" className="animate-in fade-in duration-500 border-none p-0 outline-none">
-                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
+                    <div className="bg-card p-12 rounded-3xl border border-slate-800 shadow-xl text-center space-y-4">
                         <div className="h-20 w-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
                             <Zap className="h-10 w-10 text-amber-400" />
                         </div>

@@ -12,8 +12,12 @@ import {
     CheckCircle2,
     AlertCircle,
     Info,
-    ChevronRight
+    ChevronRight,
+    Target,
+    Trophy,
+    ShieldAlert
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { Create8DStandaloneDialog } from "./create-8d-standalone-dialog";
 import { cn } from "@/lib/utils";
@@ -55,46 +59,33 @@ export default async function EightDPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
-            {/* Header Section */}
-            <div className="glass p-6 rounded-3xl border-none shadow-xl bg-gradient-to-br from-purple-500/5 to-transparent">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <Link href="/quality/qms">
-                            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/5">
-                                <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                                <FileText className="h-7 w-7 text-purple-400" />
-                                Resolução de Problemas 8D
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                Metodologia estruturada para análise e eliminação de causas raiz
-                            </p>
-                        </div>
-                    </div>
-                    <Create8DStandaloneDialog users={users || []} />
-                </div>
-            </div>
+            <PageHeader
+                variant="purple"
+                icon={<FileText className="h-4 w-4" />}
+                overline="Quality Management System"
+                title="Resolução de Problemas 8D"
+                description="Metodologia estruturada para análise e eliminação de causas raiz através das 8 disciplinas."
+                backHref="/quality/qms"
+                actions={<Create8DStandaloneDialog users={users || []} />}
+            />
 
             {/* Methodology Guide */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 {disciplines.map((item) => (
-                    <div key={item.d} className="glass p-3 rounded-2xl flex flex-col items-center justify-center text-center group hover:bg-purple-500/5 transition-colors border-none shadow-sm">
+                    <div key={item.d} className="bg-card border border-slate-800 p-3 rounded-2xl flex flex-col items-center justify-center text-center group hover:bg-purple-500/5 transition-colors shadow-sm">
                         <span className="text-[10px] font-bold text-purple-400 mb-1">{item.d}</span>
-                        <item.icon className="h-4 w-4 text-muted-foreground group-hover:text-purple-400 transition-colors mb-2" />
-                        <span className="text-[9px] font-medium uppercase tracking-tighter leading-none">{item.label}</span>
+                        <item.icon className="h-4 w-4 text-slate-500 group-hover:text-purple-400 transition-colors mb-2" />
+                        <span className="text-[9px] font-bold uppercase tracking-tighter leading-none text-slate-400 group-hover:text-white">{item.label}</span>
                     </div>
                 ))}
             </div>
 
             {/* Reports List */}
-            <div className="glass border-none shadow-xl rounded-2xl overflow-hidden">
-                <div className="p-6 border-b border-border/50 flex items-center justify-between">
+            <div className="bg-card border border-slate-800 shadow-xl rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                     <div>
                         <h3 className="text-lg font-bold">Histórico de Relatórios 8D</h3>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-500">
                             {(reports || []).length} processos registados
                         </p>
                     </div>
@@ -107,7 +98,7 @@ export default async function EightDPage() {
                             <p className="italic">Nenhum relatório 8D disponível.</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-border/30">
+                        <div className="divide-y divide-slate-800">
                             {reports.map((report: any) => {
                                 const nc = unwrap(report.nonconformity);
                                 return (
@@ -165,7 +156,3 @@ export default async function EightDPage() {
     );
 }
 
-// Missing imports helper
-const Target = (props: any) => <FileText {...props} />; // Placeholder as I used Target in disciplines
-const Trophy = (props: any) => <CheckCircle2 {...props} />; // Placeholder
-const ShieldAlert = (props: any) => <FileText {...props} />; // Placeholder

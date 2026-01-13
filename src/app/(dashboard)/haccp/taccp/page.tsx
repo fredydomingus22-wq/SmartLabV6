@@ -3,9 +3,10 @@ import { getTACCPByOrganization } from "@/lib/queries/compliance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, ShieldAlert, Lock, User, Calendar } from "lucide-react";
+import { Plus, ShieldAlert, Lock, User, Calendar, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const metadata = {
     title: "Defesa Alimentar (TACCP) | SmartLab",
@@ -16,21 +17,21 @@ export default async function TACCPPage() {
     const assessments = await getTACCPByOrganization();
 
     return (
-        <div className="flex-1 space-y-4 p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Defesa Alimentar (TACCP)</h2>
-                    <p className="text-muted-foreground">
-                        Gestão de ameaças intencionais e avaliação de riscos de mitigação.
-                    </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Button>
+        <div className="space-y-10">
+            <PageHeader
+                variant="destructive"
+                icon={<ShieldAlert className="h-4 w-4" />}
+                overline="Food Defense • Site Security"
+                title="Defesa Alimentar (TACCP)"
+                description="Gestão de ameaças intencionais e avaliação de riscos de mitigação."
+                backHref="/haccp"
+                actions={
+                    <Button className="h-9 bg-red-600 hover:bg-red-700 text-white shadow-lg rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all">
                         <Plus className="mr-2 h-4 w-4" />
                         Nova Avaliação
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {assessments.length === 0 ? (

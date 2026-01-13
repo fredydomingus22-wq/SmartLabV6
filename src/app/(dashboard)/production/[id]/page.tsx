@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
 import { IntermediateDialog } from "./intermediate-dialog";
 import { IntermediatesTable } from "./intermediates-table";
 import { BatchReportButton } from "@/components/reports/BatchReportButton";
@@ -60,11 +61,35 @@ export default async function BatchDetailPage({ params }: PageProps) {
         notFound();
     }
 
-    // 3. Fetch Traceability Data for Dossier Tab
+    // 3. Fetch Hygiene Status (Last CIP for this production line)
+    let hygieneStatus = { isValid: true, lastCipDate: null as string | null };
+    if (batch.production_line_id) {
+        const { data: latestCip } = await supabase
+            .from("cip_executions")
+            .select("status, end_time")
+            .eq("equipment_uid", batch.production_line_id)
+            .eq("status", "completed")
+            .order("end_time", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (latestCip?.end_time) {
+            const cipTime = new Date(latestCip.end_time).getTime();
+            const hoursSince = (Date.now() - cipTime) / (1000 * 60 * 60);
+            hygieneStatus = {
+                isValid: hoursSince < 72,
+                lastCipDate: latestCip.end_time
+            };
+        } else {
+            hygieneStatus = { isValid: false, lastCipDate: null };
+        }
+    }
+
+    // 4. Fetch Traceability Data for Dossier Tab
     const traceabilityResponse = await getBatchTraceabilityAction(id);
     const traceabilityData = traceabilityResponse.success ? traceabilityResponse.data : null;
 
-    // 4. Fetch Last Production Event
+    // 5. Fetch Last Production Event
     const events = await getProductionEvents(id);
     const lastEvent = events[0];
 
@@ -151,7 +176,7 @@ export default async function BatchDetailPage({ params }: PageProps) {
         phasesMap.get(typeName)?.push({
             id: sample.id,
             sample_code: sample.code,
-            collection_date: sample.collected_at ? new Date(sample.collected_at).toLocaleDateString() : "-",
+            collected_at: sample.collected_at ? new Date(sample.collected_at).toLocaleDateString() : "-",
             sample_type: typeName,
             overall_status: sample.status === 'validated' || sample.status === 'approved' ? 'compliant' : sample.status,
             analyses: sample.lab_analysis?.map((a: any) => ({
@@ -217,62 +242,37 @@ export default async function BatchDetailPage({ params }: PageProps) {
     const { data: samplingPoints } = await supabase.from("sampling_points").select("id, name, code").order("name");
 
     return (
-        <div className="container py-8 space-y-6">
-            {/* Premium Header Container (NC-UI-03) */}
-            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-indigo-500/10 via-slate-900/50 to-transparent relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
-
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 relative z-10">
-                    <div className="space-y-6">
-                        <Link href="/production">
-                            <Button variant="ghost" size="sm" className="pl-0 text-slate-400 hover:text-white -ml-2 mb-2 group">
-                                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                                Voltar à Produção
-                            </Button>
-                        </Link>
-
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="p-4 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 shadow-inner">
-                                    <Factory className="h-8 w-8 text-indigo-400" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                            {batch.code}
-                                        </h1>
-                                        {getStatusBadge(batch.status)}
-                                    </div>
-                                    <p className="text-lg text-slate-400 font-medium tracking-wide">
-                                        {product?.name || "Sem Produto"} • Linha: {line?.name || "N/A"}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+        <div className="space-y-6">
+            <PageHeader
+                variant="indigo"
+                icon={<Factory className="h-4 w-4" />}
+                overline={`Linha: ${line?.name || "N/A"} • ${product?.name || "Sem Produto"}`}
+                title={batch.code}
+                description={`Lote de produção ${batch.status === 'in_progress' ? 'em execução' : batch.status === 'completed' ? 'finalizado' : batch.status === 'planned' ? 'planeado' : batch.status === 'open' ? 'aberto' : batch.status}`}
+                backHref="/production"
+                actions={
+                    <div className="flex items-center gap-3">
+                        {getStatusBadge(batch.status)}
+                        <BatchReportButton
+                            data={{
+                                batchCode: batch.code,
+                                productName: product?.name || "",
+                                startDate: batch.start_date ? new Date(batch.start_date).toLocaleDateString() : "",
+                                endDate: batch.end_date ? new Date(batch.end_date).toLocaleDateString() : undefined,
+                                organization: { name: "SmartLab Enterprise", address: "Production Plant 1" },
+                                phases: reportPhases
+                            }}
+                        />
+                        <ReleaseBatchButton batchId={id} status={batch.status} userRole={profile?.role || "operator"} />
                     </div>
-
-                    <div className="flex flex-col items-end gap-4">
-                        <div className="flex flex-wrap justify-end gap-3">
-                            <BatchReportButton
-                                data={{
-                                    batchCode: batch.code,
-                                    productName: product?.name || "",
-                                    startDate: batch.start_date ? new Date(batch.start_date).toLocaleDateString() : "",
-                                    endDate: batch.end_date ? new Date(batch.end_date).toLocaleDateString() : undefined,
-                                    organization: { name: "SmartLab Enterprise", address: "Production Plant 1" },
-                                    phases: reportPhases
-                                }}
-                            />
-                            <ReleaseBatchButton batchId={id} status={batch.status} userRole={profile?.role || "operator"} />
-                        </div>
-                    </div>
-                </div>
-            </div>
+                }
+            />
 
             <ProductionEventControls
                 batchId={id}
                 currentStatus={batch.status}
                 lastEventType={lastEvent?.event_type}
+                hygieneStatus={hygieneStatus}
             />
 
             <Tabs defaultValue="overview" className="space-y-6">
@@ -542,6 +542,8 @@ export default async function BatchDetailPage({ params }: PageProps) {
                     <BatchDossier data={traceabilityData} batchId={id} />
                 </TabsContent>
             </Tabs>
+
+            <ExecutionHeartbeat batchId={id} intervalMinutes={1} />
         </div>
     );
 }

@@ -25,6 +25,7 @@ import { pt } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { AssetDialog } from "./_components/create-asset-dialog";
 import { RegisterCalibrationDialog } from "./_components/register-calibration-dialog";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -90,36 +91,25 @@ export default async function LabAssetsPage() {
 
     return (
         <div className="container py-8 space-y-8 animate-in fade-in duration-700">
-            {/* Header Section */}
-            <div className="relative group perspective">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 pointer-events-none"></div>
-                <div className="relative glass p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
-                    <div className="flex items-center gap-6">
-                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-inner group-hover:scale-110 transition-transform duration-500">
-                            <FlaskConical className="h-10 w-10 text-emerald-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-4xl font-black tracking-tight text-white mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
-                                Instrumentos de Laboratório
-                            </h1>
-                            <div className="flex items-center gap-2 text-slate-400">
-                                <Activity className="h-4 w-4 text-emerald-500" />
-                                <span className="text-sm font-medium">Gestão de equipamentos & Conformidade ISO 17025</span>
-                            </div>
-                        </div>
-                    </div>
+            <PageHeader
+                variant="emerald"
+                icon={<FlaskConical className="h-4 w-4" />}
+                overline="Gestão de equipamentos & Conformidade ISO 17025"
+                title="Instrumentos de Laboratório"
+                description="Monitorize a calibração, manutenção e criticidade dos ativos do laboratório."
+                backHref="/lab"
+                actions={
                     <div className="flex items-center gap-3">
                         <Link href="/lab/equipment/routine-checks">
-                            <Button variant="outline" className="glass border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 rounded-xl h-12 px-6">
+                            <Button variant="outline" className="h-9 bg-card border-slate-800 text-slate-300 hover:bg-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all">
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                                 Verificações Diárias
                             </Button>
                         </Link>
-
                         <AssetDialog plants={plants} />
                     </div>
-                </div>
-            </div >
+                }
+            />
 
             {/* Stats Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -135,7 +125,7 @@ export default async function LabAssetsPage() {
                     },
                     { label: "Fora de Calibração", value: assets?.filter(a => a.status === 'out_of_calibration').length || 0, icon: AlertTriangle, color: "text-rose-400", bg: "bg-rose-400/10" },
                 ].map((stat, i) => (
-                    <Card key={i} className="glass border-white/5 overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+                    <Card key={i} className="bg-card border-slate-800 shadow-lg overflow-hidden group hover:border-slate-700 transition-all duration-300">
                         <CardContent className="p-6 relative">
                             <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                                 <stat.icon className="h-12 w-12" />
@@ -158,10 +148,10 @@ export default async function LabAssetsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                     <Input
                         placeholder="Procurar por nome, código ou fabricante..."
-                        className="glass border-white/5 pl-10 h-12 rounded-xl text-white placeholder:text-slate-600 focus:border-emerald-500/30 transition-all"
+                        className="bg-card border-slate-800 pl-10 h-12 rounded-xl text-white placeholder:text-slate-600 focus:border-blue-500/30 transition-all shadow-lg"
                     />
                 </div>
-                <Button variant="outline" className="glass border-white/5 text-slate-300 rounded-xl h-12">
+                <Button variant="outline" className="bg-card border-slate-800 text-slate-300 rounded-xl h-12 shadow-lg">
                     <Filter className="h-4 w-4 mr-2" />
                     Filtros Avançados
                 </Button>
@@ -178,10 +168,10 @@ export default async function LabAssetsPage() {
                     const isNearDue = daysToCalibration !== null && daysToCalibration <= 30 && daysToCalibration >= 0;
 
                     return (
-                        <Card key={asset.id} className="glass border-white/5 overflow-hidden hover:border-emerald-500/30 transition-all duration-500 group hover:-translate-y-2">
+                        <Card key={asset.id} className="bg-card border-slate-800 shadow-xl overflow-hidden hover:border-slate-700 transition-all duration-500 group hover:-translate-y-2">
                             <CardHeader className="pb-4 space-y-4">
                                 <div className="flex items-start justify-between">
-                                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all">
+                                    <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-800 group-hover:bg-slate-900 group-hover:border-slate-700 transition-all shadow-inner">
                                         {getCategoryIcon(asset.asset_category)}
                                     </div>
                                     <Badge className={`${statusColors[asset.status] || statusColors.active} rounded-lg border-none px-3 py-1 font-bold text-[10px] uppercase tracking-tighter`}>
@@ -190,12 +180,12 @@ export default async function LabAssetsPage() {
                                     </Badge>
                                 </div>
                                 <div className="space-y-1">
-                                    <CardTitle className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center gap-2">
+                                    <CardTitle className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-2">
                                         {asset.name}
                                         <ArrowUpRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </CardTitle>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-mono text-[10px] text-slate-500 bg-white/5 px-2 py-0.5 rounded uppercase tracking-widest border border-white/5">
+                                        <span className="font-mono text-[10px] text-slate-500 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded uppercase tracking-widest">
                                             {asset.code}
                                         </span>
                                         <span className="text-[10px] text-slate-500 uppercase tracking-widest">
@@ -210,7 +200,7 @@ export default async function LabAssetsPage() {
                                     ? 'bg-rose-500/5 border-rose-500/20 group-hover:bg-rose-500/10'
                                     : isNearDue
                                         ? 'bg-amber-500/5 border-amber-500/20 group-hover:bg-amber-500/10'
-                                        : 'bg-white/5 border-white/5 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/10'
+                                        : 'bg-slate-900/50 border-slate-800 group-hover:bg-slate-900 group-hover:border-slate-700'
                                     }`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Próxima Calibração</span>
@@ -264,12 +254,12 @@ export default async function LabAssetsPage() {
                                         </Button>
                                     </Link>
                                     <RegisterCalibrationDialog asset={asset}>
-                                        <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-emerald-400 rounded-xl h-10 w-10" title="Registar Calibração">
+                                        <Button variant="ghost" size="icon" className="bg-slate-900/50 border border-slate-800 text-slate-500 hover:text-emerald-400 rounded-xl h-10 w-10 shadow-lg" title="Registar Calibração">
                                             <FileCheck className="h-4 w-4" />
                                         </Button>
                                     </RegisterCalibrationDialog>
                                     <AssetDialog plants={plants} assetToEdit={asset} mode="edit">
-                                        <Button variant="ghost" size="icon" className="glass border-white/5 text-slate-500 hover:text-white rounded-xl h-10 w-10">
+                                        <Button variant="ghost" size="icon" className="bg-slate-900/50 border border-slate-800 text-slate-500 hover:text-white rounded-xl h-10 w-10 shadow-lg">
                                             <Settings className="h-4 w-4" />
                                         </Button>
                                     </AssetDialog>
@@ -282,8 +272,8 @@ export default async function LabAssetsPage() {
             </div >
 
             {(!assets || assets.length === 0) && (
-                <div className="text-center py-32 glass rounded-[2.5rem] border border-dashed border-white/5 animate-in zoom-in duration-500">
-                    <div className="p-6 bg-white/5 rounded-full inline-block mb-6 shadow-inner">
+                <div className="text-center py-32 bg-card rounded-[2.5rem] border border-dashed border-slate-800 animate-in zoom-in duration-500 shadow-2xl">
+                    <div className="p-6 bg-slate-900/50 rounded-full inline-block mb-6 shadow-inner border border-slate-800">
                         <FlaskConical className="h-16 w-16 text-slate-700 opacity-20" />
                     </div>
                     <h3 className="text-xl font-bold text-slate-300 mb-2 font-mono">Inventário Vazio</h3>

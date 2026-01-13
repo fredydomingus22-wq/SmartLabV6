@@ -3,6 +3,7 @@ import { CIPRegisterForm } from "./cip-register-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { History, RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -47,23 +48,22 @@ export default async function CIPRegisterPage() {
         .order("step_order");
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-3">
-                        <RefreshCw className="h-8 w-8 text-cyan-400" />
-                        Registar CIP
-                    </h1>
-                    <p className="text-slate-400 mt-1">
-                        Registe um ciclo de limpeza completado para tanques, linhas ou equipamentos.
-                    </p>
-                </div>
-                <Link href="/cip/history">
-                    <Button variant="outline" className="glass border-slate-800">
-                        <History className="mr-2 h-4 w-4" /> Histórico
-                    </Button>
-                </Link>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="cyan"
+                icon={<RefreshCw className="h-4 w-4" />}
+                overline="Saneamento Industrial • Registo de Operações"
+                title="Registar CIP"
+                description="Registe um ciclo de limpeza completado para tanques, linhas ou equipamentos."
+                backHref="/cip"
+                actions={
+                    <Link href="/cip/history">
+                        <Button variant="outline" className="h-9 bg-slate-900/50 border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all">
+                            <History className="mr-2 h-4 w-4" /> Histórico
+                        </Button>
+                    </Link>
+                }
+            />
 
             <CIPRegisterForm
                 equipments={equipments}

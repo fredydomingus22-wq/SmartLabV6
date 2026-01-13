@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProgramDialog } from "./program-dialog";
 import { CIPProgramsPageClient } from "./programs-page-client";
+import { PageHeader } from "@/components/layout/page-header";
+import { Settings } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +19,16 @@ export default async function CIPProgramsPage() {
     const plantId = plants?.[0]?.id || "00000000-0000-0000-0000-000000000000";
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">CIP Programs</h1>
-                    <p className="text-muted-foreground">Manage cleaning recipes and validation criteria.</p>
-                </div>
-                <ProgramDialog plantId={plantId} />
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="purple"
+                icon={<Settings className="h-4 w-4" />}
+                overline="Saneamento Industrial • Receitas"
+                title="CIP Programs"
+                description="Manage cleaning recipes and validation criteria."
+                backHref="/cip"
+                actions={<ProgramDialog plantId={plantId} />}
+            />
 
             <div className="glass rounded-xl p-6">
                 <CIPProgramsPageClient programs={programs || []} />

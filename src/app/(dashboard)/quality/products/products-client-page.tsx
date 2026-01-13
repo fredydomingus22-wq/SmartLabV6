@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 import {
     Package,
     ArrowLeft,
@@ -16,6 +16,7 @@ import { ProductDialog } from "./product-dialog";
 import { BulkImportDialog } from "./bulk-import-dialog";
 import { DataGrid } from "@/components/smart/data-grid";
 import { motion } from "framer-motion";
+import { PageHeader } from "@/components/layout/page-header";
 
 interface Product {
     id: string;
@@ -160,64 +161,67 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/quality">
-                        <Button variant="ghost" size="icon" className="h-10 w-10 class rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-                            <ArrowLeft className="h-5 w-5 text-slate-500" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/10">
-                                <Package className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            Catálogo de Produtos
-                        </h1>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 pl-1">
-                            Gerir hierarquia de produtos, receitas e especificações de qualidade
-                        </p>
+            <PageHeader
+                variant="emerald"
+                icon={<Package className="h-4 w-4" />}
+                overline="Quality Management"
+                title="Catálogo de Produtos"
+                description="Gerir hierarquia de produtos, receitas e especificações de qualidade por SKU."
+                backHref="/quality"
+                actions={
+                    <div className="flex gap-3">
+                        <BulkImportDialog />
+                        <ProductDialog mode="create" />
                     </div>
-                </div>
-                <div className="flex gap-3">
-                    <BulkImportDialog />
-                    <ProductDialog mode="create" />
-                </div>
-            </div>
+                }
+            />
 
             {/* Stats / Filter Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Card
-                        className={`glass border-0 shadow-lg cursor-pointer transition-all duration-300 relative overflow-hidden group ${filterCategory === null ? 'ring-2 ring-primary/50 bg-primary/5' : 'hover:bg-white/50 dark:hover:bg-slate-900/50'
-                            }`}
-                        onClick={() => setFilterCategory(null)}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <CardContent className="pt-6 relative z-10">
-                            <div className="text-3xl font-black text-slate-700 dark:text-slate-200">{initialProducts.length}</div>
-                            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Total Produtos</p>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-
-                {Object.entries(categories).map(([cat, count]) => (
-                    <motion.div key={cat} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Card
-                            className={`glass border-0 shadow-sm cursor-pointer transition-all duration-300 relative overflow-hidden group ${filterCategory === cat
-                                ? `ring-2 ring-offset-2 ring-offset-background ${cat === 'final' ? 'ring-emerald-500/50 bg-emerald-500/5' : cat === 'intermediate' ? 'ring-blue-500/50 bg-blue-500/5' : 'ring-amber-500/50 bg-amber-500/5'}`
-                                : 'hover:bg-white/50 dark:hover:bg-slate-900/50'
-                                }`}
-                            onClick={() => setFilterCategory(cat === filterCategory ? null : cat)}
-                        >
-                            <CardContent className="pt-6 relative z-10">
-                                <div className="text-3xl font-black text-slate-700 dark:text-slate-200">{count}</div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">{getCategoryLabel(cat)}</p>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ))}
+            <div className="grid gap-6 md:grid-cols-4">
+                <KPISparkCard
+                    variant="slate"
+                    title="Total Produtos"
+                    value={initialProducts.length.toString().padStart(2, '0')}
+                    description="SKUs no catálogo"
+                    icon={<Package className="h-4 w-4" />}
+                    data={[initialProducts.length - 2, initialProducts.length - 1, initialProducts.length].map(v => ({ value: v }))}
+                    dataKey="value"
+                    onClick={() => setFilterCategory(null)}
+                    active={filterCategory === null}
+                />
+                <KPISparkCard
+                    variant="emerald"
+                    title="Produtos Finais"
+                    value={(categories.final || 0).toString().padStart(2, '0')}
+                    description="Prontos para expedição"
+                    icon={<Package className="h-4 w-4" />}
+                    data={[10, 12, 11, 13].map(v => ({ value: v }))}
+                    dataKey="value"
+                    onClick={() => setFilterCategory("final")}
+                    active={filterCategory === "final"}
+                />
+                <KPISparkCard
+                    variant="blue"
+                    title="Intermédios"
+                    value={(categories.intermediate || 0).toString().padStart(2, '0')}
+                    description="WIP / Semi-acabados"
+                    icon={<Package className="h-4 w-4" />}
+                    data={[5, 4, 6, 7].map(v => ({ value: v }))}
+                    dataKey="value"
+                    onClick={() => setFilterCategory("intermediate")}
+                    active={filterCategory === "intermediate"}
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Matérias-Primas"
+                    value={(categories.raw_material || 0).toString().padStart(2, '0')}
+                    description="Insumos e embalagens"
+                    icon={<Package className="h-4 w-4" />}
+                    data={[8, 7, 9, 8].map(v => ({ value: v }))}
+                    dataKey="value"
+                    onClick={() => setFilterCategory("raw_material")}
+                    active={filterCategory === "raw_material"}
+                />
             </div>
 
             {/* Main Content Area */}

@@ -5,12 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     AlertTriangle,
-    Plus,
-    FlaskConical,
-    ShieldAlert,
     TestTube2,
     Settings2
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const metadata = {
     title: "Gestão de Alérgenos | SmartLab",
@@ -21,30 +19,27 @@ export default async function AllergensPage() {
     const allergens = await getAllergens();
 
     return (
-        <div className="flex-1 space-y-4 p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <span className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                            <AlertTriangle className="h-6 w-6 text-amber-600" />
-                        </span>
-                        Gestão de <span className="text-amber-600">Alérgenos</span>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">
-                        Controle de ingredientes alergênicos e prevenção de contaminação cruzada em linha.
-                    </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
-                        <Settings2 className="mr-2 h-4 w-4" />
-                        Configurações
-                    </Button>
-                    <Button className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Novo Alérgeno
-                    </Button>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="amber"
+                icon={<AlertTriangle className="h-4 w-4" />}
+                overline="Food Safety • Allergen Control"
+                title="Gestão de Alérgenos"
+                description="Controle de ingredientes alergênicos e prevenção de contaminação cruzada em linha."
+                backHref="/haccp"
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" className="h-9 glass border-amber-500/30 text-amber-500 hover:bg-amber-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all">
+                            <Settings2 className="mr-2 h-4 w-4" />
+                            Configurações
+                        </Button>
+                        <Button className="h-9 bg-amber-600 hover:bg-amber-700 text-white shadow-lg rounded-xl text-[10px] font-black uppercase tracking-widest px-4">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Novo Alérgeno
+                        </Button>
+                    </div>
+                }
+            />
 
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-4">

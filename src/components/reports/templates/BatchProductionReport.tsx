@@ -13,7 +13,7 @@ interface AnalysisResult {
 interface SampleWithResults {
     id: string;
     sample_code: string;
-    collection_date: string;
+    collected_at: string;
     sample_type?: string;
     overall_status: string;
     analyses: AnalysisResult[];
@@ -93,7 +93,7 @@ export const BatchProductionReport = ({
 
                 // Sort samples by date and time
                 const sortedSamples = [...phase.samples].sort((a, b) =>
-                    new Date(a.collection_date).getTime() - new Date(b.collection_date).getTime()
+                    new Date(a.collected_at).getTime() - new Date(b.collected_at).getTime()
                 );
 
                 // Group samples by date for separators
@@ -126,7 +126,7 @@ export const BatchProductionReport = ({
                                 {/* Table Body */}
                                 {sortedSamples.map((sample, sIndex) => {
                                     // Parse date for separator logic
-                                    const dateObj = new Date(sample.collection_date);
+                                    const dateObj = new Date(sample.collected_at);
                                     const dateStr = dateObj.toLocaleDateString('pt-PT');
                                     const timeStr = dateObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
                                     const showDateSeparator = dateStr !== lastDate;

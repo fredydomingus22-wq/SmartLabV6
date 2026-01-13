@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { ManagerTabs } from "../manager-tabs";
+import { PageHeader } from "@/components/layout/page-header";
+import { GraduationCap } from "lucide-react";
 
 // Mock Job Titles (Ideally fetched from backend/role-matrix)
 const JOB_TITLES = [
@@ -59,88 +61,87 @@ export default function PlansPage({ plans, modules }: { plans: any[], modules: a
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl font-black tracking-tight bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
-                        Matriz de Currículos
-                    </h1>
-                    <p className="text-slate-400 text-sm font-medium">
-                        Defina planos de treinamento recorrentes por cargo.
-                    </p>
-                </div>
+        <div className="space-y-8">
+            <PageHeader
+                variant="blue"
+                icon={<GraduationCap className="h-4 w-4" />}
+                overline="Curriculum Matrix"
+                title="Matriz de Currículos"
+                description="Defina planos de treinamento recorrentes por cargo."
+                backHref="/quality"
+                actions={
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-11 shadow-[0_0_20px_rgba(147,51,234,0.2)] border-0">
+                                <Plus className="w-4 h-4" /> Novo Plano
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px] bg-black/90 border-white/10 backdrop-blur-2xl shadow-2xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-black tracking-tight">Criar Currículo Academy</DialogTitle>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="title"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Título do Plano</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="ex: Integração Anual de Qualidade" {...field} className="bg-white/5 border-white/10 focus:border-purple-500/50 h-11" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="gap-2 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-[10px] tracking-widest px-6 h-11 shadow-[0_0_20px_rgba(147,51,234,0.2)] border-0">
-                            <Plus className="w-4 h-4" /> Novo Plano
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px] bg-black/90 border-white/10 backdrop-blur-2xl shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-black tracking-tight">Criar Currículo Academy</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-4">
-                                <FormField
-                                    control={form.control}
-                                    name="title"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Título do Plano</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="ex: Integração Anual de Qualidade" {...field} className="bg-white/5 border-white/10 focus:border-purple-500/50 h-11" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Cargos Abrangidos</FormLabel>
+                                        <div className="grid grid-cols-2 gap-2 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
+                                            {JOB_TITLES.map(role => (
+                                                <label key={role} className="flex items-center gap-2 cursor-pointer group hover:bg-white/5 p-1 rounded-md transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        value={role}
+                                                        checked={form.watch("job_titles").includes(role)}
+                                                        onChange={(e) => {
+                                                            const current = form.getValues("job_titles");
+                                                            if (e.target.checked) form.setValue("job_titles", [...current, role]);
+                                                            else form.setValue("job_titles", current.filter(r => r !== role));
+                                                        }}
+                                                        className="rounded border-white/20 bg-black/20 text-purple-600 focus:ring-purple-500"
+                                                    />
+                                                    <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors uppercase tracking-tight font-bold">{role}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
 
-                                <FormItem>
-                                    <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Cargos Abrangidos</FormLabel>
-                                    <div className="grid grid-cols-2 gap-2 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
-                                        {JOB_TITLES.map(role => (
-                                            <label key={role} className="flex items-center gap-2 cursor-pointer group hover:bg-white/5 p-1 rounded-md transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    value={role}
-                                                    checked={form.watch("job_titles").includes(role)}
-                                                    onChange={(e) => {
-                                                        const current = form.getValues("job_titles");
-                                                        if (e.target.checked) form.setValue("job_titles", [...current, role]);
-                                                        else form.setValue("job_titles", current.filter(r => r !== role));
-                                                    }}
-                                                    className="rounded border-white/20 bg-black/20 text-purple-600 focus:ring-purple-500"
-                                                />
-                                                <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors uppercase tracking-tight font-bold">{role}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
+                                    <FormField
+                                        control={form.control}
+                                        name="recurrence_interval"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Recorrência (Intervalo)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="ex: 1 year, 6 months" {...field} className="bg-white/5 border-white/10 h-11" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                                <FormField
-                                    control={form.control}
-                                    name="recurrence_interval"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Recorrência (Intervalo)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="ex: 1 year, 6 months" {...field} className="bg-white/5 border-white/10 h-11" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <Button type="submit" disabled={isPending} className="w-full bg-purple-600 hover:bg-purple-500 h-12 font-black uppercase text-xs tracking-widest mt-4 border-0">
-                                    {isPending ? "Configurando..." : "Salvar Plano Curricular"}
-                                </Button>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                                    <Button type="submit" disabled={isPending} className="w-full bg-purple-600 hover:bg-purple-500 h-12 font-black uppercase text-xs tracking-widest mt-4 border-0">
+                                        {isPending ? "Configurando..." : "Salvar Plano Curricular"}
+                                    </Button>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                }
+            />
 
             <ManagerTabs />
 

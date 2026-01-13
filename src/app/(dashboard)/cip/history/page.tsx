@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +50,22 @@ export default async function CIPHistoryPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <History className="h-8 w-8 text-primary" />
-                        Histórico de CIP
-                    </h1>
-                    <p className="text-muted-foreground">Registo histórico de todos os ciclos de limpeza executados.</p>
-                </div>
-                <Link href="/cip">
-                    <Button variant="outline">Voltar ao Dashboard</Button>
-                </Link>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="blue"
+                icon={<History className="h-4 w-4" />}
+                overline="Saneamento Industrial • Auditoria"
+                title="Histórico de CIP"
+                description="Registo histórico de todos os ciclos de limpeza executados."
+                backHref="/cip"
+                actions={
+                    <Link href="/cip">
+                        <Button variant="outline" className="h-9 glass border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all">
+                            Voltar ao Dashboard
+                        </Button>
+                    </Link>
+                }
+            />
 
             <Card className="glass">
                 <CardHeader>

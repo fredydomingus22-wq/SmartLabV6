@@ -34,19 +34,17 @@ export function ApprovalFilters({ shifts, batches }: ApprovalFiltersProps) {
     const hasFilters = currentBatch !== "all" || currentShift !== "all";
 
     return (
-        <div className="flex flex-wrap items-center gap-4 p-4 glass rounded-2xl border-white/5 bg-slate-900/40">
-            <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                    <Factory className="h-4 w-4 text-emerald-400" />
-                </div>
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">
+                <Factory className="h-3.5 w-3.5 text-emerald-500/70" />
                 <Select value={currentBatch} onValueChange={(val) => updateFilter("batchId", val)}>
-                    <SelectTrigger className="w-[200px] h-11 bg-slate-950/50 border-slate-800 rounded-xl focus:ring-emerald-500/20">
-                        <SelectValue placeholder="Lote de Produção" />
+                    <SelectTrigger className="border-none bg-transparent h-auto p-0 text-[11px] font-bold uppercase tracking-widest text-slate-300 focus:ring-0 w-auto gap-2">
+                        <SelectValue placeholder="Lote" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-slate-200">
-                        <SelectItem value="all">Todos os Lotes</SelectItem>
+                    <SelectContent className="glass border-white/10">
+                        <SelectItem value="all" className="text-[10px] font-bold uppercase tracking-widest">Todos Lotes</SelectItem>
                         {batches.map((batch) => (
-                            <SelectItem key={batch.id} value={batch.id}>
+                            <SelectItem key={batch.id} value={batch.id} className="text-[10px] font-bold uppercase tracking-widest">
                                 {batch.code}
                             </SelectItem>
                         ))}
@@ -54,19 +52,17 @@ export function ApprovalFilters({ shifts, batches }: ApprovalFiltersProps) {
                 </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <Clock className="h-4 w-4 text-blue-400" />
-                </div>
+            <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">
+                <Clock className="h-3.5 w-3.5 text-blue-500/70" />
                 <Select value={currentShift} onValueChange={(val) => updateFilter("shiftId", val)}>
-                    <SelectTrigger className="w-[180px] h-11 bg-slate-950/50 border-slate-800 rounded-xl focus:ring-blue-500/20">
-                        <SelectValue placeholder="Turno de Trabalho" />
+                    <SelectTrigger className="border-none bg-transparent h-auto p-0 text-[11px] font-bold uppercase tracking-widest text-slate-300 focus:ring-0 w-auto gap-2">
+                        <SelectValue placeholder="Turno" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-slate-200">
-                        <SelectItem value="all">Todos os Turnos</SelectItem>
+                    <SelectContent className="glass border-white/10">
+                        <SelectItem value="all" className="text-[10px] font-bold uppercase tracking-widest">Todos Turnos</SelectItem>
                         {shifts.map((shift) => (
-                            <SelectItem key={shift.id} value={shift.id}>
-                                {shift.name} ({shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)})
+                            <SelectItem key={shift.id} value={shift.id} className="text-[10px] font-bold uppercase tracking-widest">
+                                {shift.name.substring(0, 10)}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -76,11 +72,11 @@ export function ApprovalFilters({ shifts, batches }: ApprovalFiltersProps) {
             {hasFilters && (
                 <Button
                     variant="ghost"
+                    size="sm"
                     onClick={clearFilters}
-                    className="h-11 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 px-4"
+                    className="h-9 px-2 text-slate-500 hover:text-rose-400 transition-colors"
                 >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Limpar Filtros
+                    <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
             )}
         </div>

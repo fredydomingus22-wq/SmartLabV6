@@ -29,11 +29,16 @@ import {
 import { logProductionEventAction, startBatchExecutionAction } from "@/app/actions/production";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { HygieneGateBadge } from "./hygiene-gate-badge";
 
 interface ProductionEventControlsProps {
     batchId: string;
     currentStatus: string;
     lastEventType?: string;
+    hygieneStatus?: {
+        isValid: boolean;
+        lastCipDate?: string | null;
+    };
 }
 
 const REASON_CODES = [
@@ -46,7 +51,7 @@ const REASON_CODES = [
     { value: "WAITING", label: "Aguardando Análise" },
 ];
 
-export function ProductionEventControls({ batchId, currentStatus, lastEventType }: ProductionEventControlsProps) {
+export function ProductionEventControls({ batchId, currentStatus, lastEventType, hygieneStatus }: ProductionEventControlsProps) {
     const [isPending, startTransition] = useTransition();
     const [stopDialogOpen, setStopDialogOpen] = useState(false);
     const [selectedReason, setSelectedReason] = useState("");
@@ -54,9 +59,18 @@ export function ProductionEventControls({ batchId, currentStatus, lastEventType 
 
     const isRunning = currentStatus === 'in_progress' && !['stop', 'breakdown', 'maintenance'].includes(lastEventType || "");
     const isPaused = currentStatus === 'in_progress' && ['stop', 'breakdown', 'maintenance'].includes(lastEventType || "");
-    const isPlanned = currentStatus === 'planned';
+    const isPlanned = currentStatus === 'planned' || currentStatus === 'open';
+
+    const canStart = hygieneStatus ? hygieneStatus.isValid : true;
 
     const handleStart = () => {
+        if (!canStart) {
+            toast.error("Equipamento não libertado para produção", {
+                description: "Necessário CIP válido (< 72h) para iniciar."
+            });
+            return;
+        }
+
         startTransition(async () => {
             const result = await startBatchExecutionAction(batchId);
             if (result.success) {
@@ -114,12 +128,25 @@ export function ProductionEventControls({ batchId, currentStatus, lastEventType 
 
     return (
         <div className="flex flex-wrap gap-3 items-center p-4 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
+            {/* HYGIENE STATUS BADGE */}
+            {isPlanned && hygieneStatus && (
+                <HygieneGateBadge
+                    isValid={hygieneStatus.isValid}
+                    lastCipDate={hygieneStatus.lastCipDate}
+                />
+            )}
+
             {/* START BUTTON */}
             {isPlanned && (
                 <Button
                     onClick={handleStart}
-                    disabled={isPending}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-lg shadow-emerald-900/20"
+                    disabled={isPending || !canStart}
+                    className={cn(
+                        "gap-2 shadow-lg",
+                        canStart
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/20"
+                            : "bg-slate-700 text-slate-400 cursor-not-allowed"
+                    )}
                 >
                     <Play className="w-4 h-4 fill-current" />
                     Iniciar Produção

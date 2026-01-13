@@ -8,6 +8,8 @@ import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-c
 import { PremiumActionCard } from "@/components/dashboard/premium-action-card";
 import { cn } from "@/lib/utils";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
@@ -37,28 +39,20 @@ export default async function ReportsPage() {
     };
 
     return (
-        <div className="space-y-10 pb-10">
-            {/* Header with Sparkles */}
-            <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-primary">
-                        <Sparkles className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest opacity-70">Intelligent Insights</span>
-                    </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight">
-                        Relatórios & Analytics
-                    </h1>
-                    <p className="text-muted-foreground text-lg">
-                        Gere Certificados, acompanhe a produção e exporte dados vitais.
-                    </p>
-                </div>
-                <div className="hidden md:flex gap-3">
-                    <Badge variant="outline" className="h-10 px-4 glass border-green-500/20 text-green-500 bg-green-500/5">
+        <div className="space-y-12 pb-10">
+            <PageHeader
+                title="Relatórios & Analytics"
+                overline="Intelligent Insights"
+                description="Gere Certificados, acompanhe a produção e exporte dados vitais."
+                icon={<Sparkles className="h-4 w-4" />}
+                variant="blue"
+                actions={
+                    <Badge variant="outline" className="h-10 px-4 glass border-emerald-500/20 text-emerald-500 bg-emerald-500/5">
                         <TrendingUp className="h-4 w-4 mr-2" />
                         Sistema: Operacional
                     </Badge>
-                </div>
-            </div>
+                }
+            />
 
             {/* Trending Insights - Real Data Integration */}
             <div className="grid gap-6 md:grid-cols-3">

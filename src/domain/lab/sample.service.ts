@@ -14,6 +14,8 @@ export interface CreateSampleDTO {
     assignee_id?: string;
     process_context?: string;
     spec_version_id?: string;
+    parameter_ids?: string[];
+    sampling_plan_id?: string;
 }
 
 /**
@@ -58,7 +60,9 @@ export class SampleDomainService extends BaseDomainService {
                     collected_at: dto.collected_at || null,
                     status: dto.collected_at ? 'collected' : 'registered', // Industrial FSM compliance
                     process_context: dto.process_context || null,
-                    spec_version_id: dto.spec_version_id || null
+                    spec_version_id: dto.spec_version_id || null,
+                    sampling_plan_id: dto.sampling_plan_id || null,
+                    parameter_ids: dto.parameter_ids || null
                 })
                 .select("id")
                 .single();
@@ -67,7 +71,7 @@ export class SampleDomainService extends BaseDomainService {
 
             // 4. Initialize Analysis Queue (The "Plan")
             if (categoryFilter.length > 0) {
-                await this.initializeAnalysisQueue(newSample.id, productIds, categoryFilter, dto.sample_type_id, dto.plant_id, dto.spec_version_id);
+                await this.initializeAnalysisQueue(newSample.id, productIds, categoryFilter, dto.sample_type_id, dto.plant_id, dto.spec_version_id, dto.parameter_ids);
             }
 
             // 5. Create Technical Task
@@ -170,11 +174,12 @@ export class SampleDomainService extends BaseDomainService {
         const d = String(dateObj.getDate()).padStart(2, '0');
         const h = String(dateObj.getHours()).padStart(2, '0');
         const min = String(dateObj.getMinutes()).padStart(2, '0');
+        const s = String(dateObj.getSeconds()).padStart(2, '0');
 
-        return `${sampleCodePrefix}-${typeCode}-${y}${m}${d}-${h}${min}`;
+        return `${sampleCodePrefix}-${typeCode}-${y}${m}${d}-${h}${min}${s}`;
     }
 
-    private async initializeAnalysisQueue(sampleId: string, productIds: string[], categoryFilter: string[], sampleTypeId: string, plantId: string, specVersionId?: string) {
+    private async initializeAnalysisQueue(sampleId: string, productIds: string[], categoryFilter: string[], sampleTypeId: string, plantId: string, specVersionId?: string, parameterIds?: string[]) {
         // Optimized query: Use original table names for filtering to avoid alias/PostgREST issues.
         let query = this.supabase
             .from("product_specifications")
@@ -195,6 +200,11 @@ export class SampleDomainService extends BaseDomainService {
         // Fallback B: General sampling (Environment/Utilities)
         else {
             query = query.is("product_id", null).eq("sample_type_id", sampleTypeId);
+        }
+
+        // Granular Filter: If specific parameters are requested by the sampling plan/operator
+        if (parameterIds && parameterIds.length > 0) {
+            query = query.in("qa_parameter_id", parameterIds);
         }
 
         const { data: specs, error } = await query;

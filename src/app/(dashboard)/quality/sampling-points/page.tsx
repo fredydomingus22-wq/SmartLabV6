@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { SamplingPointDialog } from "./sampling-point-dialog";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -28,45 +29,34 @@ export default async function SamplingPointsPage({ searchParams }: PageProps) {
     const { data: points } = await query;
 
     return (
-        <div className="container py-8 space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/quality">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <MapPin className="h-8 w-8 text-orange-500" />
-                            Sampling Points
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Physical locations where samples are collected
-                        </p>
-                    </div>
-                </div>
-                <SamplingPointDialog mode="create" />
-            </div>
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="amber"
+                icon={<MapPin className="h-4 w-4" />}
+                overline="Quality Infrastructure"
+                title="Pontos de Recolha"
+                description="Gestão de locais físicos de amostragem na planta e armazéns."
+                backHref="/quality"
+                actions={<SamplingPointDialog mode="create" />}
+            />
 
             {/* Filter */}
-            <Card className="glass">
-                <CardContent className="pt-6">
+            <Card className="bg-card border-slate-800 shadow-lg">
+                <CardContent className="p-4">
                     <div className="flex gap-2">
                         <Link href="/quality/sampling-points">
-                            <Button variant={!params.status ? "default" : "outline"} size="sm">
-                                All
+                            <Button variant={!params.status ? "default" : "outline"} size="sm" className={!params.status ? "bg-amber-600 hover:bg-amber-500 text-white border-none px-6 font-bold uppercase tracking-widest text-[10px]" : "border-slate-800 text-slate-400 font-bold uppercase tracking-widest text-[10px]"}>
+                                Todos
                             </Button>
                         </Link>
                         <Link href="/quality/sampling-points?status=active">
-                            <Button variant={params.status === "active" ? "default" : "outline"} size="sm">
-                                Active
+                            <Button variant={params.status === "active" ? "default" : "outline"} size="sm" className={params.status === "active" ? "bg-emerald-600 hover:bg-emerald-500 text-white border-none px-6 font-bold uppercase tracking-widest text-[10px]" : "border-slate-800 text-slate-400 font-bold uppercase tracking-widest text-[10px]"}>
+                                Ativos
                             </Button>
                         </Link>
                         <Link href="/quality/sampling-points?status=inactive">
-                            <Button variant={params.status === "inactive" ? "default" : "outline"} size="sm">
-                                Inactive
+                            <Button variant={params.status === "inactive" ? "default" : "outline"} size="sm" className={params.status === "inactive" ? "bg-rose-600 hover:bg-rose-500 text-white border-none px-6 font-bold uppercase tracking-widest text-[10px]" : "border-slate-800 text-slate-400 font-bold uppercase tracking-widest text-[10px]"}>
+                                Inativos
                             </Button>
                         </Link>
                     </div>
@@ -74,51 +64,60 @@ export default async function SamplingPointsPage({ searchParams }: PageProps) {
             </Card>
 
             {/* Points Table */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Sampling Points</CardTitle>
-                    <CardDescription>
-                        {points?.length || 0} points found
-                    </CardDescription>
+            <Card className="bg-card border-slate-800 shadow-xl overflow-hidden">
+                <CardHeader className="border-b border-slate-800 pb-4 bg-slate-900/50">
+                    <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+                        LOCAIS DE AMOSTRAGEM ({points?.length || 0})
+                    </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     {!points || points.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground">
+                        <div className="text-center py-20 text-slate-500 border-2 border-dashed border-slate-800 m-6 rounded-2xl bg-slate-950/20">
                             <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No sampling points defined.</p>
-                            <p className="text-sm">Create sampling points to track where samples are collected.</p>
+                            <p className="font-black uppercase tracking-widest text-xs">Sem pontos de recolha definidos.</p>
+                            <p className="text-[10px] mt-2 font-bold uppercase tracking-widest">Crie um novo ponto para começar a monitorização.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                            <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left py-3 px-2">Code</th>
-                                        <th className="text-left py-3 px-2">Name</th>
-                                        <th className="text-left py-3 px-2">Location</th>
-                                        <th className="text-left py-3 px-2">Status</th>
-                                        <th className="text-right py-3 px-2">Actions</th>
+                                    <tr className="border-b border-slate-800 bg-slate-900/40">
+                                        <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Código</th>
+                                        <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Designação</th>
+                                        <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Localização</th>
+                                        <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Estado</th>
+                                        <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right px-8">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-slate-800/50">
                                     {points.map((point) => (
-                                        <tr key={point.id} className="border-b hover:bg-muted/50">
-                                            <td className="py-3 px-2 font-mono font-medium">
-                                                {point.code}
+                                        <tr key={point.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/20 last:border-0">
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 font-mono text-[10px] font-bold">
+                                                        {point.code}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="py-3 px-2 font-medium">
-                                                {point.name}
+                                            <td className="p-4">
+                                                <div className="text-sm font-black text-white italic text-center uppercase tracking-tight">
+                                                    {point.name}
+                                                </div>
                                             </td>
-                                            <td className="py-3 px-2 text-muted-foreground">
-                                                {point.location || "-"}
+                                            <td className="p-4">
+                                                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                                                    {point.location || "N/A"}
+                                                </div>
                                             </td>
-                                            <td className="py-3 px-2">
-                                                <Badge variant={point.status === "active" ? "default" : "secondary"}>
-                                                    {point.status}
+                                            <td className="p-4 text-center">
+                                                <Badge className={`text-[9px] uppercase font-bold ${point.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
+                                                    {point.status === 'active' ? 'ATIVO' : 'INATIVO'}
                                                 </Badge>
                                             </td>
-                                            <td className="py-3 px-2 text-right">
-                                                <SamplingPointDialog mode="edit" point={point} />
+                                            <td className="p-4 text-right px-8">
+                                                <div className="opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0 translate-x-4">
+                                                    <SamplingPointDialog mode="edit" point={point} />
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

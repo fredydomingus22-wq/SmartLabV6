@@ -13,14 +13,23 @@ import {
     Plus,
     ArrowRight,
     Package,
-    CheckCircle
+    CheckCircle,
+    TestTube2,
+    Activity,
+    History,
+    AlertCircle,
+    Clock,
+    TrendingUp
 } from "lucide-react";
 import Link from "next/link";
-import { IndustrialCard, IndustrialGrid } from "@/components/shared/industrial-card";
-import { IndustrialChart } from "@/components/shared/industrial-chart";
-import { PremiumListItem } from "@/components/dashboard/premium-list-item";
-import type { EChartsOption } from "echarts";
-import { Box, Typography } from "@mui/material";
+import {
+    PremiumMetricCard,
+    PremiumSection,
+    PremiumListCard,
+    PremiumListItem,
+    PremiumStatBlock
+} from "@/components/premium";
+import { cn } from "@/lib/utils";
 
 interface AnalystViewProps {
     user: any;
@@ -33,188 +42,156 @@ export function AnalystView({ user, stats, assignments, activity }: AnalystViewP
     const isMicro = user.role === 'micro_analyst';
     const isLab = user.role === 'lab_analyst';
 
-    const getSparklineOption = (color: string, data: number[]): EChartsOption => ({
-        xAxis: { type: "category", show: false },
-        yAxis: { type: "value", show: false, min: "dataMin", max: "dataMax" },
-        tooltip: {
-            show: true,
-            trigger: "axis",
-            formatter: (params: any) => `<b>${params[0].value}</b>`,
-            position: ["50%", "-10%"],
-            backgroundColor: "rgba(15, 23, 42, 0.9)",
-            padding: [4, 8],
-            className: "border-white/10"
-        },
-        series: [{
-            type: "line",
-            data,
-            smooth: 0.4,
-            showSymbol: false,
-            lineStyle: { color, width: 2.5 },
-            areaStyle: {
-                color: {
-                    type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [
-                        { offset: 0, color: color },
-                        { offset: 1, color: 'rgba(0,0,0,0)' }
-                    ]
-                },
-                opacity: 0.2
-            }
-        }],
-        grid: { left: -10, right: -10, top: 0, bottom: 0 }
-    });
+    const mockData1 = [8, 12, 7, 15, 12, 18, 14].map(v => ({ value: v }));
+    const mockData2 = [5, 8, 4, 10, 6, 9, 7].map(v => ({ value: v }));
+    const mockData3 = [4, 6, 3, 5, 4, 6, 2].map(v => ({ value: v }));
+    const mockData4 = [95, 98, 96, 99, 97, 98, 99].map(v => ({ value: v }));
 
     return (
-        <Box className="space-y-10">
+        <div className="space-y-10">
             {/* Quick Actions */}
-            <Box className="flex flex-wrap gap-3">
-                <Button asChild className="h-11 px-6 rounded-xl glass-primary shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+            <div className="flex flex-wrap gap-4">
+                <Button asChild className="h-12 px-8 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all hover:scale-105 active:scale-95 text-[10px]">
                     <Link href="/lab?create=true">
-                        <Plus className="h-4 w-4 mr-2" /> Nova Amostra
+                        <Plus className="h-4 w-4 mr-3" /> Nova Amostra
                     </Link>
                 </Button>
                 {isLab && (
                     <>
-                        <Button asChild variant="outline" className="h-11 px-6 rounded-xl glass border-blue-500/20 hover:bg-blue-500/10 transition-all">
+                        <Button asChild variant="outline" className="h-12 px-6 rounded-2xl bg-white/5 border-white/5 hover:bg-white/10 text-slate-300 font-black uppercase tracking-widest text-[10px] transition-all">
                             <Link href="/production">
                                 <Factory className="h-4 w-4 mr-2 text-blue-400" /> Produção MES
                             </Link>
                         </Button>
-                        <Button asChild variant="outline" className="h-11 px-6 rounded-xl glass border-cyan-500/20 hover:bg-cyan-500/10 transition-all">
+                        <Button asChild variant="outline" className="h-12 px-6 rounded-2xl bg-white/5 border-white/5 hover:bg-white/10 text-slate-300 font-black uppercase tracking-widest text-[10px] transition-all">
                             <Link href="/cip/register">
-                                <RefreshCw className="h-4 w-4 mr-2 text-cyan-400" /> Registar CIP
+                                <RefreshCw className="h-4 w-4 mr-2 text-emerald-400" /> Registar CIP
                             </Link>
                         </Button>
                     </>
                 )}
-            </Box>
+            </div>
 
             {/* Stats Grid */}
-            <IndustrialGrid cols={4}>
-                <IndustrialCard
-                    variant="analytics"
-                    title="Amostras Pendentes"
-                    value={(stats.roleAlerts || stats.pendingSamples).toString()}
-                    description="Aguardando início de análise"
-                    tooltip="Total de amostras registradas que ainda não iniciaram o processo analítico."
-                    status={(stats.roleAlerts > 10) ? "error" : "warning"}
-                >
-                    <IndustrialChart option={getSparklineOption("#f97316", [8, 12, 7, 15, 12, 18, 14])} height="100%" />
-                </IndustrialCard>
+            <PremiumSection title="Amostragem e Performance" badge="Lab Metrics">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <PremiumMetricCard
+                        variant="amber"
+                        title="Amostras Pendentes"
+                        value={(stats.roleAlerts || stats.pendingSamples).toString()}
+                        description="Aguardando Processamento"
+                        data={mockData1}
+                        dataKey="value"
+                        icon={<TestTube2 className="h-3 w-3" />}
+                    />
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Em Análise"
-                    value={stats.inAnalysis.toString()}
-                    description="Em processamento no laboratório"
-                    tooltip="Amostras que já iniciaram a fase de bancada e leitura de resultados."
-                >
-                    <IndustrialChart option={getSparklineOption("#3b82f6", [5, 8, 4, 10, 6, 9, 7])} height="100%" />
-                </IndustrialCard>
+                    <PremiumMetricCard
+                        variant="blue"
+                        title="Em Análise"
+                        value={stats.inAnalysis.toString()}
+                        description="Work in Progress (WIP)"
+                        data={mockData2}
+                        dataKey="value"
+                        icon={<Beaker className="h-3 w-3" />}
+                    />
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Lead Time Médio"
-                    value={`${stats.avgLeadTime ? stats.avgLeadTime.toFixed(1) : '0.0'}h`}
-                    description="Ciclo total (Registro -> Liberação)"
-                    tooltip="Tempo médio decorrido desde a coleta até a assinatura final do resultado."
-                    trend={{ value: Math.abs(stats.trends?.leadTime || 0), isPositive: (stats.trends?.leadTime || 0) >= 0 }}
-                >
-                    <IndustrialChart option={getSparklineOption("#06b6d4", [4, 6, 3, 5, 4, 6, 2])} height="100%" />
-                </IndustrialCard>
+                    <PremiumMetricCard
+                        variant="indigo"
+                        title="Lead Time Médio"
+                        value={`${stats.avgLeadTime ? stats.avgLeadTime.toFixed(1) : '0.0'}h`}
+                        description="Ciclo de Liberação"
+                        trend={{ value: Math.abs(stats.trends?.leadTime || 0), isPositive: stats.trends?.leadTime < 0 }}
+                        data={mockData3}
+                        dataKey="value"
+                        icon={<Activity className="h-3 w-3" />}
+                    />
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="SLA de Turno"
-                    value={`${stats.slaCompliance ? stats.slaCompliance.toFixed(1) : '100'}%`}
-                    description="Amostras aprovadas em < 8h"
-                    tooltip="Percentual de amostras concluídas dentro da janela de 8 horas do turno."
-                    trend={{ value: Math.abs(stats.trends?.sla || 0), isPositive: (stats.trends?.sla || 0) >= 0 }}
-                >
-                    <IndustrialChart option={getSparklineOption("#8b5cf6", [95, 98, 96, 99, 97, 98, 99])} height="100%" />
-                </IndustrialCard>
-            </IndustrialGrid>
+                    <PremiumMetricCard
+                        variant="purple"
+                        title="SLA de Turno"
+                        value={`${stats.slaCompliance ? stats.slaCompliance.toFixed(1) : '100'}%`}
+                        description="Concluintes < 8h"
+                        trend={{ value: Math.abs(stats.trends?.sla || 0), isPositive: stats.trends?.sla > 0 }}
+                        data={mockData4}
+                        dataKey="value"
+                        icon={<Clock className="h-3 w-3" />}
+                    />
+                </div>
+            </PremiumSection>
 
             {/* Main Content */}
-            <Box className="grid gap-8 lg:grid-cols-3">
-                <Box className="lg:col-span-2 space-y-6">
-                    <Box className="flex justify-between items-center px-1">
-                        <Typography className="text-xl font-bold flex items-center gap-2 text-white">
-                            <ClipboardCheck className="h-5 w-5 text-blue-500" />
-                            Minha Fila de Trabalho
-                        </Typography>
-                        <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                            <Link href={isMicro ? "/micro/samples" : "/lab"}>
-                                Ver fila completa <ArrowRight className="h-4 w-4 ml-2" />
-                            </Link>
-                        </Button>
-                    </Box>
+            <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                    <PremiumSection title="Fila de Trabalho" badge="Active Tasks">
+                        <PremiumListCard
+                            title="Recent Assignments"
+                            icon={<ClipboardCheck className="h-5 w-5 text-cyan-400" />}
+                            footerHref={isMicro ? "/micro/samples" : "/lab"}
+                            footerLabel="Ver Fila Completa"
+                        >
+                            {assignments.length === 0 ? (
+                                <div className="p-20 text-center space-y-4">
+                                    <div className="p-5 rounded-3xl bg-emerald-500/10 w-20 h-20 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+                                        <CheckCircle className="h-10 w-10 text-emerald-500" />
+                                    </div>
+                                    <h3 className="text-xl font-black tracking-tighter text-white uppercase italic">Tudo em dia!</h3>
+                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest italic leading-relaxed">Não existem análises pendentes para o seu perfil.</p>
+                                </div>
+                            ) : (
+                                assignments.map((task: any) => (
+                                    <Link key={task.id} href={task.type === 'micro' ? `/micro/reading` : `/lab/samples/${task.id}`}>
+                                        <PremiumListItem
+                                            title={task.title}
+                                            subtitle={task.subtitle}
+                                            icon={
+                                                task.type === 'micro' ? <Microscope className="h-4 w-4" /> :
+                                                    task.type === 'batch' ? <Package className="h-4 w-4" /> : <Beaker className="h-4 w-4" />
+                                            }
+                                            status={task.type === 'micro' ? "warning" : task.type === 'batch' ? "success" : "info"}
+                                        />
+                                    </Link>
+                                ))
+                            )}
+                        </PremiumListCard>
+                    </PremiumSection>
+                </div>
 
-                    <IndustrialCard bodyClassName="p-0">
-                        {assignments.length === 0 ? (
-                            <Box className="p-20 text-center text-muted-foreground">
-                                <Box className="p-4 rounded-full bg-emerald-500/10 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                                    <CheckCircle className="h-8 w-8 text-emerald-500" />
-                                </Box>
-                                <Typography className="text-lg font-medium">Tudo em dia!</Typography>
-                                <Typography className="text-sm">Sem tarefas pendentes agora.</Typography>
-                            </Box>
-                        ) : (
-                            <Box className="divide-y divide-white/5">
-                                {assignments.map((task: any) => (
+                <div className="space-y-8">
+                    <PremiumSection title="Acompanhamento" badge="Real-time Feed">
+                        <div className="space-y-6">
+                            <PremiumListCard title="Histórico Recente" icon={<History className="h-5 w-5 text-cyan-400" />}>
+                                {activity.recentSamples.slice(0, 3).map((sample: any) => (
                                     <PremiumListItem
-                                        key={task.id}
-                                        title={task.title}
-                                        subtitle={task.subtitle}
-                                        time={new Date(task.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        icon={
-                                            task.type === 'micro' ? <Microscope className="h-6 w-6" /> :
-                                                task.type === 'batch' ? <Package className="h-6 w-6" /> : <Beaker className="h-6 w-6" />
-                                        }
-                                        variant={task.type === 'micro' ? "warning" : task.type === 'batch' ? "success" : "info"}
-                                        href={task.type === 'micro' ? `/micro/reading` : `/lab/samples/${task.id}`}
+                                        key={sample.id}
+                                        title={sample.code}
+                                        subtitle="Registado recentemente"
+                                        status="default"
                                     />
                                 ))}
-                            </Box>
-                        )}
-                    </IndustrialCard>
-                </Box>
+                            </PremiumListCard>
 
-                <Box className="space-y-6">
-                    <Typography className="text-xl font-bold flex items-center gap-2 px-1 text-white">
-                        <FlaskConical className="h-5 w-5 text-blue-500" />
-                        Atividade Recente
-                    </Typography>
-                    <IndustrialCard bodyClassName="p-0">
-                        <Box className="divide-y divide-white/5">
-                            {activity.recentSamples.map((sample: any) => (
-                                <PremiumListItem
-                                    key={sample.id}
-                                    title={sample.code}
-                                    subtitle="Registado recentemente"
-                                    status={sample.status.replace("_", " ")}
-                                    variant="default"
-                                />
-                            ))}
-                        </Box>
-                    </IndustrialCard>
+                            <PremiumStatBlock
+                                title={`${stats.recentDeviations || 0} Não Conformidades`}
+                                subtitle="Desvios registrados (24h)"
+                                value={String(stats.recentDeviations || 0)}
+                                icon={<AlertCircle className="h-6 w-6 text-cyan-400" />}
+                                badge="NC MONITOR"
+                                badgeVariant="error"
+                                variant="highlight"
+                            />
 
-                    <Box className="p-5 rounded-2xl glass border-red-500/20 bg-red-500/5 relative overflow-hidden group">
-                        <Box className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
-                            <ShieldAlert className="h-16 w-16 text-red-500" />
-                        </Box>
-                        <Typography className="text-sm font-bold text-red-400 uppercase tracking-widest mb-1">Status Crítico</Typography>
-                        <Typography className="text-2xl font-black tracking-tighter mb-2 text-white">{stats.recentDeviations || 0} NCs</Typography>
-                        <Typography className="text-xs text-slate-400 leading-relaxed">
-                            Desvios CCP registrados nas últimas 24h.
-                        </Typography>
-                        <Button variant="link" className="text-red-400 p-0 h-auto mt-3 text-xs font-bold uppercase tracking-widest">
-                            Ver Desvios →
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-        </Box>
+                            <PremiumStatBlock
+                                title="Produtividade"
+                                subtitle="Aprovação direta"
+                                value={`${stats.complianceRate ? stats.complianceRate.toFixed(1) : '0'}%`}
+                                icon={<TrendingUp className="h-6 w-6 text-cyan-400" />}
+                                badge="STABLE"
+                                badgeVariant="success"
+                            />
+                        </div>
+                    </PremiumSection>
+                </div>
+            </div>
+        </div>
     );
 }

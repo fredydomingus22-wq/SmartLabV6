@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Package, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export const dynamic = "force-dynamic";
 
 export default async function BatchReportListPage() {
@@ -18,24 +20,15 @@ export default async function BatchReportListPage() {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Package className="h-8 w-8 text-green-500" />
-                        Production Batch Reports
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Full traceability, analysis, NCs, and quality data
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                title="Production Batch Reports"
+                overline="Traceability Engine"
+                description="Rastreabilidade total, análises, NCs e dados de qualidade por lote."
+                icon={<Package className="h-4 w-4" />}
+                backHref="/reports"
+                variant="emerald"
+            />
 
             {/* Batches List */}
             <Card className="glass">

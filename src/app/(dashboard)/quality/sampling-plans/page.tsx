@@ -1,22 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Calendar,
     Clock,
     Zap,
-    ArrowLeft,
-    Plus,
-    Activity,
     FlaskConical,
-    Settings2,
     RefreshCw,
-    AlertCircle,
-    LayoutList
+    Activity,
+    ClipboardList,
+    Beaker
 } from "lucide-react";
-import Link from "next/link";
 import { PlanDialog } from "./PlanDialog";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +22,7 @@ export default async function SamplingPlansPage() {
     const supabase = await createClient();
 
     // Fetch plans with hydration
-    const { data: plans, error } = await supabase
+    const { data: plans } = await supabase
         .from("production_sampling_plans")
         .select(`
             *,
@@ -37,177 +35,181 @@ export default async function SamplingPlansPage() {
     const { data: products } = await supabase.from("products").select("id, name, sku").eq("status", "active");
     const { data: sampleTypes } = await supabase.from("sample_types").select("id, name, code");
 
-    const getTriggerIcon = (type: string) => {
-        switch (type) {
-            case 'time_based': return <Clock className="h-4 w-4 text-blue-400" />;
-            case 'event_based': return <Zap className="h-4 w-4 text-amber-400" />;
-            default: return <Settings2 className="h-4 w-4 text-slate-400" />;
-        }
-    };
-
-    const getAnchorLabel = (anchor: string) => {
-        const anchors: Record<string, string> = {
-            batch_start: "Início de Lote",
-            batch_end: "Fim de Lote",
-            shift_change: "Troca de Turno",
-            process_step: "Passo de Processo"
-        };
-        return anchors[anchor] || anchor;
-    };
+    // Mock data for sparklines
+    const mockData = [10, 15, 12, 18, 14, 20, 17].map(v => ({ value: v }));
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/quality">
-                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-white/10">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tighter uppercase italic flex items-center gap-3">
-                            <Calendar className="h-8 w-8 text-blue-500" />
-                            Planos de Amostragem
-                        </h1>
-                        <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest mt-1">
-                            Orquestração MES-LIMS • Automação de Amostras
+        <div className="space-y-10 animate-in fade-in duration-700">
+            <PageHeader
+                title="Sistemas de Amostragem"
+                overline="Sampling Management"
+                description="Orquestração MES-LIMS • Automação de Amostras"
+                icon={<ClipboardList className="h-4 w-4" />}
+                backHref="/quality"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <PlanDialog
+                            products={products || []}
+                            sampleTypes={sampleTypes || []}
+                        />
+                    </div>
+                }
+            />
+
+            {/* 📊 STRATEGIC KPI GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KPISparkCard
+                    variant="emerald"
+                    title="Planos Ativos"
+                    value={plans?.filter(p => p.is_active).length || 0}
+                    description="Monitoramento operacional"
+                    icon={<ClipboardList className="h-4 w-4" />}
+                    trend={{ value: 5, isPositive: true }}
+                    data={mockData}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="blue"
+                    title="Time Based"
+                    value={plans?.filter(p => p.trigger_type === 'time_based').length || 0}
+                    description="Checkpoints periódicos"
+                    icon={<Clock className="h-4 w-4" />}
+                    trend={{ value: 2, isPositive: true }}
+                    data={mockData}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Event Based"
+                    value={plans?.filter(p => p.trigger_type === 'event_based').length || 0}
+                    description="Gatilhos de produção"
+                    icon={<Zap className="h-4 w-4" />}
+                    trend={{ value: 1, isPositive: true }}
+                    data={mockData}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="purple"
+                    title="Volume Projectado"
+                    value="≈45"
+                    description="Amostras / Turno"
+                    icon={<FlaskConical className="h-4 w-4" />}
+                    trend={{ value: 12, isPositive: true }}
+                    data={mockData}
+                    dataKey="value"
+                />
+            </div>
+
+            {/* 📋 MAIN CONTENT SECTION */}
+            <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="rounded-[2.5rem] border border-white/5 bg-slate-950/40 glass p-10 min-h-[500px]">
+                        <div className="flex items-center justify-between mb-10">
+                            <div className="space-y-1">
+                                <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">Protocolos Ativos</h2>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Diretriz ISO 2859-1 & NP</p>
+                            </div>
+                            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
+                                <Activity className="h-5 w-5 text-blue-400 opacity-50" />
+                            </div>
+                        </div>
+
+                        {(!plans || plans.length === 0) ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 italic">
+                                <FlaskConical className="h-12 w-12 mb-4 text-slate-600" />
+                                <p className="text-sm font-black uppercase tracking-widest">Nenhum plano configurado</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {plans.map((plan) => (
+                                    <div
+                                        key={plan.id}
+                                        className="group p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all duration-500 cursor-pointer relative overflow-hidden"
+                                    >
+                                        <div className="flex justify-between items-start relative z-10">
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest italic">
+                                                        {plan.sample_type?.code || 'SAMP-XX'}
+                                                    </span>
+                                                    <Badge variant={plan.is_active ? 'secondary' : 'outline'} className="text-[8px] font-black uppercase tracking-tight py-0 px-2 h-4 italic">
+                                                        {plan.is_active ? 'ACTIVE' : 'DRAFT'}
+                                                    </Badge>
+                                                </div>
+                                                <h3 className="text-lg font-black text-white uppercase italic leading-none group-hover:text-blue-400 transition-colors">
+                                                    {plan.name || plan.sample_type?.name}
+                                                </h3>
+                                                <div className="flex items-center gap-6 mt-4">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        <Clock className="h-3 w-3 opacity-50" />
+                                                        {plan.trigger_type === 'time_based' ? `${plan.frequency_minutes} min` : 'Gatilho Evento'}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        <Beaker className="h-3 w-3 opacity-50" />
+                                                        {plan.sample_type?.name}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <PlanDialog
+                                                    mode="edit"
+                                                    plan={plan}
+                                                    products={products || []}
+                                                    sampleTypes={sampleTypes || []}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Subtle Hover Glow */}
+                                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/[0.02] to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 🛡️ SIDE INFO PANEL */}
+                <div className="space-y-6">
+                    <div className="p-10 rounded-[2.5rem] border border-white/5 bg-slate-950/40 glass space-y-10">
+                        <div className="space-y-1">
+                            <h3 className="text-sm font-black text-white italic uppercase tracking-widest leading-none">Resumo do Sistema</h3>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Configuração de Amostragem</p>
+                        </div>
+
+                        <div className="space-y-8">
+                            {[
+                                { label: "Total Protocolos", value: plans?.length || 0, color: "text-white" },
+                                { label: "Planos em Produção", value: plans?.filter(p => p.is_active).length || 0, color: "text-emerald-400" },
+                                { label: "Amostras / Turno", value: "≈45", color: "text-blue-400" }
+                            ].map((stat) => (
+                                <div key={stat.label} className="flex justify-between items-end border-b border-white/5 pb-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{stat.label}</p>
+                                    <p className={cn("text-3xl font-black italic leading-none", stat.color)}>{stat.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="pt-4">
+                            <Button variant="outline" className="w-full h-12 bg-white/[0.02] hover:bg-white/[0.05] border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all italic flex items-center justify-between px-6">
+                                <span>Configurações Globais</span>
+                                <RefreshCw className="h-3 w-3 opacity-50" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="p-10 rounded-[2.5rem] border border-white/5 bg-blue-500/[0.03] glass">
+                        <div className="flex items-center gap-3 mb-4">
+                            <Zap className="h-4 w-4 text-amber-400 shadow-glow" />
+                            <p className="text-[10px] font-black text-white uppercase tracking-widest italic">Amostragem Inteligente</p>
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-tight opacity-80">
+                            O sistema gere frequências automáticas baseadas no fluxo de produção real.
                         </p>
                     </div>
                 </div>
-                <PlanDialog
-                    products={products || []}
-                    sampleTypes={sampleTypes || []}
-                />
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <StatsCard
-                    title="Planos Ativos"
-                    value={plans?.filter(p => p.is_active).length || 0}
-                    icon={<Activity className="h-4 w-4 text-emerald-400" />}
-                    color="emerald"
-                />
-                <StatsCard
-                    title="Freq. Baseada em Tempo"
-                    value={plans?.filter(p => p.trigger_type === 'time_based').length || 0}
-                    icon={<Clock className="h-4 w-4 text-blue-400" />}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Gatilhos de Evento"
-                    value={plans?.filter(p => p.trigger_type === 'event_based').length || 0}
-                    icon={<Zap className="h-4 w-4 text-amber-400" />}
-                    color="amber"
-                />
-                <StatsCard
-                    title="Amostras por Mês (Est.)"
-                    value="~420"
-                    icon={<RefreshCw className="h-4 w-4 text-purple-400" />}
-                    color="purple"
-                />
-            </div>
-
-            {/* Grid de Planos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {(!plans || plans.length === 0) ? (
-                    <Card className="lg:col-span-2 glass border-dashed bg-white/5">
-                        <CardContent className="py-20 flex flex-col items-center justify-center text-center">
-                            <div className="p-4 rounded-full bg-slate-900 border border-slate-700 mb-4 animate-bounce">
-                                <AlertCircle className="h-8 w-8 text-slate-500" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white uppercase tracking-tight">Nenhum Plano Configurado</h3>
-                            <p className="text-slate-500 max-w-sm mt-2">
-                                Configure as regras de amostragem automática para que o sistema gere pedidos para o laboratório sem intervenção humana.
-                            </p>
-                            <Button variant="outline" className="mt-6 border-slate-700">
-                                <Plus className="h-4 w-4 mr-2" /> Começar Agora
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    plans.map(plan => (
-                        <Card key={plan.id} className="glass group hover:border-blue-500/50 transition-all duration-300 bg-slate-900/40">
-                            <CardHeader className="flex flex-row items-start justify-between pb-2">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <CardTitle className="text-lg font-bold text-white uppercase tracking-tight">
-                                            {plan.name || `Plano: ${plan.sample_type?.name}`}
-                                        </CardTitle>
-                                        {!plan.is_active && (
-                                            <Badge variant="secondary" className="bg-slate-800 text-slate-500 text-[10px] uppercase">Draft</Badge>
-                                        )}
-                                    </div>
-                                    <CardDescription className="flex items-center gap-2 text-xs font-medium">
-                                        <FlaskConical className="h-3 w-3 text-purple-400" />
-                                        {plan.sample_type?.name} ({plan.sample_type?.code})
-                                    </CardDescription>
-                                </div>
-                                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 shadow-inner group-hover:bg-blue-950/20 transition-colors">
-                                    <LayoutList className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4 pt-2">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Gatilho Principal</span>
-                                        <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
-                                            {getTriggerIcon(plan.trigger_type)}
-                                            {plan.trigger_type === 'time_based' ? `A cada ${plan.frequency_minutes}min` : getAnchorLabel(plan.event_anchor)}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Produto Alvo</span>
-                                        <div className="flex items-center gap-2 text-sm font-bold text-slate-200 truncate">
-                                            {plan.product ? (
-                                                <span className="truncate">{plan.product.name}</span>
-                                            ) : (
-                                                <Badge variant="outline" className="text-blue-400 border-blue-400/20 bg-blue-400/5 py-0 px-2 h-4 text-[9px] uppercase tracking-tighter">Global</Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2">
-                                    <span className="text-[10px] text-slate-500 italic">
-                                        Última atualização: {new Date(plan.updated_at || plan.created_at).toLocaleDateString()}
-                                    </span>
-                                    <PlanDialog
-                                        mode="edit"
-                                        plan={plan}
-                                        products={products || []}
-                                        sampleTypes={sampleTypes || []}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
-                )}
             </div>
         </div>
-    );
-}
-
-function StatsCard({ title, value, icon, color }: { title: string, value: any, icon: any, color: string }) {
-    const colorClasses: any = {
-        emerald: "border-emerald-500/20 bg-emerald-500/5",
-        blue: "border-blue-500/20 bg-blue-500/5",
-        amber: "border-amber-500/20 bg-amber-500/5",
-        purple: "border-purple-500/20 bg-purple-500/5"
-    };
-
-    return (
-        <Card className={`glass bg-slate-900/40 border-l-4 border-l-${color}-500/50`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none">{title}</CardTitle>
-                <div className={`p-1.5 rounded-lg ${colorClasses[color]} border`}>
-                    {icon}
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-black text-white">{value}</div>
-            </CardContent>
-        </Card>
     );
 }

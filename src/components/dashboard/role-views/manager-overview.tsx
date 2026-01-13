@@ -1,140 +1,139 @@
 "use client";
 
 import React from "react";
-import { TrendingUp } from "lucide-react";
-import { IndustrialCard, IndustrialGrid } from "@/components/shared/industrial-card";
-import { IndustrialChart } from "@/components/shared/industrial-chart";
-import { DashboardTrendsClient } from "@/components/dashboard/dashboard-trends-client";
-import type { EChartsOption } from "echarts";
-import { Box, Typography } from "@mui/material";
+import { TrendingUp, ShieldCheck, AlertTriangle, Clock, Users } from "lucide-react";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
+import {
+    Card as ShadcnCard,
+    CardContent as ShadcnCardContent,
+    CardHeader as ShadcnCardHeader,
+    CardTitle as ShadcnCardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ManagerOverviewProps {
     stats: any;
-    products: any[];
-    parameters: any[];
-    initialTrendData: any[];
-    initialSpecs: any;
+    products?: any[];
+    parameters?: any[];
+    initialTrendData?: any[];
+    initialSpecs?: any[];
 }
 
-export function ManagerOverview({ stats, products, parameters, initialTrendData, initialSpecs }: ManagerOverviewProps) {
-
-    // Helper to generate premium ECharts sparkline options
-    const getSparklineOption = (color: string, data: number[]): EChartsOption => ({
-        xAxis: { type: "category", show: false },
-        yAxis: { type: "value", show: false, min: "dataMin", max: "dataMax" },
-        tooltip: {
-            show: true,
-            trigger: "axis",
-            formatter: (params: any) => `<b>${params[0].value}</b>`,
-            position: ["50%", "-10%"],
-            backgroundColor: "rgba(15, 23, 42, 0.9)",
-            padding: [4, 8],
-            className: "border-white/10"
-        },
-        series: [{
-            type: "line",
-            data,
-            smooth: 0.4,
-            showSymbol: false,
-            lineStyle: { color, width: 2.5 },
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [
-                        { offset: 0, color: color },
-                        { offset: 1, color: 'rgba(0,0,0,0)' }
-                    ]
-                },
-                opacity: 0.2
-            }
-        }],
-        grid: { left: -10, right: -10, top: 0, bottom: 0 }
-    });
-
-    const mockData1 = [92, 94, 93, 95, 96, 94, 95];
-    const mockData2 = [4, 3, 5, 2, 4, 1, 2];
-    const mockData3 = [88, 90, 89, 91, 92, 90, 91];
-    const mockData4 = [96, 97, 96, 98, 99, 97, 98];
+export function ManagerOverview({ stats }: ManagerOverviewProps) {
+    const sparklines = stats?.sparklines || {
+        samples: Array(7).fill({ value: 0 }),
+        deviations: Array(7).fill({ value: 0 }),
+        compliance: Array(7).fill({ value: 100 })
+    };
 
     return (
-        <Box className="space-y-10">
-            {/* KPI Grid - Replaced PremiumAnalyticsCard with IndustrialCard[variant=analytics] */}
-            <IndustrialGrid cols={4}>
-                <IndustrialCard
-                    variant="analytics"
-                    title="Conformidade Global"
-                    value={`${stats.complianceRate.toFixed(1)}%`}
-                    description="Taxa de aprovação em primeira análise"
-                    tooltip="Média ponderada de amostras aprovadas sem necessidade de reanálise ou correção."
-                    trend={{
-                        value: Math.abs(stats.trends?.compliance || 0),
-                        isPositive: (stats.trends?.compliance || 0) >= 0
-                    }}
-                    status={(stats.complianceRate >= 95) ? "success" : "warning"}
-                >
-                    <IndustrialChart option={getSparklineOption("#10b981", mockData1)} height="100%" />
-                </IndustrialCard>
+        <div className="space-y-10">
+            {/* 📊 STANDARDIZED KPI GRID */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                        <TrendingUp className="h-3 w-3" />
+                        Executive Dashboard
+                    </h2>
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest border-slate-800 text-slate-400">
+                        Strategic Metrics
+                    </Badge>
+                </div>
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Desvios de Calibragem"
-                    value={stats.recentDeviations.toString()}
-                    description="Ocorrências críticas de CCP/OPRP"
-                    tooltip="Número total de violações de limites críticos monitorados por sensores ou inspeções manuais."
-                    trend={{
-                        value: Math.abs(stats.trends?.deviations || 0),
-                        isPositive: (stats.trends?.deviations || 0) <= 0
-                    }}
-                    status={(stats.recentDeviations === 0) ? "success" : "error"}
-                >
-                    <IndustrialChart option={getSparklineOption("#f43f5e", mockData2)} height="100%" />
-                </IndustrialCard>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <KPISparkCard
+                        title="Eficiência Global"
+                        value={`${stats?.overallEfficiency || 0}%`}
+                        description="OEE Médio da Unidade"
+                        trend={2.4}
+                        sparklineData={generateSparkline()}
+                        color="indigo"
+                    />
+                    <KPISparkCard
+                        title="Conformidade QMS"
+                        value={`${stats?.qualityCompliance || stats?.complianceRate.toFixed(1) || 0}%`}
+                        description="Audit Readiness Rate"
+                        trend={stats?.trends?.compliance}
+                        sparklineData={sparklines.compliance}
+                        color="emerald"
+                    />
+                    <KPISparkCard
+                        title="Risk Index"
+                        value={stats?.pendingCritical || stats?.recentDeviations || 0}
+                        description="Incidentes Alta Priority"
+                        trend={stats?.trends?.deviations}
+                        sparklineData={sparklines.deviations}
+                        color="amber"
+                    />
+                    <KPISparkCard
+                        title="Workload (Batches)"
+                        value={stats?.activeBatches || 0}
+                        description="Lotes em Processamento"
+                        trend={stats?.trends?.workload}
+                        sparklineData={sparklines.samples}
+                        color="purple"
+                    />
+                </div>
+            </section>
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="OTD Liberação"
-                    value={`${stats.otdRate.toFixed(1)}%`}
-                    description="Lotes liberados dentro do SLA"
-                    tooltip="Percentual de lotes de produção liberados para expedição no prazo acordado de 48h."
-                    trend={{
-                        value: Math.abs(stats.trends?.otd || 0),
-                        isPositive: (stats.trends?.otd || 0) >= 0
-                    }}
-                >
-                    <IndustrialChart option={getSparklineOption("#3b82f6", mockData3)} height="100%" />
-                </IndustrialCard>
+            {/* 📈 OPERATIONAL OVERLAYS */}
+            <div className="grid gap-8 lg:grid-cols-3">
+                <ShadcnCard className="lg:col-span-2 bg-card border-slate-800 shadow-xl overflow-hidden">
+                    <ShadcnCardHeader className="border-b border-slate-800 bg-slate-900/50 pb-4">
+                        <ShadcnCardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+                            Yield Consolidado
+                        </ShadcnCardTitle>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Performance Multi-Linha (30d)</p>
+                    </ShadcnCardHeader>
+                    <ShadcnCardContent className="p-6">
+                        <div className="h-64 flex items-center justify-center opacity-20 italic font-black text-slate-400 uppercase text-[10px] tracking-widest bg-slate-950/20 rounded-2xl border border-dashed border-slate-800">
+                            Consolidated Analytics Rendering...
+                        </div>
+                    </ShadcnCardContent>
+                </ShadcnCard>
 
-                <IndustrialCard
-                    variant="analytics"
-                    title="Compliance Amostragem"
-                    value={`${stats.samplingCompliance.toFixed(1)}%`}
-                    description="Pontos realizados vs. planeados"
-                    tooltip="Aderência ao plano de coleta de amostras programado para o período."
-                    trend={{
-                        value: Math.abs(stats.trends?.sampling || 0),
-                        isPositive: (stats.trends?.sampling || 0) >= 0
-                    }}
-                >
-                    <IndustrialChart option={getSparklineOption("#f59e0b", mockData4)} height="100%" />
-                </IndustrialCard>
-            </IndustrialGrid>
-
-            {/* Quality Trends Section */}
-            <Box className="space-y-4">
-                <Box className="flex items-center gap-2 px-1">
-                    <TrendingUp className="h-5 w-5 text-blue-500" />
-                    <Typography className="text-xl font-bold tracking-tight text-white">
-                        Análise de Tendências Estatísticas
-                    </Typography>
-                </Box>
-                <DashboardTrendsClient
-                    products={products}
-                    parameters={parameters}
-                    initialData={initialTrendData}
-                    initialSpecs={initialSpecs}
-                />
-            </Box>
-        </Box>
+                <ShadcnCard className="bg-card border-slate-800 shadow-xl overflow-hidden">
+                    <ShadcnCardHeader className="border-b border-slate-800 bg-slate-900/50 pb-4">
+                        <ShadcnCardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+                            Equipas Ativas
+                        </ShadcnCardTitle>
+                    </ShadcnCardHeader>
+                    <ShadcnCardContent className="p-0">
+                        <div className="divide-y divide-slate-800/50">
+                            {stats?.teamCount > 0 ? (
+                                Array.from({ length: Math.min(stats.teamCount, 3) }).map((_, i) => (
+                                    <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-900/40 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                                <Users className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black text-white italic uppercase tracking-tight">Equipa Operacional {i + 1}</p>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Turno Ativo</p>
+                                            </div>
+                                        </div>
+                                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-black uppercase">
+                                            Online
+                                        </Badge>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="p-8 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">
+                                    Nenhuma equipa registada
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+                            <Link href="/production/teams" className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-2">
+                                Ver Equipas
+                                <TrendingUp className="h-3 w-3" />
+                            </Link>
+                        </div>
+                    </ShadcnCardContent>
+                </ShadcnCard>
+            </div>
+        </div>
     );
 }

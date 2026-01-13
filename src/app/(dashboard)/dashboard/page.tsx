@@ -19,7 +19,6 @@ import {
     Warehouse,
     RefreshCw,
     Plus,
-    LayoutDashboard,
     Microscope,
     Globe
 } from "lucide-react";
@@ -38,7 +37,8 @@ import { RMPMView } from "@/components/dashboard/role-views/rmpm-view";
 import { SystemOwnerView } from "@/components/dashboard/role-views/system-owner-view";
 import { AdminView } from "@/components/dashboard/role-views/admin-view";
 import { Suspense } from "react";
-import { Sparkles, Activity as ActivityIcon } from "lucide-react";
+import { Sparkles, Activity as ActivityIcon, LayoutDashboard } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -419,6 +419,103 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
     const prevAvgLT = prevCompletedCount > 0 ? prevTotalLT / prevCompletedCount : 0;
     const prevSlaComp = prevCompletedCount > 0 ? (prevCompliant / prevCompletedCount) * 100 : 100;
 
+    // --- Trends & Sparklines (Last 7 Days) ---
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - (6 - i));
+        return d;
+    });
+
+    const { data: trendSamples } = await supabase.from("samples")
+        .select("created_at, status")
+        .gte("created_at", last7Days[0].toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const { data: trendDeviations } = await supabase.from("pcc_logs")
+        .select("checked_at, is_compliant")
+        .eq("is_compliant", false)
+        .gte("checked_at", last7Days[0].toISOString())
+        .eq("organization_id", user.organization_id);
+
+    const sparklines = {
+        samples: last7Days.map(day => {
+            const count = trendSamples?.filter((s: any) => {
+                const sd = new Date(s.created_at);
+                return sd.getFullYear() === day.getFullYear() &&
+                    sd.getMonth() === day.getMonth() &&
+                    sd.getDate() === day.getDate();
+            }).length || 0;
+            return { value: count };
+        }),
+        deviations: last7Days.map(day => {
+            const count = trendDeviations?.filter((d: any) => {
+                const dd = new Date(d.checked_at);
+                return dd.getFullYear() === day.getFullYear() &&
+                    dd.getMonth() === day.getMonth() &&
+                    dd.getDate() === day.getDate();
+            }).length || 0;
+            return { value: count };
+        }),
+        compliance: last7Days.map(day => {
+            const samples = trendSamples?.filter((s: any) => {
+                const sd = new Date(s.created_at);
+                return sd.getFullYear() === day.getFullYear() &&
+                    sd.getMonth() === day.getMonth() &&
+                    sd.getDate() === day.getDate();
+            }) || [];
+            if (samples.length === 0) return { value: 100 };
+            const approved = samples.filter((s: any) => s.status === 'approved' || s.status === 'released').length;
+            return { value: (approved / samples.length) * 100 };
+        }),
+        haccp: last7Days.map(day => {
+            const readings = haccpReadings?.filter((r: any) => {
+                const rd = new Date(r.checked_at);
+                return rd.getFullYear() === day.getFullYear() &&
+                    rd.getMonth() === day.getMonth() &&
+                    rd.getDate() === day.getDate();
+            }) || [];
+            if (readings.length === 0) return { value: 100 };
+            const compliant = readings.filter((r: any) => r.is_compliant).length;
+            return { value: (compliant / readings.length) * 100 };
+        })
+    };
+
+    // --- Micro KPIs & Incubators ---
+    const { count: incubatingCount } = await supabase.from("samples")
+        .select("*, type:sample_types!inner(test_category)", { count: "exact", head: true })
+        .eq("status", "in_analysis")
+        .eq("type.test_category", "microbiological")
+        .eq("organization_id", user.organization_id);
+
+    const { count: microCriticalCount } = await supabase.from("micro_results")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "completed")
+        .eq("is_conforming", false)
+        .eq("organization_id", user.organization_id);
+
+    const { data: incubators } = await supabase.from("equipments")
+        .select("name, code, last_calibration_date")
+        .ilike("name", "%estufa%")
+        .eq("organization_id", user.organization_id)
+        .limit(2);
+
+    const micro = {
+        incubating: incubatingCount || 0,
+        readingsDue: 0, // Will be calculated after assignments are fetched in DashboardPage
+        critical: microCriticalCount || 0,
+        equipment: incubators?.map((e: { name: string; code: string; last_calibration_date: string | null }) => ({
+            name: e.name,
+            temp: "N/A",
+            status: "online"
+        })) || []
+    };
+
+    // --- Team & Productivity ---
+    const { count: teamCount } = await supabase.from("teams")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", user.organization_id);
+
     return {
         activeBatches: activeBatches || 0,
         pendingSamples: pendingSamples || 0,
@@ -436,6 +533,9 @@ async function getStats(supabase: any, user: SafeUser, filters: DashboardFilters
         samplingCompliance,
         avgLeadTime,
         slaCompliance: slaComplianceAnalyst,
+        sparklines,
+        micro,
+        teamCount: teamCount || 0,
         trends: {
             ...trends,
             haccpCompliance: calculateTrend(haccpComplianceRate, prevHaccpComplianceRate),
@@ -698,7 +798,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
         }
     }
 
-
+    const sparklines = stats?.sparklines || {
+        deviations: Array(7).fill({ value: 0 }),
+        haccp: Array(7).fill({ value: 100 })
+    };
 
     return (
         <div className="min-h-screen bg-[#020817] text-slate-50 selection:bg-primary/30">
@@ -709,32 +812,21 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
             </div>
 
             <div className="relative max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-                {/* Premium Header Section */}
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-white/5">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl glass border-primary/20 bg-primary/5">
-                                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-                            </div>
-                            <Badge variant="outline" className="h-6 px-3 glass border-white/10 text-[10px] font-bold uppercase tracking-widest text-primary">
-                                {user.role?.replace('_', ' ') || 'Industrial Intelligence'}
-                            </Badge>
-                        </div>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40">
-                            Olá, {user.full_name?.split(' ')[0] || 'Utilizador'}
-                        </h1>
-                        <p className="text-sm text-muted-foreground font-medium max-w-2xl leading-relaxed mt-1">
-                            {isManager && "Visão estratégica de qualidade, conformidade e KPIs globais da planta."}
-                            {isMicro && "Monitoramento de incubações, leituras críticas e conformidade biológica."}
-                            {isHaccp && "Controle de pontos críticos, segurança alimentar e alertas preventivos."}
-                            {isRmpm && "Inspeção de materiais, recebimento e homologação de fornecedores."}
-                            {isLab && "Gestão operacional de amostras, workflows analíticos e produtividade."}
-                            {isOperator && "Monitoramento de linhas produtivas, coletas e status em tempo real."}
-                        </p>
-                    </div>
-
-                    <DashboardToolbar />
-                </header>
+                <PageHeader
+                    variant="blue"
+                    overline={`INDUSTRIAL INTELLIGENCE • ${user.role?.replace('_', ' ') || 'SYSTEM'}`}
+                    title={`Olá, ${user.full_name?.split(' ')[0] || 'Utilizador'}`}
+                    description={
+                        isManager ? "Visão estratégica de qualidade, conformidade e KPIs globais da planta." :
+                            isMicro ? "Monitoramento de incubações, leituras críticas e conformidade biológica." :
+                                isHaccp ? "Controle de pontos críticos, segurança alimentar e alertas preventivos." :
+                                    isRmpm ? "Inspeção de materiais, recebimento e homologação de fornecedores." :
+                                        isLab ? "Gestão operacional de amostras, workflows analíticos e produtividade." :
+                                            "Monitoramento de linhas produtivas, coletas e status em tempo real."
+                    }
+                    icon={<LayoutDashboard className="h-4 w-4" />}
+                    actions={<DashboardToolbar />}
+                />
 
                 <main className="relative">
                     <Suspense fallback={<DashboardSkeleton />}>
@@ -747,7 +839,18 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
                                 initialSpecs={initialSpecs}
                             />
                         ) : isMicro ? (
-                            <MicroView user={user} stats={stats} assignments={assignments} activity={activity} />
+                            <MicroView
+                                user={user}
+                                stats={{
+                                    ...stats,
+                                    micro: {
+                                        ...stats.micro,
+                                        readingsDue: assignments.filter(a => a.type === 'micro').length
+                                    }
+                                }}
+                                assignments={assignments}
+                                activity={activity}
+                            />
                         ) : isHaccp ? (
                             <HACCPView stats={stats} activity={activity} />
                         ) : isRmpm ? (

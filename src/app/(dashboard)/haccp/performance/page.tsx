@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/smart/stat-card";
 import { ControlChart } from "@/components/smart/control-chart";
-import { ShieldCheck, AlertCircle, FileStack, TrendingUp, Brain } from "lucide-react";
+import { ShieldCheck, AlertCircle, FileStack, TrendingUp, Brain, BarChart3 } from "lucide-react";
 import { AIIntelligencePanel } from "./_components/ai-intelligence-panel";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -68,17 +69,21 @@ export default async function FoodSafetyPerformancePage() {
     })) || [];
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex justify-between items-start">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Performance de Segurança Alimentar</h1>
-                    <p className="text-muted-foreground">Monitorização em tempo real da conformidade e integridade do plano HACCP.</p>
-                </div>
-                <Badge variant="outline" className="glass py-1.5 px-3 border-blue-500/30 text-blue-400 font-bold flex items-center gap-2">
-                    <Brain className="h-4 w-4" />
-                    Powered by SmartLab AI
-                </Badge>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="blue"
+                icon={<BarChart3 className="h-4 w-4" />}
+                overline="Compliance Analytics • SmartLab AI"
+                title="Performance de Segurança Alimentar"
+                description="Monitorização em tempo real da conformidade e integridade do plano HACCP."
+                backHref="/haccp"
+                actions={
+                    <Badge variant="outline" className="glass py-1.5 px-3 border-blue-500/30 text-blue-400 font-bold flex items-center gap-2">
+                        <Brain className="h-4 w-4" />
+                        Powered by SmartLab AI
+                    </Badge>
+                }
+            />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard

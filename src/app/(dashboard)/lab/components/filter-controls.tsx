@@ -41,11 +41,11 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
     if (variant === "compact") {
         return (
             <div className="flex items-center gap-2">
-                <div className="relative w-[200px] sm:w-[250px]">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                <div className="relative group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 group-focus-within:text-blue-400/70 transition-colors" />
                     <Input
                         placeholder="Pesquisar..."
-                        className="h-8 pl-8 text-xs bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-blue-500/50 focus-visible:ring-0 transition-all"
+                        className="h-9 w-[180px] sm:w-[220px] pl-9 text-[11px] font-bold uppercase tracking-wider bg-white/[0.03] border-white/5 text-slate-200 placeholder:text-slate-600 focus-visible:ring-0 focus:bg-white/[0.06] rounded-xl transition-all"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -54,24 +54,25 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             className={cn(
-                                "h-8 px-2 text-[10px] font-bold bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:text-white transition-all",
-                                !date && "text-slate-500"
+                                "h-9 px-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] text-[11px] font-bold uppercase tracking-widest transition-all",
+                                !date ? "text-slate-500" : "text-emerald-400"
                             )}
                         >
-                            <Calendar className="mr-1.5 h-3.5 w-3.5" />
-                            {date ? format(date, "dd/MM/yyyy") : "Data"}
+                            <Calendar className={cn("mr-1.5 h-3.5 w-3.5", date ? "text-emerald-500" : "text-slate-500")} />
+                            {date ? format(date, "dd MMM", { locale: pt }) : "Data"}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-slate-800 bg-slate-950" align="end">
+                    <PopoverContent className="w-auto p-0 border-white/10 bg-slate-950" align="end">
                         <CalendarComponent
                             mode="single"
                             selected={date}
                             onSelect={handleDateSelect}
                             initialFocus
-                            className="p-3 pointer-events-auto"
+                            locale={pt}
+                            className="p-3"
                         />
                     </PopoverContent>
                 </Popover>
@@ -79,14 +80,14 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                 {(search || date) && (
                     <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => {
                             setSearch("");
                             setDateParam(null);
                         }}
-                        className="h-8 px-2 text-[10px] font-bold text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        className="h-9 w-9 text-slate-600 hover:text-rose-400 transition-colors"
                     >
-                        Limpar
+                        <Filter className="h-3.5 w-3.5" />
                     </Button>
                 )}
             </div>

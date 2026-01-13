@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FileText, FlaskConical, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export const dynamic = "force-dynamic";
 
 export default async function CoAListPage() {
@@ -16,24 +18,15 @@ export default async function CoAListPage() {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-blue-500" />
-                        Certificate of Analysis
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Generate CoA for approved samples
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                title="Certificate of Analysis"
+                overline="CoA Generation"
+                description="Geração de Certificados de Análise para amostras aprovadas."
+                icon={<FileText className="h-4 w-4" />}
+                backHref="/reports"
+                variant="blue"
+            />
 
             {/* Samples List */}
             <Card className="glass">

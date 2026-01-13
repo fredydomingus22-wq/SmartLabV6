@@ -19,6 +19,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 
 interface MyTrainingClientProps {
     assignments: TrainingAssignment[];
@@ -62,24 +63,33 @@ export function MyTrainingClient({ assignments }: MyTrainingClientProps) {
         <div className="space-y-10">
             {/* KPI Section - Industrial Glassmorphism */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                    { label: "Pendentes", value: assignments.filter(a => a.status === 'assigned').length, icon: BookOpen, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-                    { label: "Em Progresso", value: assignments.filter(a => a.status === 'in_progress').length, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-                    { label: "Concluídos", value: assignments.filter(a => a.status === 'completed').length, icon: Award, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" }
-                ].map((kpi, i) => (
-                    <GlassCard key={i} className={cn("p-5 flex items-center gap-5 border-none bg-white/[0.03] relative overflow-hidden group")}>
-                        <div className={cn("absolute inset-y-0 left-0 w-1", kpi.bg)} />
-                        <div className={cn("p-4 rounded-xl", kpi.bg, kpi.border, "border flex items-center justify-center transition-transform group-hover:scale-110")}>
-                            <kpi.icon className={cn("w-6 h-6", kpi.color)} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">{kpi.label}</p>
-                            <h3 className="text-3xl font-black tracking-tighter text-white">
-                                {kpi.value.toString().padStart(2, '0')}
-                            </h3>
-                        </div>
-                    </GlassCard>
-                ))}
+                <KPISparkCard
+                    variant="blue"
+                    title="Pendentes"
+                    value={assignments.filter(a => a.status === 'assigned').length.toString().padStart(2, '0')}
+                    description="Módulos aguardando início"
+                    icon={<BookOpen className="h-4 w-4" />}
+                    data={[10, 15, 12, 18, 14, 20, 17].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Em Progresso"
+                    value={assignments.filter(a => a.status === 'in_progress').length.toString().padStart(2, '0')}
+                    description="Sessões ativas no sistema"
+                    icon={<Clock className="h-4 w-4" />}
+                    data={[5, 8, 12, 10, 15, 12, 14].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="emerald"
+                    title="Concluídos"
+                    value={assignments.filter(a => a.status === 'completed').length.toString().padStart(2, '0')}
+                    description="Certificados emitidos"
+                    icon={<Award className="h-4 w-4" />}
+                    data={[20, 25, 22, 28, 24, 30, 27].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
             </div>
 
             <div className="space-y-4">

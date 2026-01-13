@@ -8,6 +8,8 @@ import { CreateObjectiveDialog } from "./_components/create-objective-dialog";
 import { UpdateProgressDialog } from "./_components/update-progress-dialog";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 
 export const dynamic = "force-dynamic";
 
@@ -19,26 +21,63 @@ export default async function ObjectivesPage() {
     return (
         <div className="p-6 space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Target className="h-8 w-8 text-emerald-400" />
-                        Objetivos da Qualidade (Clause 6.2)
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Defina, monitorize e acompanhe os objetivos estratégicos de qualidade da organização.
-                    </p>
-                </div>
-                <CreateObjectiveDialog users={users} />
-            </div>
+            <PageHeader
+                variant="emerald"
+                icon={<Target className="h-4 w-4" />}
+                overline="Quality Strategy / Clause 6.2"
+                title="Objetivos da Qualidade"
+                description="Defina, monitorize e acompanhe os objetivos estratégicos de qualidade da organização."
+                backHref="/quality"
+                actions={<CreateObjectiveDialog users={users} />}
+            />
 
             {/* KPIs */}
-            <div className="grid gap-4 md:grid-cols-5">
-                <KpiCard label="Total" value={kpis.total} icon={<Target className="h-4 w-4" />} />
-                <KpiCard label="Em Progresso" value={kpis.onTrack} icon={<TrendingUp className="h-4 w-4 text-emerald-400" />} color="emerald" />
-                <KpiCard label="Em Risco" value={kpis.atRisk} icon={<AlertTriangle className="h-4 w-4 text-amber-400" />} color="amber" />
-                <KpiCard label="Atingidos" value={kpis.achieved} icon={<CheckCircle className="h-4 w-4 text-emerald-400" />} color="emerald" />
-                <KpiCard label="Não Atingidos" value={kpis.missed} icon={<XCircle className="h-4 w-4 text-rose-400" />} color="rose" />
+            <div className="grid gap-6 md:grid-cols-5">
+                <KPISparkCard
+                    variant="slate"
+                    title="Total"
+                    value={kpis.total.toString().padStart(2, '0')}
+                    description="Objetivos ativos"
+                    icon={<Target className="h-4 w-4" />}
+                    data={[kpis.total - 1, kpis.total].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="emerald"
+                    title="Em Progresso"
+                    value={kpis.onTrack.toString().padStart(2, '0')}
+                    description="Desempenho nominal"
+                    icon={<TrendingUp className="h-4 w-4" />}
+                    data={[kpis.onTrack - 1, kpis.onTrack].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="amber"
+                    title="Em Risco"
+                    value={kpis.atRisk.toString().padStart(2, '0')}
+                    description="Ação preventiva necessária"
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    data={[kpis.atRisk + 1, kpis.atRisk].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="emerald"
+                    title="Atingidos"
+                    value={kpis.achieved.toString().padStart(2, '0')}
+                    description="Metas concluídas"
+                    icon={<CheckCircle className="h-4 w-4" />}
+                    data={[kpis.achieved - 1, kpis.achieved].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
+                <KPISparkCard
+                    variant="rose"
+                    title="Não Atingidos"
+                    value={kpis.missed.toString().padStart(2, '0')}
+                    description="Fora da meta"
+                    icon={<XCircle className="h-4 w-4" />}
+                    data={[0, kpis.missed].map(v => ({ value: v }))}
+                    dataKey="value"
+                />
             </div>
 
             {/* Objectives List */}

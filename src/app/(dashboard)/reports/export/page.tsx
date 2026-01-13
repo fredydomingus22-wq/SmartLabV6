@@ -11,6 +11,8 @@ import Link from "next/link";
 import { exportDataAction } from "@/app/actions/reports";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
+
 export default function ExportPage() {
     const [dataType, setDataType] = useState("samples");
     const [startDate, setStartDate] = useState("");
@@ -80,24 +82,15 @@ export default function ExportPage() {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <FileSpreadsheet className="h-8 w-8 text-orange-500" />
-                        Data Export
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Export data to CSV / Excel
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                title="Data Export"
+                overline="Advanced Analytics"
+                description="Export data to CSV / Excel for external processing and reporting."
+                icon={<FileSpreadsheet className="h-4 w-4" />}
+                backHref="/reports"
+                variant="amber"
+            />
 
             {/* Export Form */}
             <Card className="glass max-w-xl">

@@ -9,9 +9,9 @@ import {
     CheckCircle2,
     AlertTriangle,
     Clock,
-    ArrowLeft,
     Plus
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -57,44 +57,28 @@ export default async function MaintenancePage() {
     const scheduled = maintenances.filter(m => differenceInDays(new Date(m.next_maintenance_date), today) > 30);
 
     return (
-        <div className="container py-8 space-y-8 pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/assets">
-                        <Button variant="ghost" size="icon" className="text-slate-400 rounded-full hover:bg-slate-900">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest bg-violet-500/5 text-violet-400 border-violet-500/20">
-                                Preventiva
-                            </Badge>
-                        </div>
-                        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                            <Wrench className="h-8 w-8 text-violet-500" />
-                            Manutenção Preventiva
-                        </h1>
-                        <p className="text-slate-400 text-sm font-medium">
-                            Planeamento e histórico de intervenções de manutenção.
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button className="bg-violet-600 hover:bg-violet-500 text-white font-bold">
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="purple"
+                icon={<Wrench className="h-4 w-4" />}
+                overline="Preventive Maintenance • Site Assets"
+                title="Manutenção Preventiva"
+                description="Planeamento e histórico de intervenções de manutenção para equipamentos de processo."
+                backHref="/assets"
+                actions={
+                    <Button className="bg-violet-600 hover:bg-violet-500 text-white font-bold h-9">
                         <Plus className="h-4 w-4 mr-2" />
                         Registar Manutenção
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6">
-                <Card className="bg-rose-900/20 border-rose-800">
+                <Card className="bg-card border-rose-800 shadow-lg">
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-rose-500/20 text-rose-400">
-                            <AlertTriangle className="h-6 w-6" />
+                        <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            <AlertTriangle className="h-5 w-5" />
                         </div>
                         <div>
                             <h3 className="text-2xl font-black text-white">{overdue.length}</h3>
@@ -102,10 +86,10 @@ export default async function MaintenancePage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-amber-900/20 border-amber-800">
+                <Card className="bg-card border-amber-800 shadow-lg">
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400">
-                            <Clock className="h-6 w-6" />
+                        <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <Clock className="h-5 w-5" />
                         </div>
                         <div>
                             <h3 className="text-2xl font-black text-white">{upcoming.length}</h3>
@@ -113,10 +97,10 @@ export default async function MaintenancePage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-emerald-900/20 border-emerald-800">
+                <Card className="bg-card border-emerald-800 shadow-lg">
                     <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
-                            <CheckCircle2 className="h-6 w-6" />
+                        <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="h-5 w-5" />
                         </div>
                         <div>
                             <h3 className="text-2xl font-black text-white">{scheduled.length}</h3>
@@ -127,9 +111,9 @@ export default async function MaintenancePage() {
             </div>
 
             {/* Maintenance List */}
-            <Card className="bg-slate-950/40 border-slate-800">
-                <CardHeader>
-                    <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+            <Card className="bg-card border-slate-800 shadow-xl overflow-hidden">
+                <CardHeader className="border-b border-slate-800 pb-4">
+                    <CardTitle className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-widest">
                         <Wrench className="h-5 w-5 text-violet-400" />
                         Plano de Manutenção
                     </CardTitle>
@@ -138,12 +122,12 @@ export default async function MaintenancePage() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-800 bg-slate-900/20">
+                                <tr className="border-b border-slate-800 bg-slate-900/40">
                                     <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Equipamento</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Código</th>
+                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Código</th>
                                     <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Última Manutenção</th>
                                     <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Próxima Manutenção</th>
-                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Estado</th>
+                                    <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right px-8">Estado</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
@@ -170,9 +154,9 @@ export default async function MaintenancePage() {
                                                     {format(new Date(maint.next_maintenance_date), "dd/MM/yyyy")}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-center">
-                                                <Badge className={`text-[9px] uppercase ${isOverdue ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : isNear ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                                                    {isOverdue ? 'Atrasada' : isNear ? `${days}d restantes` : 'Em Dia'}
+                                            <td className="p-4 text-right px-8">
+                                                <Badge className={`text-[9px] uppercase font-bold ${isOverdue ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : isNear ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                    {isOverdue ? 'ATRASADA' : isNear ? `${days}d restantes` : 'EM DIA'}
                                                 </Badge>
                                             </td>
                                         </tr>

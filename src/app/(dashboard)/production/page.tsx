@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Activity, Plus } from "lucide-react";
+import { Clock, Activity, Plus, Factory } from "lucide-react";
 import { ProductionDashboard } from "./production-dashboard";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -95,43 +96,43 @@ export default async function ProductionPage() {
     };
 
     return (
-        <div className="flex-1 flex flex-col min-h-screen bg-[#020617] text-slate-100 selection:bg-blue-500/30">
-            {/* 🏙️ PREMIUM HEADER */}
-            <header className="sticky top-0 z-40 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-8 py-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 max-w-[1700px] mx-auto">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-primary mb-2">
-                            <Activity className="h-4 w-4" />
-                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Manufacturing Execution System</span>
-                        </div>
-                        <h1 className="text-4xl font-extrabold tracking-tight">
-                            Production Center
-                        </h1>
-                        <p className="text-muted-foreground text-lg">
-                            Real-time monitoring, batch execution, and industrial performance.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
+        <div className="space-y-10">
+            <PageHeader
+                variant="indigo"
+                icon={<Factory className="h-4 w-4" />}
+                overline="Manufacturing Execution System"
+                title="Production Center"
+                description="Monitoramento em tempo real, execução de lotes e performance industrial estratégica."
+                actions={
+                    <div className="flex items-center gap-2">
                         <Link href="/production/config/shifts">
-                            <Button variant="outline" className="h-11 border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-300 font-bold uppercase text-[10px] tracking-widest px-6 rounded-2xl">
-                                <Clock className="h-4 w-4 mr-2" />
-                                Gestão de Turnos
+                            <Button variant="ghost" className="h-9 border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] text-slate-400 font-bold uppercase text-[9px] tracking-widest px-4 rounded-xl transition-all">
+                                <Clock className="h-3.5 w-3.5 mr-2 opacity-70" />
+                                Turnos
                             </Button>
                         </Link>
                         <Link href="/production/orders">
-                            <Button className="h-11 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest px-6 rounded-2xl shadow-lg shadow-blue-500/20">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Nova Ordem de Produção
+                            <Button className="h-9 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase text-[9px] tracking-widest px-4 rounded-xl shadow-lg shadow-indigo-500/10 transition-all">
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                Nova Ordem
                             </Button>
                         </Link>
                     </div>
-                </div>
-            </header>
+                }
+            />
 
-            <main className="flex-1 p-8 max-w-[1700px] mx-auto w-full">
+            <main className="relative">
                 <ProductionDashboard stats={stats} batchesList={batchesList} />
             </main>
+
+            {/* Global Status Footer */}
+            <footer className="flex items-center justify-between pt-10 border-t border-white/5 opacity-50">
+                <span className="text-[10px] font-mono tracking-widest uppercase">MES Production Engine • GAMP 5</span>
+                <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Live Production Monitoring</span>
+                </div>
+            </footer>
         </div>
     );
 }

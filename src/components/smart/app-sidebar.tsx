@@ -9,6 +9,7 @@ import {
     PanelLeftOpen,
     ChevronDown,
     ChevronRight,
+    Sparkles,
 } from "lucide-react";
 import { LogoutButton } from "./logout-button";
 import { Button } from "@/components/ui/button";
@@ -74,9 +75,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
             {/* Header */}
             <div className="flex h-16 items-center justify-between border-b border-slate-800/50 px-4">
                 {!isCollapsed && (
-                    <span className="text-lg font-bold bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent truncate ml-2">
-                        SmartLab v6
-                    </span>
+                    <div className="flex items-center gap-2 ml-2">
+                        <Sparkles className="h-4 w-4 text-emerald-400" />
+                        <span className="text-lg font-black bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent truncate tracking-tighter uppercase italic">
+                            SmartLab v6
+                        </span>
+                    </div>
                 )}
                 <Button
                     variant="ghost"

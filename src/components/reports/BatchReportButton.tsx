@@ -20,7 +20,7 @@ interface AnalysisResult {
 interface SampleWithResults {
     id: string;
     sample_code: string;
-    collection_date: string;
+    collected_at: string;
     sample_type?: string;
     overall_status: string;
     analyses: AnalysisResult[];

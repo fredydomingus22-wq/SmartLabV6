@@ -5,8 +5,9 @@ import { PackagingLotsClient } from "./lots/packaging-lots-client";
 import { PackagingDialog } from "./packaging-dialog";
 import { PackagingLotDialog } from "./lots/packaging-lot-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-card";
-import { Sparkles, Box, Layers, ArrowLeft, Plus } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
+import { Sparkles, Box, Layers, ArrowLeft, Plus, CheckCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -26,61 +27,49 @@ export default async function PackagingMaterialsPage() {
 
     return (
 
-        <div className="container max-w-[1600px] mx-auto py-8 space-y-10 pb-20">
-            {/* Header - Industrial Premium */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-400">
-                        <Sparkles className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest opacity-80">Inventory Control</span>
-                    </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
-                        Gestão de Embalagem
-                    </h1>
-                    <p className="text-slate-400 text-lg">
-                        Catálogo e controlo de lotes de materiais de embalagem.
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10 pb-20">
+            <PageHeader
+                variant="emerald"
+                icon={<Box className="h-4 w-4" />}
+                overline="Inventory Control • Site Logistics"
+                title="Gestão de Embalagem"
+                description="Catálogo e controlo de lotes de materiais de embalagem."
+                backHref="/materials"
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <PremiumAnalyticsCard
+                <KPISparkCard
+                    variant="emerald"
                     title="Catálogo"
-                    value={String(materials?.length || 0)}
+                    value={String(materials?.length || 0).padStart(3, '0')}
                     description="Itens de embalagem"
-                    trend={mockTrend}
-                    data={mockSeries}
-                    dataKey="value"
-                    color="#10b981" // emerald
+                    icon={<Box className="h-4 w-4" />}
+                    data={mockSeries.map(s => ({ value: s.value }))}
                 />
-                <PremiumAnalyticsCard
+                <KPISparkCard
+                    variant="blue"
                     title="Lotes Ativos"
-                    value={String(activeLots)}
+                    value={String(activeLots).padStart(3, '0')}
                     description="Em uso na produção"
-                    trend={{ value: 5, isPositive: true }}
-                    data={mockSeries}
-                    dataKey="value"
-                    color="#3b82f6" // blue
+                    icon={<CheckCircle className="h-4 w-4" />}
+                    data={mockSeries.map(s => ({ value: s.value }))}
                 />
-                {/* Placeholder Cards for symmetry */}
-                <PremiumAnalyticsCard
+                <KPISparkCard
+                    variant="amber"
                     title="Total Movimentado"
                     value="1.2k"
                     description="Unidades este mês"
-                    trend={{ value: 12, isPositive: true }}
-                    data={mockSeries}
-                    dataKey="value"
-                    color="#f59e0b" // amber
+                    icon={<TrendingUp className="h-4 w-4" />}
+                    data={mockSeries.map(s => ({ value: s.value }))}
                 />
-                <PremiumAnalyticsCard
+                <KPISparkCard
+                    variant="destructive"
                     title="Stock Baixo"
-                    value="0"
+                    value="000"
                     description="Itens abaixo do mínimo"
-                    trend={{ value: 0, isPositive: true }}
-                    data={mockSeries}
-                    dataKey="value"
-                    color="#f43f5e" // rose
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    data={mockSeries.map(s => ({ value: s.value }))}
                 />
             </div>
 
@@ -100,7 +89,7 @@ export default async function PackagingMaterialsPage() {
                     <div className="flex justify-end">
                         <PackagingDialog />
                     </div>
-                    <div className="glass rounded-xl p-6">
+                    <div className="bg-card border border-slate-800 rounded-xl p-6 shadow-xl">
                         <PackagingPageClient materials={materials || []} />
                     </div>
                 </TabsContent>
@@ -109,7 +98,7 @@ export default async function PackagingMaterialsPage() {
                     <div className="flex justify-end">
                         <PackagingLotDialog materials={materials || []} />
                     </div>
-                    <div className="glass rounded-xl p-6">
+                    <div className="bg-card border border-slate-800 rounded-xl p-6 shadow-xl">
                         <PackagingLotsClient lots={lots || []} />
                     </div>
                 </TabsContent>

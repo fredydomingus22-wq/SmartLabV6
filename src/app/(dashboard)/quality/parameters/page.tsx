@@ -13,11 +13,13 @@ import {
     Activity,
     Eye,
     MoreHorizontal,
-    Settings2
+    Settings2,
+    ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { ParameterDialog } from "./parameter-dialog";
 import { BulkImportDialog } from "./bulk-import-dialog";
+import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -100,29 +102,19 @@ export default async function ParametersPage({ searchParams }: PageProps) {
 
     return (
         <div className="container py-8 space-y-8 animate-in fade-in duration-500">
-            {/* Premium Header Section */}
-            <div className="glass p-8 rounded-[2.5rem] border-none shadow-2xl bg-gradient-to-br from-blue-500/10 via-slate-900/50 to-transparent relative overflow-hidden mb-8">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] -mr-32 -mt-32 rounded-full" />
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="p-4 bg-blue-500/20 rounded-2xl border border-blue-500/30">
-                            <Activity className="h-8 w-8 text-blue-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 leading-tight">
-                                Engenharia de Qualidade
-                            </h1>
-                            <p className="text-slate-400 mt-1 font-medium max-w-xl">
-                                Configuração técnica de parâmetros, especificações e infraestrutura industrial para conformidade normativa.
-                            </p>
-                        </div>
-                    </div>
+            <PageHeader
+                title="Engenharia de Qualidade"
+                overline="Quality Management"
+                description="Configuração técnica de parâmetros, especificações e infraestrutura industrial para conformidade normativa."
+                icon={<Activity className="h-4 w-4" />}
+                variant="blue"
+                actions={
                     <div className="flex flex-wrap gap-3">
                         <BulkImportDialog />
                         <ParameterDialog mode="create" />
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             <Tabs defaultValue="parameters" className="space-y-8">
                 <TabsList className="glass border-white/5 p-1 w-full md:w-auto h-auto grid grid-cols-2 md:grid-cols-4 gap-1">

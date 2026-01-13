@@ -1,11 +1,10 @@
-"use server";
-
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, ClipboardCheck, Truck, FlaskConical } from "lucide-react";
+import { ShieldCheck, ClipboardCheck, Truck, FlaskConical, Gavel } from "lucide-react";
 import { ApprovalsList } from "./_components/approvals-list";
 import { ApprovalFilters } from "./_components/approval-filters";
+import { PageHeader } from "@/components/layout/page-header";
 
 interface SearchParams {
     batchId?: string;
@@ -21,6 +20,7 @@ export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps
     const supabase = await createClient();
     const { batchId, shiftId } = await searchParams;
 
+    // ... (rest of filtering logic remains same)
     // Fetch Metadata for Filters
     const { data: shifts } = await supabase
         .from("shifts")
@@ -51,10 +51,6 @@ export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps
         if (batchId) {
             query = query.eq("production_batch_id", batchId);
         }
-
-        // Shift filtering logic is complex in PostgREST without custom RPC or raw SQL
-        // We might need to do some client-side or nested filtering if it gets too complex
-        // But for now let's apply a status/order and handle shift logic if possible
 
         return query.order(orderBy, { ascending: false });
     };
@@ -87,59 +83,60 @@ export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps
     const filteredReleased = filterByShift(releasedSamples || []);
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                    Centro de Aprovações
-                </h1>
-                <p className="text-slate-400 font-medium">Fluxo de Validação ISO 9001:2015</p>
-            </div>
+        <div className="space-y-10">
+            <PageHeader
+                variant="purple"
+                icon={<Gavel className="h-4 w-4" />}
+                overline="Quality Assurance Control"
+                title="Centro de Aprovações"
+                description="Fluxo de Validação ISO 9001:2015. Revisão técnica, aprovação final e libertação de mercado."
+                backHref="/lab"
+            />
 
-            <ApprovalFilters shifts={shifts || []} batches={recentBatches || []} />
+            <main className="relative">
+                <ApprovalFilters shifts={shifts || []} batches={recentBatches || []} />
 
-            <Tabs defaultValue="review" className="w-full">
-                <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-slate-900/50 border border-slate-800 p-1 h-14 rounded-2xl mb-8">
-                    <TabsTrigger value="review" className="rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                        <ClipboardCheck className="h-4 w-4 mr-2" />
-                        Revisão Técnica
-                    </TabsTrigger>
-                    <TabsTrigger value="approval" className="rounded-xl data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Aprovação QA
-                    </TabsTrigger>
-                    <TabsTrigger value="release" className="rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                        <Truck className="h-4 w-4 mr-2" />
-                        Libertação
-                    </TabsTrigger>
-                </TabsList>
+                <Tabs defaultValue="review" className="w-full">
+                    <TabsList className="grid w-full max-w-xl grid-cols-3 bg-white/[0.03] border border-white/5 p-1 h-10 rounded-xl mb-6">
+                        <TabsTrigger value="review" className="rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">
+                            Revisão
+                        </TabsTrigger>
+                        <TabsTrigger value="approval" className="rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-emerald-600/20 data-[state=active]:text-emerald-400">
+                            Aprovação
+                        </TabsTrigger>
+                        <TabsTrigger value="release" className="rounded-lg text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-blue-600/20 data-[state=active]:text-blue-400">
+                            Libertação
+                        </TabsTrigger>
+                    </TabsList>
 
-                <TabsContent value="review" className="mt-0">
-                    <ApprovalsList
-                        samples={filteredReview}
-                        type="technical"
-                        title="Amostras para Revisão Técnica"
-                        description="Supervisor: Verifique os resultados analíticos antes da aprovação de qualidade."
-                    />
-                </TabsContent>
+                    <TabsContent value="review" className="mt-0">
+                        <ApprovalsList
+                            samples={filteredReview}
+                            type="technical"
+                            title="Amostras para Revisão Técnica"
+                            description="Supervisor: Verifique os resultados analíticos antes da aprovação de qualidade."
+                        />
+                    </TabsContent>
 
-                <TabsContent value="approval" className="mt-0">
-                    <ApprovalsList
-                        samples={filteredApproval}
-                        type="quality"
-                        title="Aprovação de Qualidade (QA)"
-                        description="QA Manager: Verifique a conformidade final para libertação de lote."
-                    />
-                </TabsContent>
+                    <TabsContent value="approval" className="mt-0">
+                        <ApprovalsList
+                            samples={filteredApproval}
+                            type="quality"
+                            title="Aprovação de Qualidade (QA)"
+                            description="QA Manager: Verifique a conformidade final para libertação de lote."
+                        />
+                    </TabsContent>
 
-                <TabsContent value="release" className="mt-0">
-                    <ApprovalsList
-                        samples={filteredReleased}
-                        type="release"
-                        title="Histórico de Libertação"
-                        description="Amostras libertadas para o mercado ou produção."
-                    />
-                </TabsContent>
-            </Tabs>
+                    <TabsContent value="release" className="mt-0">
+                        <ApprovalsList
+                            samples={filteredReleased}
+                            type="release"
+                            title="Histórico de Libertação"
+                            description="Amostras libertadas para o mercado ou produção."
+                        />
+                    </TabsContent>
+                </Tabs>
+            </main>
         </div>
     );
 }

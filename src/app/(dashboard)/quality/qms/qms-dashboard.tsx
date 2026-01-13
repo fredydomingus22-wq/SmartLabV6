@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { getGlobalQualityInsightAction } from "@/app/actions/qms";
+import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 
 interface QMSDashboardProps {
     kpis: {
@@ -54,41 +55,41 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
         <div className="space-y-12 animate-in fade-in duration-1000">
             {/* KPI Overview */}
             <div className="grid gap-6 md:grid-cols-4">
-                <KPICard
+                <KPISparkCard
+                    variant="indigo"
                     title="NCs Abertas"
-                    value={kpis.openNCs}
-                    icon={FileWarning}
+                    value={kpis.openNCs.toString().padStart(2, '0')}
                     description="Investigation Pending"
-                    color="text-indigo-400"
-                    bgColor="bg-indigo-500/10"
-                    borderColor="border-indigo-500/20"
+                    icon={<FileWarning className="h-4 w-4" />}
+                    data={[8, 10, 9, 12, 11].map(v => ({ value: v }))}
+                    dataKey="value"
                 />
-                <KPICard
+                <KPISparkCard
+                    variant="rose"
                     title="NCs Críticas"
-                    value={kpis.criticalNCs}
-                    icon={ShieldAlert}
+                    value={kpis.criticalNCs.toString().padStart(2, '0')}
                     description="High Impact Risk"
-                    color="text-rose-400"
-                    bgColor="bg-rose-500/10"
-                    borderColor="border-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.1)]"
+                    icon={<ShieldAlert className="h-4 w-4" />}
+                    data={[2, 1, 3, 2, 2].map(v => ({ value: v }))}
+                    dataKey="value"
                 />
-                <KPICard
+                <KPISparkCard
+                    variant="amber"
                     title="Atrasadas"
-                    value={kpis.overdueNCs}
-                    icon={Clock}
+                    value={kpis.overdueNCs.toString().padStart(2, '0')}
                     description="SLA Breached"
-                    color="text-amber-400"
-                    bgColor="bg-amber-500/10"
-                    borderColor="border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]"
+                    icon={<Clock className="h-4 w-4" />}
+                    data={[3, 4, 2, 5, 4].map(v => ({ value: v }))}
+                    dataKey="value"
                 />
-                <KPICard
+                <KPISparkCard
+                    variant="emerald"
                     title="CAPAs Ativas"
-                    value={kpis.openCAPAs}
-                    icon={CheckCircle}
+                    value={kpis.openCAPAs.toString().padStart(2, '0')}
                     description="Actions in Progress"
-                    color="text-emerald-400"
-                    bgColor="bg-emerald-500/10"
-                    borderColor="border-emerald-500/20"
+                    icon={<CheckCircle className="h-4 w-4" />}
+                    data={[5, 6, 5, 7, 8].map(v => ({ value: v }))}
+                    dataKey="value"
                 />
             </div>
 
@@ -125,10 +126,10 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {/* Recent NCs */}
-                <Card className="glass-dark lg:col-span-2 border-white/5 shadow-2xl overflow-hidden rounded-3xl">
-                    <CardHeader className="flex flex-row items-center justify-between pb-6 border-b border-white/5 px-8">
+                <Card className="lg:col-span-2 border-slate-800 shadow-2xl overflow-hidden rounded-3xl bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between pb-6 border-b border-slate-800 px-8">
                         <div>
-                            <CardTitle className="text-xl font-black flex items-center gap-3 uppercase tracking-wider">
+                            <CardTitle className="text-xl font-black flex items-center gap-3 uppercase tracking-wider text-white">
                                 <History className="h-5 w-5 text-indigo-400" />
                                 Ocorrências Recentes
                             </CardTitle>
@@ -142,16 +143,16 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
                         </Link>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="divide-y divide-white/5">
+                        <div className="divide-y divide-slate-800">
                             {recentNCs.length > 0 ? (
                                 recentNCs.slice(0, 5).map((nc) => (
-                                    <Link key={nc.id} href={`/quality/qms/${nc.id}`} className="block hover:bg-white/[0.02] transition-colors p-6 group">
+                                    <Link key={nc.id} href={`/quality/qms/${nc.id}`} className="block hover:bg-slate-900/40 transition-colors p-6 group">
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center gap-6">
                                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center border font-black text-xs",
                                                     nc.severity === 'critical' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
                                                         nc.severity === 'major' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' :
-                                                            'bg-slate-500/10 border-white/10 text-slate-400'
+                                                            'bg-slate-500/10 border-slate-800 text-slate-400'
                                                 )}>
                                                     {nc.severity === 'critical' ? 'CR' : nc.severity === 'major' ? 'MJ' : 'MN'}
                                                 </div>
@@ -169,7 +170,7 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
                                                 <Badge variant="outline" className="text-[9px] font-black uppercase px-2 py-0 border-white/10 text-slate-400">
                                                     {nc.status.replace('_', ' ')}
                                                 </Badge>
-                                                <ArrowRight className="h-4 w-4 text-slate-700 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                                                <ArrowRight className="h-4 w-4 text-slate-800 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                                             </div>
                                         </div>
                                     </Link>
@@ -185,18 +186,18 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
 
                 {/* AI & Quick Actions */}
                 <div className="space-y-6">
-                    <Card className="glass-dark border-indigo-500/20 shadow-2xl overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 to-transparent">
+                    <Card className="bg-card border-indigo-500/20 shadow-2xl overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/5 to-transparent">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-lg font-black flex items-center gap-3 uppercase tracking-wider">
+                            <CardTitle className="text-lg font-black flex items-center gap-3 uppercase tracking-wider text-white">
                                 <Sparkles className="h-5 w-5 text-indigo-400" />
                                 Insights Inteligentes
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {aiLoading ? (
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3 animate-pulse">
-                                    <div className="h-2 w-3/4 bg-white/10 rounded-full" />
-                                    <div className="h-2 w-1/2 bg-white/10 rounded-full" />
+                                <div className="p-4 rounded-2xl bg-slate-950/20 border border-slate-800 space-y-3 animate-pulse">
+                                    <div className="h-2 w-3/4 bg-slate-800 rounded-full" />
+                                    <div className="h-2 w-1/2 bg-slate-800 rounded-full" />
                                 </div>
                             ) : aiInsight ? (
                                 <div className="p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
@@ -209,14 +210,14 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+                                <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800">
                                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center">Aguardando dados...</p>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
-                    <Card className="glass border-white/5 shadow-2xl rounded-3xl overflow-hidden">
+                    <Card className="bg-card border-slate-800 shadow-2xl rounded-3xl overflow-hidden">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg font-black flex items-center gap-3 uppercase tracking-wider">
                                 <Zap className="h-5 w-5 text-amber-400" />
@@ -224,9 +225,9 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3 p-4 pt-0">
-                            <QuickActionBtn href="/quality/qms" label="Registar NC" icon={Plus} color="hover:bg-indigo-500/10 hover:text-indigo-400" />
-                            <QuickActionBtn href="/quality/qms/capa" label="Plano CAPA" icon={ShieldAlert} color="hover:bg-emerald-500/10 hover:text-emerald-400" />
-                            <QuickActionBtn href="/quality/qms/8d" label="Relatório 8D" icon={BarChart3} color="hover:bg-amber-500/10 hover:text-amber-400" />
+                            <QuickActionBtn href="/quality/qms" label="Registar NC" icon={Plus} color="hover:bg-indigo-500/10 hover:text-indigo-400 border-slate-800" />
+                            <QuickActionBtn href="/quality/qms/capa" label="Plano CAPA" icon={ShieldAlert} color="hover:bg-emerald-500/10 hover:text-emerald-400 border-slate-800" />
+                            <QuickActionBtn href="/quality/qms/8d" label="Relatório 8D" icon={BarChart3} color="hover:bg-amber-500/10 hover:text-amber-400 border-slate-800" />
                         </CardContent>
                     </Card>
                 </div>
@@ -235,43 +236,23 @@ export function QMSDashboard({ kpis, recentNCs }: QMSDashboardProps) {
     );
 }
 
-function KPICard({ title, value, icon: Icon, description, color, bgColor, borderColor }: any) {
-    return (
-        <Card className={cn("glass-dark border border-white/5 shadow-xl transition-all rounded-3xl overflow-hidden group hover:border-white/10", borderColor)}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-400 transition-colors">
-                    {title}
-                </CardTitle>
-                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", bgColor)}>
-                    <Icon className={cn("h-4 w-4", color)} />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="text-3xl font-black font-mono tracking-tighter group-hover:translate-x-1 transition-transform">{value}</div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-2">
-                    {description}
-                </p>
-            </CardContent>
-        </Card>
-    );
-}
 
 function ActionCard({ title, description, href, icon: Icon, stats, color, borderColor }: any) {
     return (
         <Link href={href}>
-            <Card className={cn("glass-dark border border-white/5 shadow-2xl h-full transition-all group overflow-hidden bg-gradient-to-br from-transparent rounded-[2.5rem] hover:-translate-y-1 hover:border-white/10", color, borderColor)}>
+            <Card className={cn("bg-card border border-slate-800 shadow-2xl h-full transition-all group overflow-hidden bg-gradient-to-br from-transparent rounded-[2.5rem] hover:-translate-y-1 hover:border-slate-700", color, borderColor)}>
                 <CardHeader className="pt-8 px-8">
                     <div className="flex justify-between items-start">
                         <div className="h-14 w-14 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-white/10 transition-all">
                             <Icon className="h-7 w-7 text-indigo-400 group-hover:scale-110 transition-transform" />
                         </div>
-                        <Badge variant="outline" className="glass text-[9px] font-black uppercase tracking-widest px-3 py-1 border-white/10 bg-white/5 text-slate-300">
+                        <Badge variant="outline" className="bg-slate-950/40 text-[9px] font-black uppercase tracking-widest px-3 py-1 border-slate-800 text-slate-300">
                             {stats}
                         </Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-3 px-8 pb-8">
-                    <CardTitle className="text-2xl font-black">{title}</CardTitle>
+                    <CardTitle className="text-2xl font-black text-white">{title}</CardTitle>
                     <p className="text-[11px] text-slate-500 font-bold leading-relaxed">{description}</p>
                 </CardContent>
                 <CardFooter className="px-8 pb-8 pt-0">
@@ -287,8 +268,8 @@ function ActionCard({ title, description, href, icon: Icon, stats, color, border
 
 function QuickActionBtn({ href, label, icon: Icon, color }: any) {
     return (
-        <Link href={href} className={cn("flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 transition-all group font-black uppercase tracking-widest text-[10px] text-slate-400", color)}>
-            <div className="h-6 w-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10">
+        <Link href={href} className={cn("flex items-center gap-4 p-4 rounded-2xl bg-slate-900/20 border border-border transition-all group font-black uppercase tracking-widest text-[10px] text-slate-400", color)}>
+            <div className="h-6 w-6 rounded-lg bg-slate-900/50 flex items-center justify-center group-hover:bg-slate-800">
                 <Icon className="h-3 w-3" />
             </div>
             <span>{label}</span>
