@@ -15,13 +15,13 @@ export default async function MyTrainingPage() {
     const { data: assignments, error } = await getMyTrainingAssignments();
 
     return (
-        <div className="space-y-10 pb-20">
+        <div className="space-y-6 px-6 pb-20">
             <PageHeader
                 variant="blue"
                 icon={<GraduationCap className="h-4 w-4" />}
-                overline="Compliance & Qualifications"
+                overline="Conformidade e Qualificações"
                 title="LIMS Academy"
-                description="Manage your professional growth and compliance requirements."
+                description="Faça a gestão das suas competências e requisitos críticos de conformidade."
                 backHref="/quality"
                 sticky={false}
             />

@@ -3,8 +3,10 @@ import { getSafeUser } from "@/lib/auth.server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Droplets, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Droplets, CheckCircle, XCircle, Factory, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,84 +33,84 @@ export default async function CIPReportPage() {
     const { cycles } = await getCIPData();
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Droplets className="h-8 w-8 text-cyan-500" />
-                        CIP Cycle Reports
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Clean-in-Place cycle documentation and compliance
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10 px-6 pb-20">
+            <PageHeader
+                title="Relatórios de Ciclos CIP"
+                overline="Sanitization Intelligence"
+                description="Documentação técnica de higienização, parâmetros químicos e conformidade de tanques."
+                icon={<Droplets className="h-4 w-4" />}
+                backHref="/reports"
+                variant="cyan"
+            />
 
             {/* Cycles List */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Recent CIP Cycles</CardTitle>
-                    <CardDescription>
-                        Select a cycle to generate a detailed report ({cycles.length} cycles)
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {cycles.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <Droplets className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>No CIP cycles recorded</p>
-                            <p className="text-sm">Complete CIP cycles in the CIP module first</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {cycles.map((cycle: any) => (
-                                <Link href={`/reports/cip/${cycle.id}`} key={cycle.id}>
-                                    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
-                                        <div className="flex items-center gap-4">
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2 italic">
+                        <Factory className="h-3 w-3" />
+                        Histórico de Higienização ({cycles.length})
+                    </h2>
+                    <Badge variant="outline" className="border-slate-800 text-slate-500 font-black text-[9px] uppercase tracking-[0.2em] px-3 py-1 bg-slate-900/50">
+                        QUALIDADE & SEGURANÇA
+                    </Badge>
+                </div>
+
+                {cycles.length === 0 ? (
+                    <div className="rounded-[2rem] border border-slate-800 bg-card p-16 text-center space-y-4 shadow-xl border-dashed">
+                        <Droplets className="h-12 w-12 mx-auto text-slate-800 opacity-50" />
+                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">Nenhum ciclo CIP registado.</p>
+                        <p className="text-[9px] text-slate-600 uppercase font-black tracking-[0.2em]">Execute as operações de limpeza no módulo CIP.</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-3">
+                        {cycles.map((cycle: any) => (
+                            <Link href={`/reports/cip/${cycle.id}`} key={cycle.id}>
+                                <div className="group flex items-center justify-between p-4 bg-card border border-slate-800 rounded-2xl hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all cursor-pointer shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/30 transition-colors">
                                             <Droplets className="h-5 w-5 text-cyan-500" />
-                                            <div>
-                                                <p className="font-mono font-semibold">
-                                                    {cycle.cycle_code || `CIP-${cycle.id.substring(0, 8)}`}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {cycle.recipe?.name || "Standard Cycle"}
-                                                </p>
-                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            {cycle.status === "completed" ? (
-                                                <Badge variant="default" className="gap-1">
-                                                    <CheckCircle className="h-3 w-3" />
-                                                    Completed
-                                                </Badge>
-                                            ) : cycle.status === "failed" ? (
-                                                <Badge variant="destructive" className="gap-1">
-                                                    <XCircle className="h-3 w-3" />
-                                                    Failed
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary">{cycle.status}</Badge>
-                                            )}
-                                            <span className="text-sm text-muted-foreground">
+                                        <div>
+                                            <p className="font-mono font-black text-sm text-white italic tracking-tighter leading-tight">
+                                                {cycle.cycle_code || `CIP-${cycle.id.substring(0, 8)}`}
+                                            </p>
+                                            <p className="text-[10px] font-black uppercase tracking-tight text-slate-500">
+                                                {cycle.recipe?.name || "Ciclo Padrão"} &bull; Operador: {cycle.executed_by?.full_name || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="hidden md:block text-right">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Execução</p>
+                                            <p className="text-xs font-bold text-slate-400">
                                                 {cycle.start_time
                                                     ? new Date(cycle.start_time).toLocaleDateString()
                                                     : "-"}
-                                            </span>
-                                            <Button size="sm">View Report</Button>
+                                            </p>
                                         </div>
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                "font-black uppercase tracking-tighter text-[9px] border shadow-inner italic px-3 py-1",
+                                                cycle.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                    cycle.status === 'failed' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                        'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                            )}
+                                        >
+                                            {cycle.status === 'completed' ? 'Finalizado' :
+                                                cycle.status === 'failed' ? 'Falha Técnica' :
+                                                    cycle.status === 'in_progress' ? 'Em Curso' : cycle.status}
+                                        </Badge>
+                                        <Button size="sm" className="rounded-xl font-black text-[10px] uppercase tracking-[0.2em] bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-500 shadow-lg group-hover:scale-105 transition-transform">
+                                            View Dossiê
+                                        </Button>
                                     </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

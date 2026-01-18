@@ -240,7 +240,7 @@ function ResultCard({ result }: { result: any }) {
                         ) : isIncubating ? (
                             <Badge variant="outline" className="border-blue-500/30 text-blue-400 text-[10px]">
                                 <Clock className="h-3 w-3 mr-1" />
-                                Incubando
+                                Em incubação
                             </Badge>
                         ) : (
                             <Badge variant="outline" className="border-yellow-500/30 text-yellow-400 text-[10px]">

@@ -31,9 +31,9 @@ export function CreateNCDialog({ users }: { users: { id: string, full_name: stri
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass">
                 <DialogHeader>
-                    <DialogTitle>Registar Não Conformidade</DialogTitle>
-                    <DialogDescription>
-                        Criar um novo relatório de não conformidade
+                    <DialogTitle className="text-xl font-black italic uppercase tracking-tight">Registar Não Conformidade</DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500 italic">
+                        Identificação e abertura formal de uma ocorrência no SGQ.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -46,22 +46,22 @@ export function CreateNCDialog({ users }: { users: { id: string, full_name: stri
                         {/* Plant ID is now obtained automatically from user profile */}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="title">Título *</Label>
+                            <Label htmlFor="title" className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Designação / Título *</Label>
                             <Input
                                 id="title"
                                 name="title"
-                                placeholder="Breve descrição da não conformidade"
+                                placeholder="Identificação sucinta da ocorrência"
                                 required
                                 className="glass"
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="description">Descrição *</Label>
+                            <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Descrição Técnica *</Label>
                             <Textarea
                                 id="description"
                                 name="description"
-                                placeholder="Descrição detalhada do problema..."
+                                placeholder="Evidências e detalhes da ocorrência (O Quê, Onde, Como)..."
                                 rows={3}
                                 required
                                 className="glass"
@@ -152,17 +152,17 @@ export function CreateNCDialog({ users }: { users: { id: string, full_name: stri
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="responsible_id">Responsável / Atribuição de Tarefa</Label>
+                            <Label htmlFor="responsible_id" className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Responsável pela Resolução</Label>
                             <SearchableSelect
                                 name="responsible_id"
                                 options={users.map(u => ({
                                     value: u.id,
                                     label: `${u.full_name || 'Sem Nome'} (${u.role})`
                                 }))}
-                                placeholder="Selecionar responsável..."
+                                placeholder="Atribuir a colaborador..."
                             />
-                            <p className="text-[10px] text-slate-500 italic">
-                                Ao selecionar um responsável, uma tarefa será automaticamente criada no seu Dashboard.
+                            <p className="text-[10px] text-slate-600 italic">
+                                A atribuição gera uma tarefa automática na workstation do colaborador.
                             </p>
                         </div>
 

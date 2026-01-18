@@ -8,26 +8,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { KPISparkCard } from "@/components/ui/kpi-spark-card";
 import { GlassCard } from "@/components/ui/glass-card";
 
+import { getCIPStats } from "@/lib/queries/cip";
+
 export default async function CIPDashboard() {
-    const supabase = await createClient();
-
-    // Fetch active CIPs
-    const { data: activeCIPs } = await supabase
-        .from("cip_logs")
-        .select(`
-            *,
-            program:cip_programs(name),
-            equipment:process_equipment(name)
-        `)
-        .eq("status", "in_progress")
-        .limit(5);
-
-    // Fetch stats
-    const { count: totalPrograms } = await supabase.from("cip_programs").select("*", { count: 'exact', head: true });
-    const { count: totalHistory } = await supabase.from("cip_logs").select("*", { count: 'exact', head: true });
+    const { totalPrograms, totalHistory, activeCIPs, trends } = await getCIPStats();
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-6 px-6 pb-10">
             <PageHeader
                 variant="blue"
                 icon={<Sparkles className="h-4 w-4" />}
@@ -52,7 +39,7 @@ export default async function CIPDashboard() {
                     value={activeCIPs?.length.toString() || "0"}
                     description="Ciclos em execução"
                     icon={<Activity className="h-4 w-4" />}
-                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 5) + 2 }))}
+                    data={trends.executions}
                 />
                 <KPISparkCard
                     variant="purple"
@@ -60,7 +47,7 @@ export default async function CIPDashboard() {
                     value={totalPrograms?.toString() || "0"}
                     description="Receitas configuradas"
                     icon={<Settings className="h-4 w-4" />}
-                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 10) + 5 }))}
+                    data={trends.executions}
                 />
                 <KPISparkCard
                     variant="emerald"
@@ -68,7 +55,7 @@ export default async function CIPDashboard() {
                     value={totalHistory?.toString() || "0"}
                     description="Registos de auditoria"
                     icon={<History className="h-4 w-4" />}
-                    data={Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 50) + 100 }))}
+                    data={trends.executions}
                 />
             </div>
 

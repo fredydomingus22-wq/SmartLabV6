@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import {
     AlertTriangle,
     TestTube2,
-    Settings2
+    Settings2,
+    Plus,
+    FlaskConical,
+    ShieldAlert
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 

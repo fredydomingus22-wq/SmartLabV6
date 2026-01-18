@@ -21,6 +21,8 @@ interface ManagerOverviewProps {
     initialSpecs?: any[];
 }
 
+const generateSparkline = () => Array.from({ length: 7 }, () => Math.floor(Math.random() * 20) + 10).map(v => ({ value: v }));
+
 export function ManagerOverview({ stats }: ManagerOverviewProps) {
     const sparklines = stats?.sparklines || {
         samples: Array(7).fill({ value: 0 }),

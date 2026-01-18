@@ -18,6 +18,10 @@ export async function getNonconformities(filters?: {
         .eq("organization_id", user.organization_id)
         .order("detected_date", { ascending: false });
 
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
     if (filters?.status) {
         query = query.eq("status", filters.status);
     }
@@ -65,12 +69,17 @@ export async function getNonconformityById(id: string) {
     const user = await getSafeUser();
 
     // Simplified query without user joins to avoid potential failures
-    const { data: nc, error: ncError } = await supabase
+    let query = supabase
         .from("nonconformities")
         .select("*")
         .eq("organization_id", user.organization_id)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: nc, error: ncError } = await query.single();
 
     if (ncError) {
         console.error("getNonconformityById error:", ncError);
@@ -103,34 +112,28 @@ export async function getQMSKpis() {
     const supabase = await createClient();
     const user = await getSafeUser();
 
+    const baseQuery = (table: string) => {
+        let q = supabase.from(table).select("*", { count: "exact", head: true }).eq("organization_id", user.organization_id);
+        if (user.plant_id) q = q.eq("plant_id", user.plant_id);
+        return q;
+    };
+
     // Open NCs
-    const { count: openNCs } = await supabase
-        .from("nonconformities")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", user.organization_id)
+    const { count: openNCs } = await baseQuery("nonconformities")
         .in("status", ["open", "under_investigation", "containment"]);
 
     // Overdue NCs
     const today = new Date().toISOString().split("T")[0];
-    const { count: overdueNCs } = await supabase
-        .from("nonconformities")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", user.organization_id)
+    const { count: overdueNCs } = await baseQuery("nonconformities")
         .neq("status", "closed")
         .lt("due_date", today);
 
     // Open CAPAs
-    const { count: openCAPAs } = await supabase
-        .from("capa_actions")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", user.organization_id)
+    const { count: openCAPAs } = await baseQuery("capa_actions")
         .in("status", ["planned", "in_progress"]);
 
     // Critical NCs
-    const { count: criticalNCs } = await supabase
-        .from("nonconformities")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", user.organization_id)
+    const { count: criticalNCs } = await baseQuery("nonconformities")
         .eq("severity", "critical")
         .neq("status", "closed");
 
@@ -214,10 +217,16 @@ export async function getParetoData(dimension: "category" | "nc_type" | "severit
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data: ncs, error } = await supabase
+    let query = supabase
         .from("nonconformities")
         .select(dimension)
         .eq("organization_id", user.organization_id);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: ncs, error } = await query;
 
     if (error || !ncs) return [];
 
@@ -256,6 +265,8 @@ export async function getOrganizationUsers() {
         .select("id, full_name, role")
         .eq("organization_id", user.organization_id)
         .order("full_name", { ascending: true });
+    // Note: Profiles are usually across plants in the same org, or at least visible for assignment.
+    // Keeping this org-level for now unless strictly specified.
 
     if (error) {
         console.error("getOrganizationUsers error:", error);
@@ -272,7 +283,7 @@ export async function getCAPAById(id: string) {
     const user = await getSafeUser();
 
     // 1. Fetch CAPA with joins
-    const { data: capa, error: capaError } = await supabase
+    let query = supabase
         .from("capa_actions")
         .select(`
             *,
@@ -282,8 +293,13 @@ export async function getCAPAById(id: string) {
             training_module:training_modules(id, title)
         `)
         .eq("organization_id", user.organization_id)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: capa, error: capaError } = await query.single();
 
     if (capaError) {
         console.error("getCAPAById error:", capaError);

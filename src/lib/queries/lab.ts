@@ -30,6 +30,10 @@ export async function getPendingSamples(options?: {
         .in("status", statuses)
         .is("deleted_at", null);
 
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {
         query = query.filter('type.test_category', 'neq', 'microbiological');
@@ -80,6 +84,10 @@ export async function getDashboardSamples(options?: {
         `)
         .eq("organization_id", user.organization_id)
         .is("deleted_at", null);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
 
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {
@@ -153,7 +161,7 @@ export async function getSampleWithResults(sampleId: string) {
 
     // Get sample details
     // [NC-ARCH-01] Optimized Query with Deep Joins
-    const { data: sample, error: sampleError } = await supabase
+    let query = supabase
         .from("samples")
         .select(`
             id,
@@ -174,13 +182,18 @@ export async function getSampleWithResults(sampleId: string) {
         `)
         .eq("organization_id", user.organization_id)
         .eq("id", sampleId)
-        .is("deleted_at", null)
-        .single();
+        .is("deleted_at", null);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: sample, error: sampleError } = await query.single();
 
     if (sampleError) throw sampleError;
 
     // Get analysis results
-    const { data: results, error: resultsError } = await supabase
+    let resultsQuery = supabase
         .from("lab_analysis")
         .select(`
             id,
@@ -197,12 +210,18 @@ export async function getSampleWithResults(sampleId: string) {
         .neq("is_valid", false)
         .order("analyzed_at", { ascending: false });
 
+    if (user.plant_id) {
+        resultsQuery = resultsQuery.eq("plant_id", user.plant_id);
+    }
+
+    const { data: results, error: resultsError } = await resultsQuery;
+
     if (resultsError) throw resultsError;
 
     // [NC-ARCH-01] Simplified Context Resolution
     // No more secondary queries or brittle fallbacks.
     const batchData: any = Array.isArray(sample.batch) ? sample.batch[0] : sample.batch;
-    const interData: any = Array.isArray(sample.intermediate) ? sample.intermediate[0] : sample.intermediate;
+    const interData: any = Array.isArray(sample.intermediate) ? (sample.intermediate[0] || sample.intermediate) : sample.intermediate;
     const sampleType: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
 
     // Direct resolution favored: Batch Product > Intermediate Product (based on Sample Type)
@@ -223,11 +242,17 @@ export async function getSampleWithResults(sampleId: string) {
     let specsMap: Record<string, any> = {};
     if (productId) {
         const sampleType: any = Array.isArray(sample.type) ? (sample.type[0] || sample.type) : sample.type;
-        const { data: specData } = await supabase
+        let specQuery = supabase
             .from("product_specifications")
             .select("qa_parameter_id, min_value, max_value, is_critical")
             .eq("product_id", productId)
-            .or(`sample_type_id.eq.${sampleType.id},sample_type_id.is.null`);
+            .eq("organization_id", user.organization_id);
+
+        if (user.plant_id) {
+            specQuery = specQuery.eq("plant_id", user.plant_id);
+        }
+
+        const { data: specData } = await specQuery.or(`sample_type_id.eq.${sampleType.id},sample_type_id.is.null`);
 
         specData?.forEach(s => {
             specsMap[s.qa_parameter_id] = s;
@@ -255,12 +280,18 @@ export async function getResultsByBatch(batchId: string) {
     const user = await getSafeUser();
 
     // Get samples for this batch
-    const { data: samples, error: samplesError } = await supabase
+    let samplesQuery = supabase
         .from("samples")
         .select("id")
         .eq("organization_id", user.organization_id)
         .eq("production_batch_id", batchId)
         .is("deleted_at", null);
+
+    if (user.plant_id) {
+        samplesQuery = samplesQuery.eq("plant_id", user.plant_id);
+    }
+
+    const { data: samples, error: samplesError } = await samplesQuery;
 
     if (samplesError) throw samplesError;
 
@@ -269,24 +300,29 @@ export async function getResultsByBatch(batchId: string) {
     if (sampleIds.length === 0) return [];
 
     // Get all results for these samples
-    const { data: results, error: resultsError } = await supabase
+    let resultsQuery = supabase
         .from("lab_analysis")
         .select(`
             id,
-            sample_id,
             value_numeric,
             value_text,
             is_conforming,
             analyzed_at,
             signed_transaction_hash,
             is_valid,
-            sample:samples(code, status),
-            parameter:qa_parameters(name, code, unit)
+            parameter:qa_parameters(id, name, code, unit),
+            sample:samples(id, code)
         `)
         .eq("organization_id", user.organization_id)
         .in("sample_id", sampleIds)
         .neq("is_valid", false)
         .order("analyzed_at", { ascending: false });
+
+    if (user.plant_id) {
+        resultsQuery = resultsQuery.eq("plant_id", user.plant_id);
+    }
+
+    const { data: results, error: resultsError } = await resultsQuery;
 
     if (resultsError) throw resultsError;
 
@@ -311,6 +347,8 @@ export async function getSampleTypes() {
         query = query.filter('test_category', 'eq', 'microbiological');
     }
 
+
+
     const { data, error } = await query.order("name");
 
     if (error) throw error;
@@ -333,6 +371,10 @@ export async function getQAParameters(options?: {
         .eq("status", "active")
         .order("name");
 
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
     if (options?.category) {
         query = query.eq("category", options.category);
     }
@@ -353,8 +395,12 @@ export async function getLabStats() {
     // Get sample counts with RBAC filtering
     let query = supabase
         .from("samples")
-        .select("id, status, collected_at, type:sample_types!inner(test_category)")
+        .select("id, status, collected_at, validated_at, type:sample_types!inner(test_category)")
         .eq("organization_id", user.organization_id);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
 
     if (user.role === 'lab_analyst') {
         query = query.neq('type.test_category', 'microbiological');
@@ -370,18 +416,20 @@ export async function getLabStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data: todayResults, error: resultsError } = await supabase
+    let todayResultsQuery = supabase
         .from("lab_analysis")
         .select("id")
         .eq("organization_id", user.organization_id)
         .neq("is_valid", false)
         .gte("analyzed_at", today.toISOString());
 
-    if (resultsError) throw resultsError;
+    if (user.plant_id) {
+        todayResultsQuery = todayResultsQuery.eq("plant_id", user.plant_id);
+    }
 
-    // Calculate Average TAT (Turnaround Time) Mock
-    // In a real scenario, we would calculate this based on created_at vs all analyses completed_at
-    const tat = "3.2h";
+    const { data: todayResults, error: resultsError } = await todayResultsQuery;
+
+    if (resultsError) throw resultsError;
 
     // Filter samples collected TODAY
     const samplesToday = samples?.filter(s => {
@@ -389,6 +437,42 @@ export async function getLabStats() {
         const d = new Date(s.collected_at);
         return d >= today;
     }).length || 0;
+
+    // Calculate Real TAT (30-day window)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    let totalDurationMs = 0;
+    let tatCount = 0;
+
+    samples?.forEach(s => {
+        // user check: must be validated in the last 30 days
+        if (s.validated_at && s.collected_at) {
+            const validatedDate = new Date(s.validated_at);
+            if (validatedDate >= thirtyDaysAgo) {
+                const diff = validatedDate.getTime() - new Date(s.collected_at).getTime();
+                if (diff > 0) {
+                    totalDurationMs += diff;
+                    tatCount++;
+                }
+            }
+        }
+    });
+
+    const avgTimeMs = tatCount > 0 ? totalDurationMs / tatCount : 0;
+    const avgHours = avgTimeMs / (1000 * 60 * 60);
+
+    const tat = avgHours > 24
+        ? `${(avgHours / 24).toFixed(1)}d`
+        : avgHours > 0
+            ? `${avgHours.toFixed(1)}h`
+            : "0h";
+
+    // Calculate Compliance Rate (Approved / Total Validated)
+    const approvedCount = samples?.filter(s => s.status === 'approved' || s.status === 'released').length || 0;
+    const rejectedCount = samples?.filter(s => s.status === 'rejected').length || 0;
+    const totalValidated = approvedCount + rejectedCount;
+    const complianceRate = totalValidated > 0 ? Math.round((approvedCount / totalValidated) * 100) : 100;
 
     const stats = {
         total: samples?.length || 0,
@@ -398,13 +482,13 @@ export async function getLabStats() {
         in_analysis: samples?.filter(s => s.status === "in_analysis").length || 0,
         reviewed: samples?.filter(s => s.status === "reviewed").length || 0,
         approved: samples?.filter(s => s.status === "approved").length || 0,
-        rejected: samples?.filter(s => s.status === "rejected").length || 0,
-        completed: samples?.filter(s => ["reviewed", "approved", "rejected"].includes(s.status)).length || 0,
+        rejected: rejectedCount,
+        completed: samples?.filter(s => ["reviewed", "approved", "rejected", "released", "archived"].includes(s.status)).length || 0,
         todayResultsCount: todayResults?.length || 0,
         tat,
-        approval_rate: 98,
-        compliance_rate: 96,
-        approved_today: 12
+        approval_rate: 98, // Legacy field, keeping for interface compatibility
+        compliance_rate: complianceRate,
+        approved_today: samples?.filter(s => (s.status === 'approved' || s.status === 'released') && s.validated_at && new Date(s.validated_at) >= today).length || 0
     };
 
     return stats;
@@ -417,7 +501,7 @@ export async function getRecentResults(limit: number = 10) {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("lab_analysis")
         .select(`
             id,
@@ -435,6 +519,12 @@ export async function getRecentResults(limit: number = 10) {
         .order("analyzed_at", { ascending: false })
         .limit(limit);
 
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return data;
 }
@@ -446,7 +536,7 @@ export async function getProductSpecifications(productId: string) {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("product_specifications")
         .select(`
             id,
@@ -458,8 +548,13 @@ export async function getProductSpecifications(productId: string) {
             parameter:qa_parameters(id, name, code, unit, category)
         `)
         .eq("organization_id", user.organization_id)
-        .eq("product_id", productId)
-        .order("parameter(name)");
+        .eq("product_id", productId);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data, error } = await query.order("parameter(name)");
 
     if (error) throw error;
     return data;
@@ -475,7 +570,7 @@ export async function getActiveTanks() {
     const user = await getSafeUser();
 
     // 1. Fetch active intermediates
-    const { data: intermediates, error } = await supabase
+    let query = supabase
         .from("intermediate_products")
         .select(`
             id,
@@ -490,6 +585,12 @@ export async function getActiveTanks() {
         .in("status", ["pending", "sampling", "in_analysis", "approved", "in_use"])
         .order("created_at", { ascending: false })
         .limit(50);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: intermediates, error } = await query;
 
     if (error) throw error;
 
@@ -525,13 +626,18 @@ export async function checkExistingResult(sampleId: string, parameterId: string)
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("lab_analysis")
         .select("id")
         .eq("organization_id", user.organization_id)
         .eq("sample_id", sampleId)
-        .eq("qa_parameter_id", parameterId)
-        .maybeSingle();
+        .eq("qa_parameter_id", parameterId);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) throw error;
     return data !== null;
@@ -564,6 +670,10 @@ export async function getKanbanSamples(options?: { sampleTypeIds?: string[] }) {
         `)
         .eq("organization_id", user.organization_id)
         .is("deleted_at", null);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
 
     // RBAC: Segregated Compliance
     if (user.role === 'lab_analyst') {
@@ -608,7 +718,7 @@ export async function getLabAdvancedMetrics() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: results, error } = await supabase
+    let query = supabase
         .from("lab_analysis")
         .select(`
             id,
@@ -619,6 +729,12 @@ export async function getLabAdvancedMetrics() {
         `)
         .eq("organization_id", user.organization_id)
         .gte("analyzed_at", thirtyDaysAgo.toISOString());
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: results, error } = await query;
 
     if (error) {
         console.error("Advanced metrics error detail:", JSON.stringify(error, null, 2));

@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, ArrowRight, ArrowLeft, GitBranch } from "lucide-react";
 import { TraceabilitySearch } from "./traceability-search";
+import { PageHeader } from "@/components/layout/page-header";
+
 
 export const dynamic = "force-dynamic";
 
@@ -37,17 +39,14 @@ export default async function TraceabilityPage() {
     const unwrap = (val: any) => Array.isArray(val) ? val[0] : val;
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                    <GitBranch className="h-8 w-8 text-primary" />
-                    Traceability
-                </h1>
-                <p className="text-muted-foreground">
-                    Track raw materials to finished products and vice versa
-                </p>
-            </div>
+        <div className="space-y-6 px-6 pb-10">
+            <PageHeader
+                title="Traceability"
+                description="Track raw materials to finished products and vice versa"
+                icon={<GitBranch className="h-6 w-6 text-blue-500" />}
+                variant="blue"
+            />
+
 
             {/* Search Section */}
             <TraceabilitySearch />

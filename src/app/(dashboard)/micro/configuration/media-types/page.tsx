@@ -12,21 +12,27 @@ import {
     FlaskConical,
     Thermometer,
     Clock,
-    Search,
-    Settings2
+    Settings2,
+    Beaker
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PageShell } from "@/components/defaults/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
-export default async function MediaTypesPage() {
+export default async function MediaTypesPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ plant: string }>;
+}) {
     const supabase = await createClient();
     const user = await getSafeUser();
+    const params = await searchParams;
 
     // For admins without plant, allow selection or show warning
-    let plantId = user.plant_id;
+    let plantId = user.plant_id || params.plant;
     let plants: { id: string; name: string }[] = [];
 
     // If no plant (admin without plant assignment), fetch available plants
@@ -48,49 +54,41 @@ export default async function MediaTypesPage() {
     // Still no plant? Show selection UI
     if (!plantId) {
         return (
-            <div className="space-y-8">
-                {/* Header */}
-                <div className="flex items-center gap-4">
-                    <Link href="/micro/configuration">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <FlaskConical className="h-8 w-8 text-emerald-500" />
-                            Tipos de Meio de Cultura
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Configure os meios utilizados nas análises microbiológicas.
-                        </p>
-                    </div>
-                </div>
+            <PageShell>
+                <PageHeader
+                    variant="purple"
+                    icon={<FlaskConical className="h-6 w-6" />}
+                    title="Tipos de Meio de Cultura"
+                    description="Configure os meios utilizados nas análises microbiológicas."
+                    backHref="/micro/configuration"
+                />
 
-                <Card className="glass border-dashed border-2">
+                <Card className="border-dashed border-2">
                     <CardContent className="flex flex-col items-center justify-center py-16">
-                        <AlertCircle className="h-12 w-12 text-yellow-500 mb-4" />
-                        <h2 className="text-xl font-bold text-slate-200 mb-2">Selecione uma Planta</h2>
-                        <p className="text-slate-400 text-sm max-w-md text-center mb-6">
-                            Como administrador, você precisa selecionar uma planta para gerenciar os tipos de meio de cultura.
+                        <div className="p-4 rounded-full bg-yellow-500/10 mb-4">
+                            <AlertCircle className="h-10 w-10 text-yellow-500" />
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Selecione uma Unidade</h2>
+                        <p className="text-muted-foreground text-sm max-w-md text-center mb-6">
+                            Como administrador, selecione uma unidade para gerir os tipos de meio de cultura.
                         </p>
 
                         {plants.length > 0 ? (
-                            <div className="grid gap-2">
+                            <div className="grid gap-2 w-full max-w-xs">
                                 {plants.map(plant => (
                                     <Link key={plant.id} href={`/micro/configuration/media-types?plant=${plant.id}`}>
-                                        <Button variant="outline" className="w-full min-w-[200px]">
+                                        <Button variant="outline" className="w-full">
                                             {plant.name}
                                         </Button>
                                     </Link>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-slate-500">Nenhuma planta configurada na organização.</p>
+                            <p className="text-muted-foreground">Nenhuma unidade configurada na organização.</p>
                         )}
                     </CardContent>
                 </Card>
-            </div>
+            </PageShell >
         );
     }
 
@@ -111,151 +109,141 @@ export default async function MediaTypesPage() {
         : "-";
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/micro/configuration">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <FlaskConical className="h-8 w-8 text-emerald-500" />
-                            Tipos de Meio de Cultura
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Configure os meios utilizados nas análises microbiológicas.
-                        </p>
-                    </div>
+        <PageShell>
+            <PageHeader
+                variant="purple"
+                icon={<FlaskConical className="h-6 w-6" />}
+                title="Tipos de Meio de Cultura"
+                description="Configure os meios utilizados nas análises microbiológicas."
+                backHref="/micro/configuration"
+                actions={<MediaTypeDialog plantId={plantId!} />}
+            />
+
+            <div className="p-6 space-y-6">
+                {/* Stats Cards */}
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Card className="border-emerald-500/20 bg-emerald-500/5">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Meios</CardTitle>
+                            <FlaskConical className="h-4 w-4 text-emerald-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalMedia}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Meios configurados</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-blue-500/20 bg-blue-500/5">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Incubação Média</CardTitle>
+                            <Clock className="h-4 w-4 text-blue-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{avgIncubation}h</div>
+                            <p className="text-xs text-muted-foreground mt-1">Tempo médio de incubação</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-orange-500/20 bg-orange-500/5">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Faixa de Temperatura</CardTitle>
+                            <Thermometer className="h-4 w-4 text-orange-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{tempRange}</div>
+                            <p className="text-xs text-muted-foreground mt-1">Temperaturas de incubação</p>
+                        </CardContent>
+                    </Card>
                 </div>
-                <MediaTypeDialog plantId={plantId!} />
-            </div>
 
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="glass border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total de Meios</CardTitle>
-                        <FlaskConical className="h-4 w-4 text-emerald-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{totalMedia}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Meios configurados</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Incubação Média</CardTitle>
-                        <Clock className="h-4 w-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{avgIncubation}h</div>
-                        <p className="text-xs text-muted-foreground mt-1">Tempo médio de incubação</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="glass border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Faixa de Temperatura</CardTitle>
-                        <Thermometer className="h-4 w-4 text-orange-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{tempRange}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Temperaturas de incubação</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Media Types Table */}
-            <Card className="glass">
-                <CardHeader className="border-b border-border/40">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings2 className="h-5 w-5 text-muted-foreground" />
-                                Meios Cadastrados
-                            </CardTitle>
-                            <CardDescription>
-                                Lista de todos os meios de cultura configurados para análises microbiológicas.
-                            </CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {mediaTypes && mediaTypes.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent border-b border-border/40">
-                                    <TableHead className="font-semibold">Nome do Meio</TableHead>
-                                    <TableHead className="font-semibold">Tempo de Incubação</TableHead>
-                                    <TableHead className="font-semibold">Temperatura</TableHead>
-                                    <TableHead className="font-semibold">Descrição</TableHead>
-                                    <TableHead className="w-[120px] text-right font-semibold">Ações</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {mediaTypes.map((mt) => (
-                                    <TableRow key={mt.id} className="group hover:bg-muted/30 transition-colors">
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                                                    <FlaskConical className="h-4 w-4 text-emerald-500" />
-                                                </div>
-                                                <span className="font-medium">{mt.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                                <Badge variant="outline" className="font-mono">
-                                                    {mt.incubation_hours_min} - {mt.incubation_hours_max}h
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Thermometer className="h-4 w-4 text-orange-500" />
-                                                <span className="font-mono font-medium">{mt.incubation_temp_c}°C</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="max-w-[300px]">
-                                            <span className="text-muted-foreground text-sm line-clamp-2">
-                                                {mt.description ||
-                                                    <span className="italic text-slate-500">Sem descrição</span>
-                                                }
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MediaTypeDialog plantId={plantId!} mediaType={mt} />
-                                                <DeleteButton
-                                                    action={deleteMediaTypeAction}
-                                                    id={mt.id}
-                                                    confirmMessage={`Tem certeza que deseja excluir "${mt.name}"?`}
-                                                />
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                                <FlaskConical className="h-8 w-8 text-emerald-500" />
+                {/* Media Types Table */}
+                <Card>
+                    <CardHeader className="border-b">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Settings2 className="h-5 w-5 text-muted-foreground" />
+                                    Meios Cadastrados
+                                </CardTitle>
+                                <CardDescription>
+                                    Lista de todos os meios de cultura configurados para análises microbiológicas.
+                                </CardDescription>
                             </div>
-                            <h3 className="text-lg font-semibold mb-2">Nenhum meio cadastrado</h3>
-                            <p className="text-muted-foreground text-sm max-w-md mb-6">
-                                Comece adicionando os meios de cultura utilizados nas suas análises microbiológicas.
-                            </p>
-                            <MediaTypeDialog plantId={plantId!} />
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {mediaTypes && mediaTypes.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="font-semibold">Nome do Meio</TableHead>
+                                        <TableHead className="font-semibold">Tempo de Incubação</TableHead>
+                                        <TableHead className="font-semibold">Temperatura</TableHead>
+                                        <TableHead className="font-semibold">Descrição</TableHead>
+                                        <TableHead className="w-[120px] text-right font-semibold">Ações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {mediaTypes.map((mt) => (
+                                        <TableRow key={mt.id} className="group hover:bg-muted/50 transition-colors">
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                                        <FlaskConical className="h-4 w-4 text-emerald-500" />
+                                                    </div>
+                                                    <span className="font-medium">{mt.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                                    <Badge variant="outline" className="font-mono bg-background">
+                                                        {mt.incubation_hours_min} - {mt.incubation_hours_max}h
+                                                    </Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Thermometer className="h-4 w-4 text-orange-500" />
+                                                    <span className="font-mono font-medium">{mt.incubation_temp_c}°C</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="max-w-[300px]">
+                                                <span className="text-muted-foreground text-sm line-clamp-2">
+                                                    {mt.description ||
+                                                        <span className="italic text-muted-foreground/50">Sem descrição</span>
+                                                    }
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <MediaTypeDialog plantId={plantId!} mediaType={mt} />
+                                                    <DeleteButton
+                                                        action={deleteMediaTypeAction}
+                                                        id={mt.id}
+                                                        confirmMessage={`Tem a certeza que deseja eliminar "${mt.name}"?`}
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
+                                <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
+                                    <FlaskConical className="h-8 w-8 text-emerald-500" />
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Nenhum meio cadastrado</h3>
+                                <p className="text-muted-foreground text-sm max-w-md mb-6">
+                                    Comece por adicionar os meios de cultura utilizados nas suas análises microbiológicas.
+                                </p>
+                                <MediaTypeDialog plantId={plantId!} />
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </PageShell>
     );
 }

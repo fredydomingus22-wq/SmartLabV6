@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { getAudits, getAuditKpis, getAuditChecklists } from "@/lib/queries/audits";
 import { getUsers } from "@/lib/queries/users";
 import {
@@ -77,14 +78,14 @@ export default async function AuditsPage({ searchParams }: PageProps) {
     ).slice(0, 3);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 px-6 pb-20">
             {/* Header */}
             <PageHeader
                 variant="emerald"
                 icon={<ClipboardCheck className="h-4 w-4" />}
-                overline="Industrial QMS / Audits"
-                title="Gestão de Auditorias"
-                description="Planeamento, execução e análise de auditorias conforme ISO 9001 Clause 9.2."
+                overline="GQ • Ciclo de Controlo e Auditoria"
+                title="Sistemas de Auditoria Industrial"
+                description="Planeamento, execução e análise crítica de auditorias sob norma ISO 9001:2015."
                 actions={<CreateAuditDialog checklists={checklists} users={users} />}
             />
 
@@ -96,14 +97,14 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                         className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-md gap-2"
                     >
                         <LayoutDashboard className="h-4 w-4" />
-                        Dashboard
+                        Resumo Operativo
                     </TabsTrigger>
                     <TabsTrigger
                         value="list"
                         className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:shadow-md gap-2"
                     >
                         <ListChecks className="h-4 w-4" />
-                        Lista de Auditorias
+                        Mapa de Auditorias
                     </TabsTrigger>
                 </TabsList>
 
@@ -113,7 +114,7 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
                         <KPISparkCard
                             variant="emerald"
-                            title="Total Auditorias"
+                            title="Volume de Auditorias"
                             value={dashboardKpis.totalAudits.toString().padStart(2, '0')}
                             description={`${dashboardKpis.completedAudits} concluídas`}
                             icon={<ClipboardCheck className="h-4 w-4" />}
@@ -122,36 +123,36 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                         />
                         <KPISparkCard
                             variant={dashboardKpis.complianceRate >= 80 ? "emerald" : dashboardKpis.complianceRate >= 60 ? "amber" : "rose"}
-                            title="Conformidade"
+                            title="Grau de Conformidade"
                             value={`${dashboardKpis.complianceRate}%`}
-                            description={`${dashboardKpis.compliantItems}/${dashboardKpis.totalItems} itens`}
+                            description={`${dashboardKpis.compliantItems}/${dashboardKpis.totalItems} pontos verificados`}
                             icon={<Target className="h-4 w-4" />}
                             data={[75, 78, 80, 82, 85].map(v => ({ value: v }))}
                             dataKey="value"
                         />
                         <KPISparkCard
                             variant="rose"
-                            title="Não Conformidades"
+                            title="Casos NC"
                             value={dashboardKpis.nonConformities.toString().padStart(2, '0')}
-                            description="NC Menores e Maiores"
+                            description="Não Conformidades Ativas"
                             icon={<FileWarning className="h-4 w-4" />}
                             data={[5, 4, 3, 4, 2].map(v => ({ value: v }))}
                             dataKey="value"
                         />
                         <KPISparkCard
                             variant="amber"
-                            title="Oport. Melhoria"
+                            title="Melhoria Contínua"
                             value={dashboardKpis.improvements.toString().padStart(2, '0')}
-                            description="OFIs identificadas"
+                            description="OFI / Observações"
                             icon={<Lightbulb className="h-4 w-4" />}
                             data={[2, 3, 2, 4, 3].map(v => ({ value: v }))}
                             dataKey="value"
                         />
                         <KPISparkCard
                             variant="rose"
-                            title="Em Atraso"
+                            title="Prazos Excedidos"
                             value={kpis.overdue.toString().padStart(2, '0')}
-                            description="Prazos ultrapassados"
+                            description="Incumprimento de Calendário"
                             icon={<AlertTriangle className="h-4 w-4" />}
                             data={[1, 0, 1, 0, kpis.overdue].map(v => ({ value: v }))}
                             dataKey="value"
@@ -175,9 +176,9 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                             {/* Quick Actions */}
                             <Card className="glass border-none shadow-xl bg-gradient-to-br from-emerald-500/5 to-transparent">
                                 <CardHeader className="pb-3">
-                                    <CardTitle className="text-base flex items-center gap-2">
+                                    <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] italic text-white flex items-center gap-3">
                                         <Plus className="h-4 w-4 text-emerald-400" />
-                                        Ações Rápidas
+                                        Operações de Sistema
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
@@ -207,9 +208,9 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                             {overdueAudits.length > 0 && (
                                 <Card className="glass border-rose-500/30 shadow-xl bg-gradient-to-br from-rose-500/10 to-transparent">
                                     <CardHeader className="pb-3">
-                                        <CardTitle className="text-base flex items-center gap-2 text-rose-400">
+                                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] italic text-rose-400 flex items-center gap-3">
                                             <AlertTriangle className="h-4 w-4" />
-                                            Auditorias em Atraso
+                                            Alertas de Incumprimento
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-2">
@@ -242,14 +243,14 @@ export default async function AuditsPage({ searchParams }: PageProps) {
                             <Card className="glass border-none shadow-xl">
                                 <CardHeader className="pb-3 border-b border-slate-800/50">
                                     <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-slate-400" />
-                                            Auditorias Recentes
+                                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] italic text-white flex items-center gap-3">
+                                            <FileText className="h-4 w-4 text-slate-500" />
+                                            Log de Auditorias Recentes
                                         </CardTitle>
                                         <Link href="/quality/audits?tab=list">
-                                            <Button variant="ghost" size="sm" className="text-emerald-400 text-xs">
-                                                Ver todas
-                                                <ArrowRight className="ml-1 h-3 w-3" />
+                                            <Button variant="ghost" size="sm" className="text-emerald-400 text-[10px] font-black uppercase tracking-widest italic group">
+                                                Consultar Histórico
+                                                <ArrowRight className="ml-2 h-3 w-3 group-hover:translate-x-1 transition-transform" />
                                             </Button>
                                         </Link>
                                     </div>
@@ -363,11 +364,11 @@ export default async function AuditsPage({ searchParams }: PageProps) {
             </Tabs>
 
             {/* Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
-                <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">ISO 9001:2015 Clause 9.2 Compliant</span>
-                <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-widest">Sincronizado</span>
+            <div className="flex items-center justify-between pt-6 border-t border-slate-800/50 opacity-60">
+                <span className="text-[9px] text-slate-500 font-black tracking-[0.3em] uppercase italic">SmartLab Audit Engine • ISO 9001 Regulatory Hub</span>
+                <div className="flex items-center gap-3">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+                    <span className="text-[9px] text-emerald-500 font-black uppercase tracking-[0.2em] italic">SGQ-Sync: Ativo</span>
                 </div>
             </div>
         </div>

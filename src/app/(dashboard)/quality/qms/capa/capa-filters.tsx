@@ -29,12 +29,7 @@ export function CAPAFilters() {
     const hasFilters = status || type;
 
     return (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-muted/30 rounded-lg border border-slate-800 glass">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
-                <Filter className="h-4 w-4" />
-                Filtros:
-            </div>
-
+        <div className="flex flex-row items-center gap-2 w-full">
             <SearchableSelect
                 value={status}
                 onValueChange={setStatus}
@@ -46,6 +41,7 @@ export function CAPAFilters() {
                     { value: "verified", label: "Verificada" },
                     { value: "closed", label: "Fechada" },
                 ]}
+                className="w-[180px]"
             />
 
             <SearchableSelect
@@ -56,18 +52,20 @@ export function CAPAFilters() {
                     { value: "corrective", label: "Corretiva" },
                     { value: "preventive", label: "Preventiva" },
                 ]}
+                className="w-[180px]"
             />
 
-            <Button onClick={applyFilters} size="sm">
-                Aplicar
-            </Button>
-
-            {hasFilters && (
-                <Button onClick={clearFilters} variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                    <X className="h-4 w-4 mr-1" />
-                    Limpar
+            <div className="flex items-center gap-2 ml-auto">
+                {hasFilters && (
+                    <Button onClick={clearFilters} variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                        <X className="h-3 w-3 mr-1" />
+                        Limpar
+                    </Button>
+                )}
+                <Button onClick={applyFilters} size="sm" className="h-8">
+                    Aplicar
                 </Button>
-            )}
+            </div>
         </div>
     );
 }

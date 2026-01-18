@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, Activity, Plus, Factory } from "lucide-react";
 import { ProductionDashboard } from "./production-dashboard";
 import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/defaults/page-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,7 @@ export default async function ProductionPage() {
     };
 
     return (
-        <div className="space-y-10">
+        <PageShell className="space-y-6 pb-10">
             <PageHeader
                 variant="indigo"
                 icon={<Factory className="h-4 w-4" />}
@@ -121,19 +122,21 @@ export default async function ProductionPage() {
                 }
             />
 
-            <main className="relative">
-                <ProductionDashboard stats={stats} batchesList={batchesList} />
-            </main>
+            <div className="px-4 md:px-6 pb-6 space-y-6">
+                <main className="relative">
+                    <ProductionDashboard stats={stats} batchesList={batchesList} />
+                </main>
 
-            {/* Global Status Footer */}
-            <footer className="flex items-center justify-between pt-10 border-t border-white/5 opacity-50">
-                <span className="text-[10px] font-mono tracking-widest uppercase">MES Production Engine • GAMP 5</span>
-                <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Live Production Monitoring</span>
-                </div>
-            </footer>
-        </div>
+                {/* Global Status Footer */}
+                <footer className="flex items-center justify-between pt-10 border-t border-white/5 opacity-50">
+                    <span className="text-[10px] font-mono tracking-widest uppercase">MES Production Engine • GAMP 5</span>
+                    <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Live Production Monitoring</span>
+                    </div>
+                </footer>
+            </div>
+        </PageShell>
     );
 }
 

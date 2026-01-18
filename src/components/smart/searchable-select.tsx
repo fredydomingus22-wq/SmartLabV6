@@ -96,7 +96,7 @@ export function SearchableSelect({
                                     <CommandItem
                                         key={option.value}
                                         value={option.value} // Use ID as value for definitive mapping
-                                        onSelect={(currentValue) => handleSelect(currentValue)}
+                                        onSelect={() => handleSelect(option.value)}
                                         keywords={[option.label]} // Still allow searching by label
                                     >
                                         <Check

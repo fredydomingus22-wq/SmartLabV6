@@ -33,10 +33,10 @@ import { useRouter } from "next/navigation";
 interface Order {
     id: string;
     code: string;
-    product: {
+    product?: {
         name: string;
         sku: string;
-    };
+    } | null;
     planned_quantity: number;
     unit: string;
     status: string;
@@ -153,10 +153,10 @@ export function OrderPlanningConsole({ orders, shifts, availableLines = [] }: Or
                                     {order.code}
                                 </div>
                                 <div className="font-bold text-lg text-slate-200 leading-tight">
-                                    {order.product.name}
+                                    {order.product?.name || "Produto Indisponível"}
                                 </div>
                                 <div className="text-xs font-mono text-slate-400 mt-1">
-                                    {order.product.sku}
+                                    {order.product?.sku || "N/A"}
                                 </div>
                             </div>
                             <DropdownMenu>
@@ -263,7 +263,7 @@ export function OrderPlanningConsole({ orders, shifts, availableLines = [] }: Or
                             <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/10 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400">Produto</span>
-                                    <span className="font-medium text-white">{selectedOrder?.product.name}</span>
+                                    <span className="font-medium text-white">{selectedOrder?.product?.name || "N/A"}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400">Volume Planeado</span>

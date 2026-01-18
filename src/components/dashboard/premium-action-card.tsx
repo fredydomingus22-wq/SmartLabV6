@@ -33,7 +33,7 @@ export function PremiumActionCard({
                 whileTap={{ scale: 0.99 }}
                 className="h-full"
             >
-                <div className="h-full relative overflow-hidden rounded-[2rem] border border-white/5 bg-slate-950/40 backdrop-blur-xl p-8 transition-all duration-500 hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/40 flex flex-col">
+                <div className="h-full relative overflow-hidden rounded-lg border border-white/5 bg-slate-950/40 backdrop-blur-xl p-6 transition-all duration-500 hover:border-white/10 group-hover:shadow-2xl group-hover:shadow-black/40 flex flex-col">
                     {/* Background Glow */}
                     <div
                         className="absolute -right-8 -top-8 w-32 h-32 blur-[60px] opacity-10 transition-opacity duration-500 group-hover:opacity-20 pointer-events-none"
@@ -42,7 +42,7 @@ export function PremiumActionCard({
 
                     <div className="flex items-center gap-6 mb-6">
                         <div
-                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 shadow-inner"
+                            className="p-4 rounded-lg bg-white/[0.03] border border-white/5 flex items-center justify-center transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 shadow-inner"
                             style={{ color }}
                         >
                             {icon}

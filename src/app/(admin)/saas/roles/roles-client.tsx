@@ -24,7 +24,7 @@ import { toast } from "sonner";
 
 const ROLES = [
     'admin', 'qa_manager', 'lab_analyst', 'micro_analyst', 'analyst', 'operator',
-    'auditor', 'quality', 'haccp', 'warehouse', 'lab_tech'
+    'auditor', 'quality', 'haccp', 'warehouse', 'rmpm_lab', 'lab_tech'
 ];
 
 const MODULES = [

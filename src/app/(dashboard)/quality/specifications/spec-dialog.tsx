@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/smart/searchable-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { createSpecificationAction, updateSpecificationAction, deleteSpecificationAction } from "@/app/actions/specifications";
@@ -313,19 +315,29 @@ export function SpecDialog({ mode, productId, specification, availableParameters
 
                             <div className="space-y-3">
                                 <Label className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hazard Classification</Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label htmlFor="type_oprp" className="relative flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all has-[:checked]:border-blue-500/50 has-[:checked]:bg-blue-500/10 group">
-                                        <input type="radio" id="type_oprp" name="haccp_is_pcc" value="false" defaultChecked={specification?.haccp_hazard?.is_pcc === false || !specification?.haccp_hazard} className="sr-only" />
-                                        <span className="text-xs font-medium text-slate-400 group-has-[:checked]:text-blue-400">OPRP</span>
-                                        <span className="text-[10px] text-slate-500 group-has-[:checked]:text-blue-500/70">Prerequisite</span>
-                                    </label>
+                                <RadioGroup defaultValue={specification?.haccp_hazard?.is_pcc?.toString() ?? "false"} name="haccp_is_pcc" className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <RadioGroupItem value="false" id="type_oprp" className="peer sr-only" />
+                                        <Label
+                                            htmlFor="type_oprp"
+                                            className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all peer-data-[state=checked]:border-blue-500/50 peer-data-[state=checked]:bg-blue-500/10 group"
+                                        >
+                                            <span className="text-xs font-medium text-slate-400 group-peer-data-[state=checked]:text-blue-400">OPRP</span>
+                                            <span className="text-[10px] text-slate-500 group-peer-data-[state=checked]:text-blue-500/70">Prerequisite</span>
+                                        </Label>
+                                    </div>
 
-                                    <label htmlFor="type_ccp" className="relative flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all has-[:checked]:border-red-500/50 has-[:checked]:bg-red-500/10 group">
-                                        <input type="radio" id="type_ccp" name="haccp_is_pcc" value="true" defaultChecked={specification?.haccp_hazard?.is_pcc === true} className="sr-only" />
-                                        <span className="text-xs font-bold text-slate-400 group-has-[:checked]:text-red-400 uppercase">CCP</span>
-                                        <span className="text-[10px] text-slate-500 group-has-[:checked]:text-red-500/70 text-center leading-tight">Critical Control Point</span>
-                                    </label>
-                                </div>
+                                    <div>
+                                        <RadioGroupItem value="true" id="type_ccp" className="peer sr-only" />
+                                        <Label
+                                            htmlFor="type_ccp"
+                                            className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-900/60 transition-all peer-data-[state=checked]:border-red-500/50 peer-data-[state=checked]:bg-red-500/10 group"
+                                        >
+                                            <span className="text-xs font-bold text-slate-400 group-peer-data-[state=checked]:text-red-400 uppercase">CCP</span>
+                                            <span className="text-[10px] text-slate-500 group-peer-data-[state=checked]:text-red-500/70 text-center leading-tight">Critical Control Point</span>
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
 
                             <div className="space-y-2">
@@ -344,18 +356,18 @@ export function SpecDialog({ mode, productId, specification, availableParameters
 
                             <div className="space-y-2">
                                 <Label htmlFor="haccp_category" className="text-slate-300">Hazard Category</Label>
-                                <select
-                                    name="haccp_category"
-                                    id="haccp_category"
-                                    className="flex h-10 w-full items-center justify-between rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50"
-                                    defaultValue={specification?.haccp_hazard?.hazard_category || "biological"}
-                                >
-                                    <option value="biological" className="bg-slate-900">Biological</option>
-                                    <option value="chemical" className="bg-slate-900">Chemical</option>
-                                    <option value="physical" className="bg-slate-900">Physical</option>
-                                    <option value="allergen" className="bg-slate-900">Allergen</option>
-                                    <option value="radiological" className="bg-slate-900">Radiological</option>
-                                </select>
+                                <Select name="haccp_category" defaultValue={specification?.haccp_hazard?.hazard_category || "biological"}>
+                                    <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-orange-500/50">
+                                        <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="biological">Biological</SelectItem>
+                                        <SelectItem value="chemical">Chemical</SelectItem>
+                                        <SelectItem value="physical">Physical</SelectItem>
+                                        <SelectItem value="allergen">Allergen</SelectItem>
+                                        <SelectItem value="radiological">Radiological</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>

@@ -24,6 +24,16 @@ function LoginForm() {
         toast.success(message);
     }
 
+    // Critical: Handle profile errors to prevent infinite loops
+    const errorParam = searchParams.get("error");
+    const [isBlocked, setIsBlocked] = useState(false);
+
+    // Effect to handle profile errors
+    if (errorParam === "no_profile" && !isBlocked) {
+        setIsBlocked(true);
+        toast.error("Erro Crítico: Perfil de utilizador não encontrado. Contacte o suporte.");
+    }
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);

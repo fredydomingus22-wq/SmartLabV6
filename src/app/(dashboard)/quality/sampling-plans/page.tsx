@@ -42,8 +42,8 @@ export default async function SamplingPlansPage() {
         <div className="space-y-10 animate-in fade-in duration-700">
             <PageHeader
                 title="Sistemas de Amostragem"
-                overline="Sampling Management"
-                description="Orquestração MES-LIMS • Automação de Amostras"
+                overline="GQ • Plano de Controlo Operacional"
+                description="Integração MES-LIMS • Automação de Colheitas"
                 icon={<ClipboardList className="h-4 w-4" />}
                 backHref="/quality"
                 actions={
@@ -60,9 +60,9 @@ export default async function SamplingPlansPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <KPISparkCard
                     variant="emerald"
-                    title="Planos Ativos"
+                    title="Planos em Vigor"
                     value={plans?.filter(p => p.is_active).length || 0}
-                    description="Monitoramento operacional"
+                    description="Monitorização operacional ativa"
                     icon={<ClipboardList className="h-4 w-4" />}
                     trend={{ value: 5, isPositive: true }}
                     data={mockData}
@@ -70,7 +70,7 @@ export default async function SamplingPlansPage() {
                 />
                 <KPISparkCard
                     variant="blue"
-                    title="Time Based"
+                    title="Gatilho Temporal"
                     value={plans?.filter(p => p.trigger_type === 'time_based').length || 0}
                     description="Checkpoints periódicos"
                     icon={<Clock className="h-4 w-4" />}
@@ -80,9 +80,9 @@ export default async function SamplingPlansPage() {
                 />
                 <KPISparkCard
                     variant="amber"
-                    title="Event Based"
+                    title="Gatilho de Evento"
                     value={plans?.filter(p => p.trigger_type === 'event_based').length || 0}
-                    description="Gatilhos de produção"
+                    description="Impulsos de produção"
                     icon={<Zap className="h-4 w-4" />}
                     trend={{ value: 1, isPositive: true }}
                     data={mockData}
@@ -90,9 +90,9 @@ export default async function SamplingPlansPage() {
                 />
                 <KPISparkCard
                     variant="purple"
-                    title="Volume Projectado"
+                    title="Projeção de Colheitas"
                     value="≈45"
-                    description="Amostras / Turno"
+                    description="Amostras por Turno"
                     icon={<FlaskConical className="h-4 w-4" />}
                     trend={{ value: 12, isPositive: true }}
                     data={mockData}
@@ -106,8 +106,8 @@ export default async function SamplingPlansPage() {
                     <div className="rounded-[2.5rem] border border-white/5 bg-slate-950/40 glass p-10 min-h-[500px]">
                         <div className="flex items-center justify-between mb-10">
                             <div className="space-y-1">
-                                <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">Protocolos Ativos</h2>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Diretriz ISO 2859-1 & NP</p>
+                                <h2 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">Protocolos em Execução</h2>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Diretriz Compliance ISO 2859-1 & NP</p>
                             </div>
                             <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
                                 <Activity className="h-5 w-5 text-blue-400 opacity-50" />
@@ -117,7 +117,7 @@ export default async function SamplingPlansPage() {
                         {(!plans || plans.length === 0) ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 italic">
                                 <FlaskConical className="h-12 w-12 mb-4 text-slate-600" />
-                                <p className="text-sm font-black uppercase tracking-widest">Nenhum plano configurado</p>
+                                <p className="text-sm font-black uppercase tracking-widest">Nenhum plano definido</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -174,8 +174,8 @@ export default async function SamplingPlansPage() {
                 <div className="space-y-6">
                     <div className="p-10 rounded-[2.5rem] border border-white/5 bg-slate-950/40 glass space-y-10">
                         <div className="space-y-1">
-                            <h3 className="text-sm font-black text-white italic uppercase tracking-widest leading-none">Resumo do Sistema</h3>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Configuração de Amostragem</p>
+                            <h3 className="text-sm font-black text-white italic uppercase tracking-widest leading-none">Status do Motor de Amostragem</h3>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic opacity-60">Configuração de Fluxo MES-LIMS</p>
                         </div>
 
                         <div className="space-y-8">

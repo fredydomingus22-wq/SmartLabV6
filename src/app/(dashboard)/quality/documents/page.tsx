@@ -54,13 +54,13 @@ export default async function DocumentsPage() {
     }
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-6 px-6 pb-20">
             <PageHeader
                 variant="emerald"
                 icon={<ShieldCheck className="h-4 w-4" />}
-                overline="Industrial QMS / DMS Module"
-                title="Document Station"
-                description="Controlo centralizado de integridade documental. Monitorize o ciclo de vida de SOPs, Métodos e Especificações."
+                overline="GQ • Ciclo de Gestão Documental"
+                title="Sistemas de Controlo Documental"
+                description="Controlo centralizado de integridade e vigência normativa. Monitorização de SOPs e Especificações."
                 backHref="/quality"
                 actions={<CreateDocumentDialog categories={categories} plants={plants} />}
             />
@@ -69,61 +69,61 @@ export default async function DocumentsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <KPISparkCard
                     variant="emerald"
-                    title="Documentos Ativos"
+                    title="Vigência Ativa"
                     value={stats.published.toString().padStart(2, '0')}
-                    description="Publicados e vigentes"
+                    description="Documentos publicados em vigor"
                     icon={<CheckCircle2 className="h-4 w-4" />}
                     data={[10, 12, 11, 13, 12, 14, 13].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="amber"
-                    title="Pendente Aprovação"
+                    title="Controlo de Revisão"
                     value={stats.pending.toString().padStart(2, '0')}
-                    description="Aguardando revisão/assinatura"
+                    description="Pendente de Revisão / Assinatura"
                     icon={<Clock className="h-4 w-4" />}
                     data={[2, 3, 2, 4, 3, 4, 4].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="indigo"
-                    title="Drafts / Revisão"
+                    title="Produção Documental"
                     value={stats.drafts.toString().padStart(2, '0')}
-                    description="Em fase de elaboração"
+                    description="Documentos em fase de elaboração"
                     icon={<FileText className="h-4 w-4" />}
                     data={[5, 4, 6, 5, 7, 6, 8].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="rose"
-                    title="Próximas Revisões"
+                    title="Revisão Periódica"
                     value={stats.upcomingReview.toString().padStart(2, '0')}
-                    description="Revisão periódica (30d)"
+                    description="Prazos de revisão (Janela 30 dias)"
                     icon={<AlertTriangle className="h-4 w-4" />}
                     data={[1, 0, 1, 2, 1, 2, 2].map(v => ({ value: v }))}
                     dataKey="value"
                 />
             </div>
 
-            <Tabs defaultValue="documents" className="space-y-8">
+            <Tabs defaultValue="documents" className="space-y-6">
                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
                     <TabsList className="bg-transparent border-none p-0 h-auto gap-8">
                         <TabsTrigger
                             value="documents"
-                            className="bg-transparent border-none p-0 pb-4 h-auto data-[state=active]:bg-transparent data-[state=active]:text-emerald-400 border-b-2 border-transparent data-[state=active]:border-emerald-500 rounded-none gap-2 text-xs font-black uppercase tracking-widest text-slate-500"
+                            className="bg-transparent border-none p-0 pb-4 h-auto data-[state=active]:bg-transparent data-[state=active]:text-emerald-400 border-b-2 border-transparent data-[state=active]:border-emerald-500 rounded-none gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500"
                         >
-                            Industrial Repository
+                            Repositório Industrial
                         </TabsTrigger>
                         <TabsTrigger
                             value="training"
-                            className="bg-transparent border-none p-0 pb-4 h-auto data-[state=active]:bg-transparent data-[state=active]:text-indigo-400 border-b-2 border-transparent data-[state=active]:border-indigo-500 rounded-none gap-2 text-xs font-black uppercase tracking-widest text-slate-500"
+                            className="bg-transparent border-none p-0 pb-4 h-auto data-[state=active]:bg-transparent data-[state=active]:text-indigo-400 border-b-2 border-transparent data-[state=active]:border-indigo-500 rounded-none gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500"
                         >
-                            Training Matrix
+                            Matriz de Formação
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="documents" className="mt-0 outline-none">
+                <TabsContent value="documents" className="mt-0 outline-none focus-visible:ring-0">
                     <DocumentsClient
                         documents={documents}
                         categories={categories}
@@ -131,20 +131,20 @@ export default async function DocumentsPage() {
                     />
                 </TabsContent>
 
-                <TabsContent value="training" className="mt-0 outline-none">
+                <TabsContent value="training" className="mt-0 outline-none focus-visible:ring-0">
                     <div className="glass-dark p-20 rounded-[2.5rem] border-white/5 shadow-2xl text-center space-y-6">
                         <div className="h-24 w-24 bg-indigo-500/10 rounded-[2rem] flex items-center justify-center mx-auto border border-indigo-500/20 shadow-indigo-500/10 shadow-2xl">
                             <GraduationCap className="h-12 w-12 text-indigo-400" />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-3xl font-black tracking-tight">Industrial Training Hub</h2>
-                            <p className="text-slate-500 max-w-lg mx-auto font-medium text-sm leading-relaxed">
-                                Faça a gestão de competências críticas e registos de formação 21 CFR Part 11. Garanta que apenas pessoal qualificado opera o sistema.
+                            <h2 className="text-3xl font-black tracking-tight uppercase italic text-white">Consola de Qualificações</h2>
+                            <p className="text-slate-500 max-w-lg mx-auto font-black uppercase text-[10px] tracking-widest leading-relaxed italic">
+                                Gestão de competências críticas e evidências de formação (21 CFR Part 11). Garanta a qualificação técnica operacional.
                             </p>
                         </div>
                         <Link href="/quality/training">
-                            <Button className="h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest text-[10px] px-8 rounded-xl shadow-lg shadow-indigo-500/20">
-                                Aceder à Consola de Formação
+                            <Button className="h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.2em] text-[10px] px-10 rounded-xl shadow-lg shadow-indigo-500/20 italic">
+                                Gestão de Competências
                             </Button>
                         </Link>
                     </div>

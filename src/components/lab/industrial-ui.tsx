@@ -4,9 +4,10 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+
 /**
  * ContextRow: Standard row for displaying metadata (Sample, Product, Batch)
- * with support for status indicators (e.g., calibration status).
  */
 export function IndustrialContextRow({ label, value, icon, highlight, status }: {
     label: string,
@@ -16,17 +17,17 @@ export function IndustrialContextRow({ label, value, icon, highlight, status }: 
     status?: "calibrated" | "expired"
 }) {
     return (
-        <div className="flex items-center justify-between p-3 px-4 hover:bg-slate-800/30 transition-colors">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+        <div className="flex items-center justify-between py-1.5 px-4 hover:bg-accent/40 transition-colors border-b last:border-b-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter flex items-center gap-1.5 opacity-80">
                 {icon} {label}
             </span>
             <span className={cn(
-                "text-xs font-semibold truncate max-w-[150px]",
-                highlight ? "text-blue-400 uppercase font-black" : "text-slate-300",
-                status === "expired" && "text-rose-400 font-black flex items-center gap-1 animate-pulse"
+                "text-[12px] font-semibold truncate max-w-[140px] tracking-tight",
+                highlight ? "text-primary uppercase font-black" : "text-foreground",
+                status === "expired" && "text-destructive font-black flex items-center gap-1"
             )}>
                 {value}
-                {status === "expired" && <AlertTriangle className="h-3 w-3" />}
+                {status === "expired" && <AlertTriangle className="h-2.5 w-2.5" />}
             </span>
         </div>
     );
@@ -35,16 +36,16 @@ export function IndustrialContextRow({ label, value, icon, highlight, status }: 
 /**
  * SpecBox: Compact display for specification limits (Min, Target, Max).
  */
-export function IndustrialSpecBox({ label, value, color = "text-slate-400" }: {
+export function IndustrialSpecBox({ label, value, color = "text-muted-foreground" }: {
     label: string,
     value: any,
     color?: string
 }) {
     return (
-        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800/50 text-center">
-            <div className="text-[8px] font-bold text-slate-500 uppercase">{label}</div>
-            <div className={cn("text-xs font-black font-mono", color)}>
-                {value !== null && value !== undefined ? value : "-"}
+        <div className="p-1 px-2 rounded bg-muted/30 border text-center min-w-[50px]">
+            <div className="text-[8px] font-black text-muted-foreground uppercase leading-none mb-0.5">{label}</div>
+            <div className={cn("text-[11px] font-bold font-mono leading-none tracking-tighter", color)}>
+                {value !== null && value !== undefined ? value : "—"}
             </div>
         </div>
     );
@@ -60,27 +61,30 @@ export function IndustrialStatusBadge({ status, className }: {
     const config = {
         conforming: {
             label: "CONFORME",
-            styles: "border-emerald-500/50 text-emerald-400 bg-emerald-500/5 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+            variant: "outline" as const,
+            styles: "border-emerald-500/50 text-emerald-500 bg-emerald-500/5"
         },
         non_conforming: {
             label: "FORA DE ESPECIFICAÇÃO (OOS)",
-            styles: "border-rose-500/50 text-rose-400 bg-rose-500/5 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+            variant: "destructive" as const,
+            styles: "bg-destructive/10 text-destructive border-destructive/20"
         },
         unknown: {
             label: "PENDENTE",
-            styles: "border-slate-500/50 text-slate-400 bg-slate-500/5"
+            variant: "outline" as const,
+            styles: "text-muted-foreground"
         }
     };
 
-    const { label, styles } = config[status];
+    const { label, variant, styles } = config[status];
 
     return (
-        <div className={cn(
-            "px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-tighter transition-all",
+        <Badge variant={variant} className={cn(
+            "rounded-full text-[9px] font-black uppercase tracking-tighter transition-all",
             styles,
             className
         )}>
             {label}
-        </div>
+        </Badge>
     );
 }

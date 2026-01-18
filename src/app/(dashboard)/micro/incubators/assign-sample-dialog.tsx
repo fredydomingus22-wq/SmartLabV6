@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FlaskConical, ThermometerSun, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -124,28 +124,26 @@ export function AssignSampleDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="w-full bg-slate-800 hover:bg-orange-500 hover:text-white border border-slate-700 transition-all group font-bold">
+                <Button variant="outline" className="w-full border-dashed border-border hover:border-primary hover:bg-primary/5 hover:text-primary transition-all group font-bold">
                     <ThermometerSun className="mr-2 h-4 w-4 group-hover:animate-pulse" />
                     Incubar Amostra
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg glass border-slate-800 bg-slate-950/90 shadow-2xl backdrop-blur-xl">
-                <DialogHeader className="border-b border-slate-800 pb-4">
-                    <DialogTitle className="flex items-center gap-3 text-xl font-black tracking-tight text-white">
-                        <div className="p-2 rounded-lg bg-orange-500/20 border border-orange-500/30">
-                            <FlaskConical className="h-5 w-5 text-orange-400" />
-                        </div>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader className="pb-4 border-b border-border">
+                    <DialogTitle className="flex items-center gap-3">
+                        <FlaskConical className="h-5 w-5 text-primary" />
                         Incubar em {incubatorName}
                     </DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                        Temperatura: <span className="text-orange-400 font-bold">{incubatorTempC}°C</span>
+                    <DialogDescription>
+                        Temperatura atual: <span className="text-foreground font-bold">{incubatorTempC}°C</span>
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 pt-4">
                     {/* Sample Selection */}
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-1">Amostra</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Amostra</Label>
                         <SearchableSelect
                             name="sample_id"
                             required
@@ -161,7 +159,7 @@ export function AssignSampleDialog({
 
                     {/* Media Lot Selection */}
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-1">Meio de Cultura</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Meio de Cultura</Label>
                         <SearchableSelect
                             name="media_lot_id"
                             required
@@ -178,19 +176,19 @@ export function AssignSampleDialog({
                     {/* Parameter Selection */}
                     {selectedSampleId && (
                         <div className="space-y-3">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-1">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">
                                 Parâmetros a Incubar
                             </Label>
 
                             {isLoading ? (
-                                <div className="py-8 text-center text-slate-500">Carregando parâmetros...</div>
+                                <div className="py-8 text-center text-muted-foreground">A carregar parâmetros...</div>
                             ) : pendingParams.length === 0 ? (
-                                <div className="py-8 text-center text-slate-500 bg-slate-900/50 rounded-lg border border-slate-800">
-                                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                                <div className="py-8 text-center text-muted-foreground bg-muted/20 rounded-lg border border-border">
+                                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                                     <p>Sem parâmetros pendentes para esta amostra.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                                     {pendingParams.map((param) => {
                                         const compatible = isCompatible(param.incubationTempC);
                                         const isSelected = selectedResultIds.has(param.resultId);
@@ -202,22 +200,23 @@ export function AssignSampleDialog({
                                                 className={cn(
                                                     "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
                                                     isSelected
-                                                        ? "bg-blue-500/10 border-blue-500/30"
-                                                        : "bg-slate-900/50 border-slate-800 hover:border-slate-700"
+                                                        ? "bg-primary/5 border-primary/30"
+                                                        : "bg-card border-border hover:border-primary/20",
+                                                    !compatible && "opacity-75"
                                                 )}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <Checkbox
                                                         checked={isSelected}
                                                         onCheckedChange={() => toggleParam(param.resultId)}
-                                                        className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                                        className="data-[state=checked]:bg-primary"
                                                     />
                                                     <div>
-                                                        <div className="text-sm font-medium text-slate-200">
+                                                        <div className="text-sm font-medium">
                                                             {param.parameterName}
                                                         </div>
                                                         {param.incubationTempC && (
-                                                            <div className="text-xs text-slate-500">
+                                                            <div className="text-xs text-muted-foreground">
                                                                 Temp: {param.incubationTempC}°C
                                                             </div>
                                                         )}
@@ -225,12 +224,12 @@ export function AssignSampleDialog({
                                                 </div>
 
                                                 {compatible ? (
-                                                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[10px]">
+                                                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-500 text-[10px]">
                                                         <CheckCircle2 className="h-3 w-3 mr-1" />
                                                         Compatível
                                                     </Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="border-yellow-500/30 text-yellow-400 text-[10px]">
+                                                    <Badge variant="outline" className="border-yellow-500/30 text-yellow-500 text-[10px]">
                                                         <AlertCircle className="h-3 w-3 mr-1" />
                                                         Temp. Diferente
                                                     </Badge>
@@ -244,13 +243,15 @@ export function AssignSampleDialog({
                     )}
 
                     {/* Submit Button */}
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting || !selectedSampleId || !selectedMediaLotId || selectedResultIds.size === 0}
-                        className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold"
-                    >
-                        {isSubmitting ? "Iniciando..." : `Iniciar Incubação (${selectedResultIds.size} param.)`}
-                    </Button>
+                    <DialogFooter>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting || !selectedSampleId || !selectedMediaLotId || selectedResultIds.size === 0}
+                            className="w-full sm:w-auto font-bold"
+                        >
+                            {isSubmitting ? "A iniciar..." : `Iniciar Incubação (${selectedResultIds.size} param.)`}
+                        </Button>
+                    </DialogFooter>
                 </div>
             </DialogContent>
         </Dialog>

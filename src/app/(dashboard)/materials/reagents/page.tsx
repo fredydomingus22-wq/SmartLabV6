@@ -14,6 +14,9 @@ export const dynamic = "force-dynamic";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
+import { PageShell } from "@/components/defaults/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+
 export default async function ReagentsPage() {
     const supabase = await createClient();
 
@@ -81,7 +84,7 @@ export default async function ReagentsPage() {
             const r = reagents?.find(i => i.id === m.reagent_id);
             return {
                 reagent: r?.name || "Unknown",
-                batch: "Batch " + m.expiry_date,
+                batch: "Lote " + m.expiry_date,
                 expiry: m.expiry_date
             };
         });
@@ -113,62 +116,60 @@ export default async function ReagentsPage() {
     const plantId = plants?.[0]?.id || "";
 
     return (
-        <div className="container py-8 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                        <Sparkles className="h-8 w-8 text-purple-400" />
-                        <span className="bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                            Stock de Reagentes
-                        </span>
-                    </h1>
-                    <p className="text-slate-400 mt-2 pl-11 max-w-2xl">
-                        Gestão de inventário químico, controlo de validades e registo de movimentos de consumíveis.
-                    </p>
-                </div>
-            </div>
-
-            <InventoryDashboard
-                totalReagents={reagents?.length || 0}
-                activeReagents={activeReagents}
-                lowStockCount={lowStockItems.length}
-                lowStockItems={lowStockItems.map(i => ({ name: i.name, current: i.current_stock, min: i.min_stock_level || 0, unit: i.unit || 'units' }))}
-                mostUsed={mostUsed}
-                expiringBatches={expiringBatches}
-                stockInTrend={stockInTrend}
-                stockOutTrend={stockOutTrend}
-                totalTrend={totalTrend}
-            />
-
-            <Tabs defaultValue="stock" className="space-y-4">
-                <TabsList className="bg-slate-900/50 border border-slate-800">
-                    <TabsTrigger value="stock" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                        <Beaker className="h-4 w-4 mr-2" />
-                        Stock Atual
-                    </TabsTrigger>
-                    <TabsTrigger value="history" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                        <History className="h-4 w-4 mr-2" />
-                        Histórico de Movimentos
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="stock" className="space-y-4">
-                    <div className="flex justify-end gap-2">
+        <PageShell>
+            <PageHeader
+                variant="blue"
+                icon={<Beaker className="h-4 w-4 stroke-[1.5px]" />}
+                overline="Gestão Laboratorial • Entidades Químicas"
+                title="Entidades Químicas & Reagentes"
+                description="Gestão técnico-operacional de stocks, validades e conformidade de reagentes."
+                backHref="/materials"
+                actions={
+                    <div className="flex items-center gap-3">
                         <StockMovementDialog reagents={reagents || []} />
                         <ReagentDialog plantId={plantId} />
                     </div>
-                    <div className="glass rounded-xl p-6">
-                        <StockPageClient data={processedData} />
-                    </div>
-                </TabsContent>
+                }
+            />
 
-                <TabsContent value="history">
-                    <div className="glass rounded-xl p-6">
-                        <MovementsPageClient movements={movements || []} />
-                    </div>
-                </TabsContent>
-            </Tabs>
-        </div>
+            <div className="p-6 space-y-6 pb-20">
+                <InventoryDashboard
+                    totalReagents={reagents?.length || 0}
+                    activeReagents={activeReagents}
+                    lowStockCount={lowStockItems.length}
+                    lowStockItems={lowStockItems.map(i => ({ name: i.name, current: i.current_stock, min: i.min_stock_level || 0, unit: i.unit || 'units' }))}
+                    mostUsed={mostUsed}
+                    expiringBatches={expiringBatches}
+                    stockInTrend={stockInTrend}
+                    stockOutTrend={stockOutTrend}
+                    totalTrend={totalTrend}
+                />
+
+                <Tabs defaultValue="stock" className="space-y-6">
+                    <TabsList className="bg-slate-900/50 border border-slate-800 p-1 h-11 rounded-xl">
+                        <TabsTrigger value="stock" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg py-1.5 px-6 shadow-none font-black uppercase text-[10px] tracking-widest transition-all h-full">
+                            <Beaker className="h-3.5 w-3.5 mr-2 stroke-[1.5px]" />
+                            Stock Atual
+                        </TabsTrigger>
+                        <TabsTrigger value="history" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg py-1.5 px-6 shadow-none font-black uppercase text-[10px] tracking-widest transition-all h-full">
+                            <History className="h-3.5 w-3.5 mr-2 stroke-[1.5px]" />
+                            Histórico de Movimentos
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="stock" className="space-y-4 outline-none">
+                        <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl overflow-hidden shadow-xl">
+                            <StockPageClient data={processedData} />
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="history" className="space-y-4 outline-none">
+                        <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl overflow-hidden shadow-xl">
+                            <MovementsPageClient movements={movements || []} />
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </div>
+        </PageShell>
     );
 }

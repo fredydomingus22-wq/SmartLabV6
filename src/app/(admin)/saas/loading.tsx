@@ -1,5 +1,5 @@
 import { SkeletonGrid } from "@/components/smart/skeleton-grid";
-import { PageHeader } from "@/components/smart/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function SaaSLoading() {
     return (

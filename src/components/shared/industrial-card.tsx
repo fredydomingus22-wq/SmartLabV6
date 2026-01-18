@@ -3,7 +3,14 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon, ArrowUpRight, ArrowDownRight, Info } from "lucide-react";
-import { Box, Typography, Skeleton, Tooltip, IconButton } from "@mui/material";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 interface IndustrialCardProps {
@@ -53,21 +60,21 @@ export function IndustrialCard({
 
     // Status mapping for the subtle industrial accent (top line)
     const accentColors = {
-        active: "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)]",
-        warning: "bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]",
-        error: "bg-rose-600 shadow-[0_0_15px_rgba(225,29,72,0.4)]",
-        success: "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]",
-        neutral: "bg-slate-700 shadow-none",
+        active: "bg-primary shadow-[0_0_15px_rgba(59,130,246,0.4)]",
+        warning: "bg-warning shadow-[0_0_15px_rgba(245,158,11,0.4)]",
+        error: "bg-destructive shadow-[0_0_15px_rgba(225,29,72,0.4)]",
+        success: "bg-success shadow-[0_0_15px_rgba(16,185,129,0.4)]",
+        neutral: "bg-muted shadow-none",
     };
 
     const cardContent = (
         <div
             className={cn(
-                "relative flex flex-col h-full rounded-[24px] overflow-hidden transition-all duration-500 group",
+                "relative flex flex-col h-full rounded-lg overflow-hidden transition-all duration-500 group",
                 // DEEPER PREMIUM GLASS (Refined based on reference image)
                 "bg-slate-900/60 backdrop-blur-3xl border border-white/5 shadow-2xl",
                 "hover:bg-slate-900/80 hover:border-white/15 transition-all duration-300",
-                variant === "analytics" && "min-h-[200px]",
+                variant === "analytics" && "h-[260px]",
                 className
             )}
         >
@@ -77,25 +84,33 @@ export function IndustrialCard({
             {/* Premium Analytics Variant (EXACT match to Reference) */}
             {variant === "analytics" && (
                 <div className="p-6 flex flex-col h-full group">
+
                     {/* Header Row: Title + Trend (As seen in image) */}
                     <div className="flex justify-between items-center mb-6 relative z-10 w-full">
                         <div className="flex items-center gap-2">
-                            <Typography className="text-sm font-semibold text-slate-300/80 group-hover:text-white transition-colors">
+                            <p className="text-sm font-semibold text-slate-300/80 group-hover:text-white transition-colors">
                                 {title}
-                            </Typography>
+                            </p>
                             {tooltip && (
-                                <Tooltip title={tooltip} arrow placement="top">
-                                    <IconButton size="small" className="p-0 text-slate-600 hover:text-slate-400 transition-colors">
-                                        <Info className="h-3.5 w-3.5" />
-                                    </IconButton>
-                                </Tooltip>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-slate-600 hover:text-slate-400">
+                                                <Info className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{tooltip}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             )}
                         </div>
 
                         {trend && (
                             <div className={cn(
                                 "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5",
-                                trend.isPositive ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                                trend.isPositive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                             )}>
                                 {trend.isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                                 {trend.value}%
@@ -106,18 +121,17 @@ export function IndustrialCard({
                     {/* Value Area (Increased prominence as seen in image) */}
                     <div className="mb-1">
                         {loading ? (
-                            <Skeleton variant="text" width={100} height={48} className="bg-white/5" />
+                            <Skeleton className="h-10 w-24 bg-white/5" />
                         ) : (
-                            <Typography className="text-4xl font-black tracking-tight text-white group-hover:text-blue-50 transition-colors">
+                            <p className="text-4xl font-black tracking-tight text-white group-hover:text-blue-50 transition-colors">
                                 {value}
-                            </Typography>
+                            </p>
                         )}
                     </div>
 
-                    {/* Description */}
-                    <Typography className="text-[11px] leading-relaxed text-slate-500 font-medium group-hover:text-slate-400 transition-colors">
+                    <p className="text-[11px] leading-relaxed text-slate-500 font-medium group-hover:text-slate-400 transition-colors">
                         {description}
-                    </Typography>
+                    </p>
 
                     {/* Grounded Sparkline Container (flush with bottom) */}
                     <div className="h-[80px] min-h-[80px] w-full mt-auto -mx-2 mb-[-12px] relative overflow-visible flex items-end">
@@ -142,22 +156,29 @@ export function IndustrialCard({
                                 <div>
                                     {title && (
                                         <div className="flex items-center gap-2">
-                                            <Typography className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-400 transition-colors">
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-400 transition-colors">
                                                 {title}
-                                            </Typography>
+                                            </p>
                                             {tooltip && (
-                                                <Tooltip title={tooltip} arrow placement="top">
-                                                    <IconButton size="small" className="p-0 text-slate-600 hover:text-slate-400 transition-colors">
-                                                        <Info className="h-3 w-3" />
-                                                    </IconButton>
-                                                </Tooltip>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-4 w-4 p-0 text-slate-600 hover:text-slate-400">
+                                                                <Info className="h-3 w-3" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{tooltip}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             )}
                                         </div>
                                     )}
                                     {subtitle && (
-                                        <Typography className="text-sm font-bold text-slate-200 mt-1">
+                                        <p className="text-sm font-bold text-slate-200 mt-1">
                                             {subtitle}
-                                        </Typography>
+                                        </p>
                                     )}
                                 </div>
                             </div>
@@ -170,7 +191,7 @@ export function IndustrialCard({
                     <div className={cn("flex-grow p-6 pt-2", bodyClassName)}>
                         {loading ? (
                             <div className="space-y-3">
-                                <Skeleton variant="rectangular" height={120} className="rounded-2xl bg-white/5" />
+                                <Skeleton className="h-[120px] w-full rounded-lg bg-white/5" />
                             </div>
                         ) : (
                             children
@@ -220,8 +241,9 @@ export function IndustrialGrid({
     };
 
     return (
-        <div className={cn("grid gap-8", colStyles[cols], className)}>
+        <div className={cn("grid gap-6", colStyles[cols], className)}>
             {children}
         </div>
     );
 }
+

@@ -34,7 +34,10 @@ const MediaTypeSchema = z.object({
 export async function createMediaTypeAction(formData: FormData) {
     const supabase = await createClient();
 
-    const { data: userData } = await supabase.from("user_profiles").select("organization_id").single();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Unauthorized" };
+
+    const { data: userData } = await supabase.from("user_profiles").select("organization_id").eq("id", user.id).single();
 
     const rawData = {
         name: formData.get("name"),

@@ -842,10 +842,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ fro
                             <MicroView
                                 user={user}
                                 stats={{
-                                    ...stats,
+                                    ...stats!,
                                     micro: {
-                                        ...stats.micro,
-                                        readingsDue: assignments.filter(a => a.type === 'micro').length
+                                        ...stats!.micro,
+                                        readingsDue: assignments!.filter((a: any) => a.type === 'micro').length
                                     }
                                 }}
                                 assignments={assignments}

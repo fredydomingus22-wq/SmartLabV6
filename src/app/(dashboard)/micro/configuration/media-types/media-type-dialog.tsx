@@ -36,48 +36,48 @@ export function MediaTypeDialog({ plantId, mediaType }: MediaTypeDialogProps) {
                 ) : (
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Media Type
+                        Adicionar
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] glass">
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit" : "New"} Media Type</DialogTitle>
+                    <DialogTitle>{isEditing ? "Editar" : "Novo"} Meio de Cultura</DialogTitle>
                 </DialogHeader>
 
                 <ActionForm
                     action={isEditing ? updateMediaTypeAction : createMediaTypeAction}
                     onSuccess={() => setOpen(false)}
-                    submitText={isEditing ? "Update" : "Create"}
+                    submitText={isEditing ? "Atualizar" : "Criar"}
                 >
                     <div className="grid gap-4 py-4">
                         <input type="hidden" name="plant_id" value={plantId} />
                         {isEditing && <input type="hidden" name="id" value={mediaType.id} />}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="name">Name</Label>
+                            <Label htmlFor="name">Nome</Label>
                             <Input
                                 id="name"
                                 name="name"
-                                placeholder="e.g. PCA, VRB"
+                                placeholder="ex: PCA, VRB"
                                 defaultValue={mediaType?.name}
                                 required
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description">Descrição</Label>
                             <Textarea
                                 id="description"
                                 name="description"
-                                placeholder="Details about this media..."
+                                placeholder="Detalhes sobre este meio..."
                                 defaultValue={mediaType?.description || ""}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="incubation_hours_min">Min Hours</Label>
+                                <Label htmlFor="incubation_hours_min">Min Horas</Label>
                                 <Input
                                     id="incubation_hours_min"
                                     name="incubation_hours_min"
@@ -88,7 +88,7 @@ export function MediaTypeDialog({ plantId, mediaType }: MediaTypeDialogProps) {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="incubation_hours_max">Max Hours</Label>
+                                <Label htmlFor="incubation_hours_max">Max Horas</Label>
                                 <Input
                                     id="incubation_hours_max"
                                     name="incubation_hours_max"
@@ -101,7 +101,7 @@ export function MediaTypeDialog({ plantId, mediaType }: MediaTypeDialogProps) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="incubation_temp_c">Temperature (°C)</Label>
+                            <Label htmlFor="incubation_temp_c">Temperatura (°C)</Label>
                             <Input
                                 id="incubation_temp_c"
                                 name="incubation_temp_c"

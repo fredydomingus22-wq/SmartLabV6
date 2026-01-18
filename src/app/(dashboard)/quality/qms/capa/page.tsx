@@ -49,9 +49,9 @@ export default async function CAPAPage({ searchParams }: PageProps) {
             <PageHeader
                 variant="emerald"
                 icon={<Target className="h-4 w-4" />}
-                overline="Quality Management System"
-                title="Gestão de CAPA"
-                description="Plano de Ações Corretivas e Preventivas para melhoria contínua e resolução de desvios."
+                overline="GQ • Ciclo de Melhoria Contínua"
+                title="Consola de Ações (CAPA)"
+                description="Gestão de Ações Corretivas e Preventivas para tratamento de desvios e otimização do SGQ."
                 backHref="/quality/qms"
                 actions={<CreateCAPADialog users={users} />}
             />
@@ -60,25 +60,25 @@ export default async function CAPAPage({ searchParams }: PageProps) {
             <div className="grid gap-4 md:grid-cols-3">
                 <KPISparkCard
                     variant="indigo"
-                    title="Ações Abertas"
+                    title="Volume em Aberto"
                     value={openCapas.toString().padStart(2, '0')}
-                    description="Investigation Pending"
+                    description="Investigação em curso"
                     icon={<Clock className="h-4 w-4" />}
                     data={[5, 8, 6, 7, 5].map(v => ({ value: v }))}
                 />
                 <KPISparkCard
                     variant={overdueCapas > 0 ? "rose" : "amber"}
-                    title="Prazo Crítico"
+                    title="Incidência de Atraso"
                     value={overdueCapas.toString().padStart(2, '0')}
-                    description="SLA Breached"
+                    description="Risco de Conformidade"
                     icon={<AlertTriangle className="h-4 w-4" />}
                     data={[1, 0, 2, 1, overdueCapas].map(v => ({ value: v }))}
                 />
                 <KPISparkCard
                     variant="emerald"
-                    title="Concluídas"
+                    title="Ações Concluídas"
                     value={completedCapas.toString().padStart(2, '0')}
-                    description="Actions Verified"
+                    description="Eficácia Validada"
                     icon={<ShieldCheck className="h-4 w-4" />}
                     data={[10, 12, 11, 13, 15].map(v => ({ value: v }))}
                 />
@@ -88,7 +88,7 @@ export default async function CAPAPage({ searchParams }: PageProps) {
             <div className="bg-card p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 min-w-fit">
                     <Filter className="h-3.5 w-3.5" />
-                    Filtrar Por:
+                    Critérios de Filtro:
                 </div>
                 <Suspense fallback={<div className="h-10 w-full bg-slate-950/20 animate-pulse rounded-xl" />}>
                     <CAPAFilters />
@@ -99,9 +99,9 @@ export default async function CAPAPage({ searchParams }: PageProps) {
             <div className="bg-card border border-slate-800 shadow-xl rounded-2xl overflow-hidden">
                 <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-bold">Plano de Atividades CAPA</h3>
-                        <p className="text-sm text-slate-500">
-                            {capas.length} ações registadas no sistema
+                        <h3 className="text-sm font-black uppercase tracking-widest italic text-white flex items-center gap-3">Plano de Atividades CAPA</h3>
+                        <p className="text-[10px] font-black uppercase tracking-tight text-slate-500 mt-1">
+                            {capas.length} ações submetidas no sistema
                             {(params.status || params.type) && " (com filtros aplicados)"}
                         </p>
                     </div>

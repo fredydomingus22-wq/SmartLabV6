@@ -68,7 +68,7 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-6 pb-10">
             <PageHeader
                 variant="indigo"
                 icon={<Users className="h-4 w-4" />}
@@ -77,10 +77,10 @@ export default function AdminUsersPage() {
                 description="Administração de acessos, perfis e roles de utilizadores do SmartLab."
             />
 
-            <Card className="bg-card border-slate-800 shadow-xl overflow-hidden">
-                <CardHeader className="border-b border-slate-800 pb-8">
-                    <CardTitle className="text-xl font-black uppercase tracking-wider text-white">Utilizadores Registados</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">
+            <Card className="overflow-hidden">
+                <CardHeader className="border-b pb-6">
+                    <CardTitle className="text-xl font-bold">Utilizadores Registados</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-1">
                         Utilizadores ativos com acesso ao sistema.
                     </CardDescription>
                     <div className="pt-6">
@@ -94,7 +94,7 @@ export default function AdminUsersPage() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
-                            <Button type="submit" variant="secondary" className="bg-slate-900 hover:bg-slate-800 border border-slate-700">Procurar</Button>
+                            <Button type="submit" variant="secondary">Procurar</Button>
                         </form>
                     </div>
                 </CardHeader>
@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
                                                     <div className="text-[10px] font-mono text-slate-500 uppercase">{user.employee_id || "No ID"}</div>
                                                 </TableCell>
                                                 <TableCell className="px-6 py-4">
-                                                    <Badge variant="outline" className="capitalize text-[10px] font-bold border-slate-700 bg-slate-900/50">
+                                                    <Badge variant="outline" className="capitalize">
                                                         {user.role}
                                                     </Badge>
                                                 </TableCell>
@@ -147,7 +147,7 @@ export default function AdminUsersPage() {
                                                 <TableCell className="px-6 py-4 text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-indigo-500/10 hover:text-indigo-400">
+                                                            <Button variant="ghost" size="icon">
                                                                 <span className="sr-only">Abrir menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>

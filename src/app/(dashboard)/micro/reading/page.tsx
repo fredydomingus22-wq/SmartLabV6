@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { ReadingPageClient } from "./reading-page-client";
+import { PageShell } from "@/components/defaults/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { Microscope } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -80,15 +83,18 @@ export default async function ReadingPage() {
     }) || [];
 
     return (
-        <div className="container py-8 space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Plate Reading Station</h1>
-                <p className="text-muted-foreground">Enter results for completed incubation sessions.</p>
-            </div>
+        <PageShell>
+            <PageHeader
+                variant="purple"
+                icon={<Microscope className="h-6 w-6" />}
+                title="Estação de Leitura"
+                description="Registe resultados de sessões de incubação concluídas."
+                backHref="/micro"
+            />
 
-            <div className="glass rounded-xl p-6">
+            <div className="p-6 space-y-6">
                 <ReadingPageClient results={enrichedResults} />
             </div>
-        </div>
+        </PageShell>
     );
 }

@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { ProductDialog } from "./product-dialog";
 import { BulkImportDialog } from "./bulk-import-dialog";
+import { ProductsToolbar } from "./_components/products-toolbar";
 import { DataGrid } from "@/components/smart/data-grid";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/layout/page-header";
@@ -122,7 +123,7 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
                         {specsByProduct[row.id] || 0}
                     </div>
                     {(specsByProduct[row.id] || 0) === 0 && (
-                        <span className="text-[10px] text-rose-500 font-medium animate-pulse">Missing</span>
+                        <span className="text-[10px] text-rose-500 font-black uppercase tracking-widest animate-pulse italic">Em Falta</span>
                     )}
                 </Link>
             )
@@ -160,13 +161,13 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
     ];
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 px-6 pb-20 animate-in fade-in duration-500">
             <PageHeader
                 variant="emerald"
                 icon={<Package className="h-4 w-4" />}
-                overline="Quality Management"
+                overline="GQ • Gestão de Especificações"
                 title="Catálogo de Produtos"
-                description="Gerir hierarquia de produtos, receitas e especificações de qualidade por SKU."
+                description="Gestão de hierarquia de produtos, receitas e especificações de qualidade por SKU."
                 backHref="/quality"
                 actions={
                     <div className="flex gap-3">
@@ -180,9 +181,9 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
             <div className="grid gap-6 md:grid-cols-4">
                 <KPISparkCard
                     variant="slate"
-                    title="Total Produtos"
+                    title="Volume de SKUs"
                     value={initialProducts.length.toString().padStart(2, '0')}
-                    description="SKUs no catálogo"
+                    description="Total de registos ativos"
                     icon={<Package className="h-4 w-4" />}
                     data={[initialProducts.length - 2, initialProducts.length - 1, initialProducts.length].map(v => ({ value: v }))}
                     dataKey="value"
@@ -193,7 +194,7 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
                     variant="emerald"
                     title="Produtos Finais"
                     value={(categories.final || 0).toString().padStart(2, '0')}
-                    description="Prontos para expedição"
+                    description="Status: Pronto para Expedição"
                     icon={<Package className="h-4 w-4" />}
                     data={[10, 12, 11, 13].map(v => ({ value: v }))}
                     dataKey="value"
@@ -204,7 +205,7 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
                     variant="blue"
                     title="Intermédios"
                     value={(categories.intermediate || 0).toString().padStart(2, '0')}
-                    description="WIP / Semi-acabados"
+                    description="Status: Processamento Interno"
                     icon={<Package className="h-4 w-4" />}
                     data={[5, 4, 6, 7].map(v => ({ value: v }))}
                     dataKey="value"
@@ -215,7 +216,7 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
                     variant="amber"
                     title="Matérias-Primas"
                     value={(categories.raw_material || 0).toString().padStart(2, '0')}
-                    description="Insumos e embalagens"
+                    description="Status: Receção / Armazém"
                     icon={<Package className="h-4 w-4" />}
                     data={[8, 7, 9, 8].map(v => ({ value: v }))}
                     dataKey="value"
@@ -226,37 +227,12 @@ export function ProductsClientPage({ initialProducts, categories, specsByProduct
 
             {/* Main Content Area */}
             <div className="glass rounded-2xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-xl bg-white/40 dark:bg-slate-950/40">
-                {/* Toolbar */}
-                <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white/20 dark:bg-slate-900/20">
-                    <div className="relative w-full sm:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Pesquisar por nome ou SKU..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-xl border-none bg-white/50 dark:bg-slate-900/50 focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm placeholder:text-slate-400"
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setFilterStatus(filterStatus === 'active' ? null : 'active')}
-                            className={filterStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600' : 'text-slate-500'}
-                        >
-                            Ativos
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setFilterStatus(filterStatus === 'inactive' ? null : 'inactive')}
-                            className={filterStatus === 'inactive' ? 'bg-slate-500/10 text-slate-600' : 'text-slate-500'}
-                        >
-                            Inativos
-                        </Button>
-                    </div>
-                </div>
+                <ProductsToolbar
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    filterStatus={filterStatus}
+                    setFilterStatus={setFilterStatus}
+                />
 
                 {/* Data Grid */}
                 <div className="p-2">

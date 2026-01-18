@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
 import { notFound } from "next/navigation";
 import ReportDossier from "../components/report-dossier";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, Package, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 
 export default async function BatchReportsPage({ params }: { params: Promise<{ batchId: string }> }) {
@@ -31,23 +32,15 @@ export default async function BatchReportsPage({ params }: { params: Promise<{ b
     const productName = product?.name || "Produto";
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center gap-4">
-                <Link href="/reports">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Package className="h-8 w-8 text-indigo-500" />
-                        {batch.code}
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Dossier de Relatórios - {productName}
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-10 px-6 pb-20">
+            <PageHeader
+                title={`Dossier: ${batch.code}`}
+                overline="Batch Quality Record"
+                description={`Agregação completa de registos técnicos, análises laboratoriais e conformidade para o produto ${productName}.`}
+                icon={<ClipboardList className="h-4 w-4" />}
+                backHref="/reports"
+                variant="indigo"
+            />
 
             <ReportDossier
                 batchId={batch.id}

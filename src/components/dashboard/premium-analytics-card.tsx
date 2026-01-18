@@ -44,7 +44,7 @@ export function PremiumAnalyticsCard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
         >
-            <GlassCard className={cn("p-5 overflow-hidden group h-[180px] flex flex-col justify-between relative", className)}>
+            <GlassCard className={cn("p-6 overflow-hidden group h-[260px] flex flex-col justify-between relative", className)}>
                 <div className="flex justify-between items-start mb-2 relative z-10">
                     <div>
                         <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">{title}</p>

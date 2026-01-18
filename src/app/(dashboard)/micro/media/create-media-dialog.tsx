@@ -25,27 +25,27 @@ export function CreateMediaDialog({ mediaTypes, plantId }: CreateMediaDialogProp
             <DialogTrigger asChild>
                 <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    Register Media Lot
+                    Registrar Lote
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] glass">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Register Media Lot</DialogTitle>
+                    <DialogTitle>Registrar Lote de Meio</DialogTitle>
                 </DialogHeader>
 
                 <ActionForm
                     action={createMediaLotAction}
                     onSuccess={() => setOpen(false)}
-                    submitText="Register"
+                    submitText="Registrar"
                 >
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Type</Label>
+                            <Label className="text-right">Tipo</Label>
                             <div className="col-span-3">
                                 <SearchableSelect
                                     name="media_type_id"
                                     required
-                                    placeholder="Select Media Type"
+                                    placeholder="Selecione o Tipo"
                                     options={mediaTypes.map((t) => ({
                                         label: t.name,
                                         value: t.id
@@ -55,17 +55,17 @@ export function CreateMediaDialog({ mediaTypes, plantId }: CreateMediaDialogProp
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="lot_code" className="text-right">Lot Code</Label>
-                            <Input id="lot_code" name="lot_code" placeholder="Batch 123" className="col-span-3" required />
+                            <Label htmlFor="lot_code" className="text-right">Lote</Label>
+                            <Input id="lot_code" name="lot_code" placeholder="Ex: Batch 123" className="col-span-3" required />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="quantity" className="text-right">Qty</Label>
+                            <Label htmlFor="quantity" className="text-right">Qtd.</Label>
                             <Input id="quantity" name="quantity" type="number" className="col-span-3" required />
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="expiry" className="text-right">Expiry</Label>
+                            <Label htmlFor="expiry" className="text-right">Validade</Label>
                             <div className="col-span-3">
                                 <input type="hidden" name="expiry_date" value={date ? date.toISOString().split('T')[0] : ''} />
                                 <DatePicker date={date} setDate={setDate} />

@@ -84,62 +84,57 @@ export function ConsumeLotDialog({ lotId, lotCode, maxQuantity, unit }: ConsumeL
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="bg-slate-950/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 border-slate-800 hover:border-amber-500/50 rounded-lg transition-all duration-300 h-8 shadow-sm">
-                    <Minus className="h-3 w-3 mr-1" />
+                <Button variant="outline" size="sm" className="bg-slate-900/50 border-slate-800 hover:bg-rose-600 hover:text-white rounded-xl shadow-lg font-black uppercase text-[9px] tracking-widest transition-all h-8">
+                    <Minus className="h-3 w-3 mr-1.5 stroke-[2px]" />
                     Consumir
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px] bg-slate-950 border-slate-800 text-slate-200 shadow-2xl shadow-amber-900/10">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Minus className="h-5 w-5 text-amber-400" />
-                        Registar Consumo
-                    </DialogTitle>
-                    <DialogDescription>
-                        Reduzir stock do lote <span className="font-mono text-white">{lotCode}</span>.
+            <DialogContent className="sm:max-w-[400px] border-slate-800 bg-slate-950 shadow-2xl p-0 overflow-hidden text-slate-100">
+                <DialogHeader className="p-6 pb-2 border-b border-white/5 bg-white/5">
+                    <DialogTitle className="text-sm font-black uppercase tracking-widest italic text-white">Consumo de Lote</DialogTitle>
+                    <DialogDescription className="text-[11px] text-slate-500 italic">
+                        Reduzir stock do lote <span className="text-rose-400 font-mono font-bold">{lotCode}</span>.
                     </DialogDescription>
                 </DialogHeader>
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                        <FormField
-                            control={form.control}
-                            name="quantity"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Quantidade a Consumir</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                {...field}
-                                                className="bg-slate-900/50 border-slate-700/50 focus:border-amber-500/50 focus:ring-amber-500/20 transition-all text-white pr-12 text-lg font-mono tracking-tight"
-                                            />
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">
-                                                {unit}
+                <div className="p-6">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="quantity"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Quantidade a Consumir</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    {...field}
+                                                    className="bg-slate-900/50 border-slate-800 focus:border-rose-500/50 transition-all rounded-xl h-11 pr-12 text-lg font-mono"
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-500">
+                                                    {unit}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </FormControl>
-                                    <FormDescription className="text-[10px]">
-                                        Disponível: {maxQuantity} {unit}
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                        </FormControl>
+                                        <FormDescription className="text-[10px] text-slate-500 italic ml-1">
+                                            Stock disponível: <span className="text-slate-300 font-bold">{maxQuantity} {unit}</span>
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>
-                                Cancelar
-                            </Button>
-                            <Button type="submit" disabled={loading} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-900/20 border border-transparent hover:border-amber-400/30 transition-all duration-300">
-                                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                Confirmar Consumo
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                            <DialogFooter>
+                                <Button type="submit" disabled={loading} className="w-full bg-rose-600 hover:bg-rose-500 text-white font-black uppercase text-[10px] tracking-widest h-11 rounded-xl shadow-lg shadow-rose-900/20 transition-all">
+                                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "CONFIRMAR CONSUMO"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog>
     );

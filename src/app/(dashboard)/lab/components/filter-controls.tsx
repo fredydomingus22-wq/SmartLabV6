@@ -95,30 +95,32 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
     }
 
     return (
-        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 glass rounded-xl border-slate-800/50 shadow-sm">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 p-6 glass rounded-[2rem] border-white/5 bg-slate-900/40 shadow-xl">
+            <div className="relative flex-1 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-blue-400/70 transition-colors" />
                 <Input
-                    placeholder="Procurar por código de amostra..."
-                    className="pl-9 bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600 focus:bg-slate-900 focus:border-blue-500/50 transition-all"
+                    placeholder="Pesquisar por código, produto ou lote..."
+                    className="h-11 pl-10 text-[11px] font-bold uppercase tracking-widest bg-white/[0.03] border-white/5 text-slate-200 placeholder:text-slate-600 focus-visible:ring-0 focus:bg-white/[0.06] rounded-xl transition-all"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex flex-wrap sm:flex-nowrap gap-3">
                 <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-[180px] bg-slate-900/50 border-slate-700 text-slate-300">
-                        <Filter className="h-4 w-4 mr-2 text-slate-500" />
-                        <SelectValue placeholder="Estado" />
+                    <SelectTrigger className="h-11 min-w-[180px] bg-white/[0.03] border-white/5 text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/[0.06] transition-all">
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-3.5 w-3.5 text-slate-500" />
+                            <SelectValue placeholder="Estado" />
+                        </div>
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-slate-300">
-                        <SelectItem value="all">Todos os Estados</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="collected">Colhida</SelectItem>
-                        <SelectItem value="in_analysis">Em Análise</SelectItem>
-                        <SelectItem value="reviewed">Revista</SelectItem>
-                        <SelectItem value="approved">Aprovada</SelectItem>
+                    <SelectContent className="bg-slate-950 border-white/10 text-slate-300">
+                        <SelectItem value="all" className="text-[10px] font-bold uppercase tracking-widest">Todos os Estados</SelectItem>
+                        <SelectItem value="pending" className="text-[10px] font-bold uppercase tracking-widest">Pendente</SelectItem>
+                        <SelectItem value="collected" className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Colhida</SelectItem>
+                        <SelectItem value="in_analysis" className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Em Análise</SelectItem>
+                        <SelectItem value="under_review" className="text-[10px] font-bold uppercase tracking-widest text-purple-400">Em Revisão</SelectItem>
+                        <SelectItem value="approved" className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Aprovada</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -127,20 +129,22 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                         <Button
                             variant="outline"
                             className={cn(
-                                "w-[180px] justify-start text-left font-normal bg-slate-900/50 border-slate-700 hover:bg-slate-800 hover:text-white transition-all",
-                                !date && "text-slate-500"
+                                "h-11 min-w-[180px] justify-start text-left font-black uppercase tracking-widest text-[10px] bg-white/[0.03] border-white/5 hover:bg-white/[0.06] hover:text-white transition-all rounded-xl",
+                                !date ? "text-slate-500" : "text-emerald-400"
                             )}
                         >
-                            <Calendar className="mr-2 h-4 w-4" />
+                            <Calendar className={cn("mr-2 h-3.5 w-3.5", date ? "text-emerald-500" : "text-slate-500")} />
                             {date ? format(date, "PPP", { locale: pt }) : "Data de Colheita"}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-slate-800 bg-slate-950" align="end">
+                    <PopoverContent className="w-auto p-0 border-white/10 bg-slate-950" align="end">
                         <CalendarComponent
                             mode="single"
                             selected={date}
                             onSelect={handleDateSelect}
                             initialFocus
+                            locale={pt}
+                            className="p-3"
                         />
                     </PopoverContent>
                 </Popover>
@@ -153,9 +157,9 @@ export function FilterControls({ variant = "default" }: FilterControlsProps) {
                             setStatus("all");
                             setDateParam(null);
                         }}
-                        className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        className="h-11 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
                     >
-                        Limpar
+                        Limpar Filtros
                     </Button>
                 )}
             </div>

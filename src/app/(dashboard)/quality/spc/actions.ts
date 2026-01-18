@@ -5,7 +5,7 @@ import { getSafeUser } from "@/lib/auth.server";
 import { getSPCData, SPCFilterOptions } from "@/lib/queries/spc";
 
 export async function getSPCDataAction(filters: {
-    productId: string;
+    productId?: string;
     parameterId: string;
     batchId?: string;
     sampleTypeId?: string;
@@ -13,8 +13,9 @@ export async function getSPCDataAction(filters: {
     endDate?: string;
     subgroupSize?: number;
 }) {
+    console.log("[Action] getSPCDataAction filters:", filters);
     const spcFilters: SPCFilterOptions = {
-        productId: filters.productId,
+        productId: filters.productId === "all" ? undefined : filters.productId,
         batchId: filters.batchId === "all" ? undefined : filters.batchId,
         sampleTypeId: filters.sampleTypeId === "all" ? undefined : filters.sampleTypeId,
         dateFrom: filters.startDate,
@@ -60,7 +61,7 @@ export async function getProductBatchesAction(productId: string) {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const query = supabase
+    let query = supabase
         .from("production_batches")
         .select("id, code, start_date")
         .eq("product_id", productId)
@@ -69,7 +70,7 @@ export async function getProductBatchesAction(productId: string) {
         .limit(50);
 
     if (user.plant_id) {
-        query.eq("plant_id", user.plant_id);
+        query = query.eq("plant_id", user.plant_id);
     }
 
     const { data: batches } = await query;
@@ -78,8 +79,8 @@ export async function getProductBatchesAction(productId: string) {
 }
 
 export async function getParetoDataAction(dimension: "category" | "nc_type" | "severity" = "category") {
-    const { getParetoData } = await import("@/lib/queries/qms");
-    return getParetoData(dimension);
+    const { getSPCParetoData } = await import("@/lib/queries/spc");
+    return getSPCParetoData();
 }
 
 export async function getCorrelationDataAction(
@@ -95,7 +96,7 @@ export async function getCorrelationDataAction(
 ) {
     const { getCorrelationData } = await import("@/lib/queries/spc");
     return getCorrelationData(param1Id, param2Id, {
-        productId: filters.productId,
+        productId: filters.productId === "all" ? undefined : filters.productId,
         batchId: filters.batchId === "all" ? undefined : filters.batchId,
         sampleTypeId: filters.sampleTypeId === "all" ? undefined : filters.sampleTypeId,
         dateFrom: filters.startDate,
@@ -124,12 +125,14 @@ export async function saveQualityAnalysisAction(params: {
     const supabase = await createClient();
     const user = await getSafeUser();
 
+    const productId = params.productId === "all" ? undefined : params.productId;
+
     const { data, error } = await supabase
         .from("quality_analysis")
         .upsert({
             organization_id: user.organization_id,
             plant_id: user.plant_id,
-            product_id: params.productId,
+            product_id: productId,
             parameter_id: params.parameterId,
             batch_id: params.batchId === "all" ? undefined : params.batchId,
             analysis_type: params.analysisType,
@@ -155,15 +158,25 @@ export async function getQualityAnalysisAction(params: {
     const supabase = await createClient();
     const user = await getSafeUser();
 
-    const query = supabase
+    let query = supabase
         .from("quality_analysis")
         .select("*")
         .eq("organization_id", user.organization_id)
         .eq("analysis_type", params.analysisType);
 
-    if (params.productId) query.eq("product_id", params.productId);
-    if (params.parameterId) query.eq("parameter_id", params.parameterId);
-    if (params.batchId && params.batchId !== "all") query.eq("batch_id", params.batchId);
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    if (params.productId && params.productId !== "all") {
+        query = query.eq("product_id", params.productId);
+    }
+    if (params.parameterId) {
+        query = query.eq("parameter_id", params.parameterId);
+    }
+    if (params.batchId && params.batchId !== "all") {
+        query = query.eq("batch_id", params.batchId);
+    }
 
     const { data, error } = await query.maybeSingle();
 

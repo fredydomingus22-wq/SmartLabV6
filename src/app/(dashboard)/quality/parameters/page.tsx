@@ -16,10 +16,21 @@ import {
     Settings2,
     ShieldCheck
 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { ParameterDialog } from "./parameter-dialog";
 import { BulkImportDialog } from "./bulk-import-dialog";
 import { PageHeader } from "@/components/layout/page-header";
+import { ActionTooltip } from "@/components/ui/action-tooltip";
+import { ParametersToolbar } from "./_components/parameters-toolbar";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -101,12 +112,11 @@ export default async function ParametersPage({ searchParams }: PageProps) {
     const getCategoryStyle = (cat: string) => categoryConfig[cat] || categoryConfig["other"];
 
     return (
-        <div className="container py-8 space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 px-6 pb-20">
             <PageHeader
-                title="Engenharia de Qualidade"
-                overline="Quality Management"
-                description="Configuração técnica de parâmetros, especificações e infraestrutura industrial para conformidade normativa."
-                icon={<Activity className="h-4 w-4" />}
+                title="GQ • Engenharia de Processos"
+                description="Configuração técnica de parâmetros, limiares de segurança e infraestrutura para conformidade normativa."
+                icon={<Activity className="h-4 w-4 text-primary" />}
                 variant="blue"
                 actions={
                     <div className="flex flex-wrap gap-3">
@@ -116,46 +126,44 @@ export default async function ParametersPage({ searchParams }: PageProps) {
                 }
             />
 
-            <Tabs defaultValue="parameters" className="space-y-8">
-                <TabsList className="glass border-white/5 p-1 w-full md:w-auto h-auto grid grid-cols-2 md:grid-cols-4 gap-1">
-                    <TabsTrigger value="parameters" className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 py-2.5 px-6 rounded-xl font-bold transition-all">
+            <Tabs defaultValue="parameters" className="space-y-6">
+                <TabsList className="p-1 w-full md:w-auto h-auto grid grid-cols-2 md:grid-cols-4 gap-1 bg-slate-900/50 border border-slate-800">
+                    <TabsTrigger value="parameters" className="py-2.5 px-6 rounded-lg font-bold transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         Parâmetros
                     </TabsTrigger>
-                    <TabsTrigger value="specs" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 py-2.5 px-6 rounded-xl font-bold transition-all">
+                    <TabsTrigger value="specs" className="py-2.5 px-6 rounded-lg font-bold transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         Especificações
                     </TabsTrigger>
-                    <TabsTrigger value="products" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 py-2.5 px-6 rounded-xl font-bold transition-all">
+                    <TabsTrigger value="products" className="py-2.5 px-6 rounded-lg font-bold transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         Produtos
                     </TabsTrigger>
-                    <TabsTrigger value="points" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400 py-2.5 px-6 rounded-xl font-bold transition-all">
+                    <TabsTrigger value="points" className="py-2.5 px-6 rounded-lg font-bold transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
                         Pontos de Recolha
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="parameters" className="space-y-8 mt-0 outline-none">
+                <TabsContent value="parameters" className="space-y-6 mt-0 outline-none">
                     {/* Stats Cards */}
                     <div className="grid gap-4 md:grid-cols-4">
-                        <Link href="/quality/parameters">
-                            <div className={cn(
-                                "relative overflow-hidden rounded-2xl border border-white/5 p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10 active:scale-95 group",
-                                "bg-gradient-to-br from-slate-900/80 to-slate-900/40 backdrop-blur-xl",
-                                !params.category ? "ring-1 ring-blue-500/50" : ""
-                            )}>
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <Activity className="h-16 w-16" />
-                                </div>
-                                <div className="relative">
-                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Total de Parâmetros</p>
-                                    <h3 className="text-4xl font-black text-white mt-2 tracking-tight">
-                                        {parameters?.length || 0}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-4 text-xs font-medium text-slate-500">
-                                        <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                                        Todos os registros
-                                    </div>
+                        <Card className={cn(
+                            "relative overflow-hidden p-6 transition-all duration-300 hover:border-primary/50 group cursor-pointer",
+                            !params.category ? "border-primary/50 bg-primary/5" : "bg-slate-900/50"
+                        )}>
+                            <Link href="/quality/parameters" className="absolute inset-0 z-10" />
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <Activity className="h-16 w-16" />
+                            </div>
+                            <div className="relative space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Volume de Parâmetros</p>
+                                <h3 className="text-3xl font-black text-white tracking-tighter">
+                                    {parameters?.length || 0}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest italic">
+                                    <span className="flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                    Registos em sistema
                                 </div>
                             </div>
-                        </Link>
+                        </Card>
 
                         {Object.entries(categories).map(([cat, count]) => {
                             const style = getCategoryStyle(cat);
@@ -163,225 +171,185 @@ export default async function ParametersPage({ searchParams }: PageProps) {
                             const isActive = params.category === cat;
 
                             return (
-                                <Link key={cat} href={`/quality/parameters?category=${cat}`}>
-                                    <div className={cn(
-                                        "relative overflow-hidden rounded-2xl border border-white/5 p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl active:scale-95 group",
-                                        "bg-gradient-to-br backdrop-blur-xl",
-                                        style.gradient,
-                                        isActive ? `ring-1 ring-white/20` : ""
-                                    )}>
-                                        <div className={cn("absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity", style.color)}>
-                                            <Icon className="h-16 w-16" />
-                                        </div>
-                                        <div className="relative">
-                                            <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">{style.label}</p>
-                                            <h3 className="text-4xl font-black text-white mt-2 tracking-tight">
-                                                {count}
-                                            </h3>
-                                            <div className={cn("flex items-center gap-2 mt-4 text-xs font-bold", style.color)}>
-                                                Visualizar categoria &rarr;
-                                            </div>
+                                <Card key={cat} className={cn(
+                                    "relative overflow-hidden p-6 transition-all duration-300 hover:border-primary/50 group cursor-pointer",
+                                    isActive ? "border-primary/50 bg-primary/5" : "bg-slate-900/50"
+                                )}>
+                                    <Link key={cat} href={`/quality/parameters?category=${cat}`} className="absolute inset-0 z-10" />
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                        <Icon className="h-16 w-16" />
+                                    </div>
+                                    <div className="relative space-y-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">{style.label}</p>
+                                        <h3 className="text-3xl font-black text-white tracking-tighter">
+                                            {count}
+                                        </h3>
+                                        <div className="flex items-center gap-2 mt-4 text-[10px] font-black text-primary uppercase tracking-widest italic">
+                                            Filtro Ativo &rarr;
                                         </div>
                                     </div>
-                                </Link>
+                                </Card>
                             );
                         })}
                     </div>
 
-                    {/* Main Content Area */}
-                    <div className="space-y-4">
-                        {/* Toolbar */}
-                        <div className="flex flex-col md:flex-row gap-4 p-4 rounded-2xl glass border border-white/5 items-center justify-between">
-                            <form className="flex-1 w-full md:w-auto flex gap-3">
-                                <div className="relative flex-1 max-w-md">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        name="search"
-                                        placeholder="Buscar por nome ou código..."
-                                        defaultValue={params.search}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/10 bg-black/20 text-sm md:text-base text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 placeholder:text-slate-500 transition-all font-medium"
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <select
-                                        name="status"
-                                        defaultValue={params.status || ""}
-                                        className="pl-10 pr-8 py-2.5 rounded-xl border border-white/10 bg-black/20 text-sm md:text-base text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none font-medium cursor-pointer hover:bg-black/30 transition-all"
-                                    >
-                                        <option value="" className="bg-slate-900">Todos os Status</option>
-                                        <option value="active" className="bg-slate-900">Ativos</option>
-                                        <option value="inactive" className="bg-slate-900">Inativos</option>
-                                    </select>
-                                </div>
-                                <Button type="submit" size="default" className="rounded-xl px-6 font-bold bg-white/5 hover:bg-white/10 border border-white/10">
-                                    Filtrar
-                                </Button>
-                            </form>
+                    {/* Toolbar */}
+                    <ParametersToolbar totalResults={parameters?.length || 0} />
 
-                            <div className="text-sm font-medium text-slate-400">
-                                Mostrando <span className="text-white font-bold">{parameters?.length || 0}</span> resultados
+                    {/* Data Table */}
+                    <Card className="glass border-none shadow-2xl overflow-hidden backdrop-blur-xl bg-white/40 dark:bg-slate-950/40">
+                        {!parameters || parameters.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 mb-4">
+                                    <Beaker className="h-10 w-10 text-slate-400 dark:text-muted-foreground transition-transform hover:scale-110" />
+                                </div>
+                                <h3 className="text-lg font-black text-white dark:text-slate-300 uppercase tracking-tight italic">Status: Pesquisa Sem Resultados</h3>
+                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest max-w-sm mt-2 italic leading-relaxed">
+                                    Refine os critérios de pesquisa ou crie um novo parâmetro técnico para iniciar a monitorização.
+                                </p>
+                                <div className="mt-8">
+                                    <ParameterDialog mode="create" />
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <Table>
+                                <TableHeader className="bg-slate-900/50">
+                                    <TableRow className="border-b border-slate-800 hover:bg-transparent">
+                                        <TableHead className="py-4 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Ref. Técnica</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Parâmetro GQ</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Unidade</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Categoria / Validação</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Média Análise</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Estado</TableHead>
+                                        <TableHead className="py-4 px-6 text-right text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Operações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {parameters.map((param) => {
+                                        const style = getCategoryStyle(param.category || "other");
 
-                        {/* Data Table */}
-                        <div className="rounded-2xl border border-white/5 bg-black/20 backdrop-blur-sm overflow-hidden shadow-2xl">
-                            {!parameters || parameters.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <div className="p-6 rounded-full bg-white/5 mb-4">
-                                        <Beaker className="h-12 w-12 text-slate-600" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-slate-300">Nenhum parâmetro encontrado</h3>
-                                    <p className="text-slate-500 max-w-sm mt-2">
-                                        Tente ajustar seus filtros ou crie um novo parâmetro para começar.
-                                    </p>
-                                    <div className="mt-6">
-                                        <ParameterDialog mode="create" />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-white/5 text-slate-400 uppercase tracking-wider text-xs font-bold border-b border-white/5">
-                                            <tr>
-                                                <th className="text-left py-4 px-6">Código</th>
-                                                <th className="text-left py-4 px-6">Nome do Parâmetro</th>
-                                                <th className="text-left py-4 px-6">Unidade</th>
-                                                <th className="text-left py-4 px-6">Categoria</th>
-                                                <th className="text-left py-4 px-6">Método</th>
-                                                <th className="text-center py-4 px-6">Tempo</th>
-                                                <th className="text-center py-4 px-6">Versão</th>
-                                                <th className="text-center py-4 px-6">Status</th>
-                                                <th className="text-right py-4 px-6 w-[100px]">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
-                                            {parameters.map((param) => {
-                                                const style = getCategoryStyle(param.category || "other");
-
-                                                return (
-                                                    <tr key={param.id} className="group hover:bg-white/[0.02] transition-colors">
-                                                        <td className="py-4 px-6 font-mono text-slate-400 font-medium group-hover:text-white transition-colors">
-                                                            {param.code}
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">
-                                                                    {param.name}
-                                                                </span>
-                                                                {param.description && (
-                                                                    <span className="text-xs text-slate-500 truncate max-w-[200px]">
-                                                                        {param.description}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-slate-400 font-medium">{param.unit || "-"}</td>
-                                                        <td className="py-4 px-6">
-                                                            <Badge variant="outline" className={cn(
-                                                                "bg-transparent border font-bold capitalize shadow-none",
-                                                                style.color.replace("text-", "border-").replace("400", "500/30"),
-                                                                style.color
-                                                            )}>
-                                                                {style.label}
-                                                            </Badge>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-slate-400">{param.method || "-"}</td>
-                                                        <td className="py-4 px-6 text-center">
-                                                            {param.analysis_time_minutes ? (
-                                                                <Badge variant="secondary" className="bg-slate-800 text-slate-400 font-mono text-xs border border-white/5">
-                                                                    <Clock className="h-3 w-3 mr-1.5" />
-                                                                    {param.analysis_time_minutes}m
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-slate-600">-</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="py-4 px-6 text-center">
-                                                            <Badge variant="outline" className="bg-slate-900/50 border-slate-700 text-slate-400 font-mono text-[10px]">
-                                                                v{param.version || 1}
-                                                            </Badge>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-center">
-                                                            <div className={cn(
-                                                                "inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border",
-                                                                param.status === "active"
-                                                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
-                                                                    : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                                                            )}>
-                                                                <span className={cn(
-                                                                    "mr-1.5 h-1.5 w-1.5 rounded-full",
-                                                                    param.status === "active" ? "bg-emerald-500" : "bg-rose-500"
-                                                                )} />
-                                                                {param.status === "active" ? "Ativo" : "Inativo"}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-right">
-                                                            <ParameterDialog mode="edit" parameter={param} />
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                                        return (
+                                            <TableRow key={param.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/30 last:border-0 border-x-0">
+                                                <TableCell className="py-3 px-6">
+                                                    <span className="font-mono font-black text-indigo-400 bg-indigo-500/5 px-2 py-1 rounded-md border border-indigo-500/10 text-[11px]">
+                                                        {param.code}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="max-w-[240px]">
+                                                        <p className="font-black text-white italic tracking-tight text-sm line-clamp-1">{param.name}</p>
+                                                        {param.description && (
+                                                            <p className="text-[9px] text-slate-500 uppercase tracking-[0.1em] font-black mt-0.5 truncate">
+                                                                {param.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                                                        {param.unit || "-"}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <Badge variant="outline" className={cn("px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter text-[9px] border border-slate-800 bg-slate-900/50 w-fit", style.color)}>
+                                                            {style.label}
+                                                        </Badge>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 mt-0.5 italic">{param.method || "Sem Método"}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    {param.analysis_time_minutes ? (
+                                                        <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">
+                                                            <Clock className="h-3 w-3 opacity-50" />
+                                                            {param.analysis_time_minutes}M
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-800 font-black">—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <Badge className={cn(
+                                                        "px-3 py-1 rounded-xl font-black uppercase tracking-tighter text-[10px] border shadow-inner italic",
+                                                        param.status === "active"
+                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                                    )}>
+                                                        {param.status === "active" ? "ATIVO" : "INATIVO"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-6 text-right">
+                                                    <div className="opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all">
+                                                        <ParameterDialog mode="edit" parameter={param} />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="specs" className="mt-0 outline-none">
-                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
-                        <div className="h-20 w-20 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto">
-                            <Beaker className="h-10 w-10 text-purple-400" />
+                    <Card className="p-12 text-center space-y-6">
+                        <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center mx-auto transition-transform group-hover:scale-110">
+                            <Beaker className="h-8 w-8 text-primary" />
                         </div>
-                        <h2 className="text-2xl font-bold">Especificações de Produto</h2>
-                        <p className="text-muted-foreground max-w-md mx-auto">
-                            Defina limites de qualidade e frequências de análise para cada produto ou modo global.
-                        </p>
-                        <Link href="/quality/specifications">
-                            <Button className="bg-purple-600 hover:bg-purple-500 mt-4">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-black uppercase tracking-tight italic text-white">Especificações de Produto</h2>
+                            <p className="text-[10px] text-slate-500 max-w-md mx-auto font-black uppercase tracking-widest leading-relaxed italic">
+                                Configuração de limiares técnicos e frequências de amostragem por família de produto.
+                            </p>
+                        </div>
+                        <Link href="/quality/specifications" className="block">
+                            <Button variant="default" className="px-8 font-bold uppercase tracking-widest text-xs h-11">
                                 Abrir Especificações
                             </Button>
                         </Link>
-                    </div>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="products" className="mt-0 outline-none">
-                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
-                        <div className="h-20 w-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
-                            <FlaskConical className="h-10 w-10 text-emerald-400" />
+                    <Card className="p-12 text-center space-y-6">
+                        <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center mx-auto">
+                            <FlaskConical className="h-8 w-8 text-primary" />
                         </div>
-                        <h2 className="text-2xl font-bold">Gestão de Catálogo de Produtos</h2>
-                        <p className="text-muted-foreground max-w-md mx-auto">
-                            Configure os produtos produzidos na unidade, SKUs e atributos principais.
-                        </p>
-                        <Link href="/quality/products">
-                            <Button className="bg-emerald-600 hover:bg-emerald-500 mt-4">
-                                Abrir Produtos
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-black uppercase tracking-tight italic text-white">Mestre de Produtos</h2>
+                            <p className="text-[10px] text-slate-500 max-w-md mx-auto font-black uppercase tracking-widest leading-relaxed italic">
+                                Gestão centralizada do catálogo de produção, SKUs e atributos técnicos de qualidade.
+                            </p>
+                        </div>
+                        <Link href="/quality/products" className="block">
+                            <Button variant="default" className="px-8 font-bold uppercase tracking-widest text-xs h-11">
+                                Abrir Catálogo
                             </Button>
                         </Link>
-                    </div>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="points" className="mt-0 outline-none">
-                    <div className="glass p-12 rounded-3xl border-none shadow-xl text-center space-y-4">
-                        <div className="h-20 w-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
-                            <Activity className="h-10 w-10 text-amber-400" />
+                    <Card className="p-12 text-center space-y-6">
+                        <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center mx-auto">
+                            <Activity className="h-8 w-8 text-primary" />
                         </div>
-                        <h2 className="text-2xl font-bold">Infraestrutura e Pontos de Recolha</h2>
-                        <p className="text-muted-foreground max-w-md mx-auto">
-                            Mapeie os pontos de amostragem físicos na linha de produção e armazéns.
-                        </p>
-                        <Link href="/quality/sampling-points">
-                            <Button className="bg-amber-600 hover:bg-amber-500 mt-4">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-black uppercase tracking-tight italic text-white">Logística de Amostragem</h2>
+                            <p className="text-[10px] text-slate-500 max-w-md mx-auto font-black uppercase tracking-widest leading-relaxed italic">
+                                Mapeamento técnico de locações físicas na linha de produção e armazéns.
+                            </p>
+                        </div>
+                        <Link href="/quality/sampling-points" className="block">
+                            <Button variant="default" className="px-8 font-bold uppercase tracking-widest text-xs h-11">
                                 Abrir Pontos de Recolha
                             </Button>
                         </Link>
-                    </div>
+                    </Card>
                 </TabsContent>
-            </Tabs >
-        </div >
+            </Tabs>
+        </div>
+
     );
 }

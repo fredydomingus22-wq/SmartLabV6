@@ -163,8 +163,8 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
                     Nova Amostra
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden gap-0">
-                <DialogHeader className="p-6 pb-4 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm border-b">
+            <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden gap-0 glass border-white/10 bg-slate-950/95 shadow-2xl">
+                <DialogHeader className="p-8 pb-6 bg-white/[0.03] border-b border-white/5">
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                             <FlaskConical className="h-5 w-5" />
@@ -180,7 +180,7 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
-                        <ScrollArea className="h-[65vh] p-6 bg-slate-50/30 dark:bg-slate-950/30">
+                        <ScrollArea className="h-[65vh] p-8 bg-transparent">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                                 {/* SECTION 1: IDENTIFICATION */}
@@ -342,13 +342,13 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
                             </div>
                         </ScrollArea>
 
-                        <DialogFooter className="p-4 border-t bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
-                            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                        <DialogFooter className="p-6 border-t border-white/5 bg-white/[0.03] backdrop-blur-md">
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-slate-500 hover:text-slate-300 rounded-xl px-6">
                                 Cancelar
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md border-0"
+                                className="h-11 px-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
                                 disabled={
                                     isSubmitting ||
                                     !selectedTypeId ||
@@ -357,7 +357,8 @@ export function CreateSampleDialog({ sampleTypes, tanks, samplingPoints, plantId
                                 }
                             >
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Registar Amostra
+                                <Plus className="h-4 w-4 mr-2" />
+                                Registar Amostra Industrial
                             </Button>
                         </DialogFooter>
                     </form>

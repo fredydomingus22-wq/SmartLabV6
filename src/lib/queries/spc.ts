@@ -72,7 +72,7 @@ export async function getSPCData(
 
     if (!param) return null;
 
-    // 2. Fetch Spec Limits - Prioritize explicit filter or "Produto Final"
+    // 2. Fetch Spec Limits - Prioritize explicit filter
     let specQuery = supabase
         .from("product_specifications")
         .select(`
@@ -81,11 +81,18 @@ export async function getSPCData(
             target_value
         `)
         .eq("organization_id", user.organization_id)
-        .eq("qa_parameter_id", parameterId)
-        .eq("product_id", filters?.productId || "");
+        .eq("qa_parameter_id", parameterId);
+
+    if (filters?.productId) {
+        specQuery = specQuery.eq("product_id", filters.productId);
+    }
 
     if (filters?.sampleTypeId) {
         specQuery = specQuery.eq("sample_type_id", filters.sampleTypeId);
+    }
+
+    if (user.plant_id) {
+        specQuery = specQuery.eq("plant_id", user.plant_id);
     }
 
     const { data: specList } = await specQuery;
@@ -118,35 +125,42 @@ export async function getSPCData(
         dateToStr = new Date(dt).toISOString();
     }
 
-    // 4. Load Analysis Data - Use inner join for samples to ensure data integrity
+    // 4. Load Analysis Data
     let query = supabase
         .from("lab_analysis")
         .select(`
             id, 
             analyzed_at, 
             value_numeric, 
+            value_text,
             is_conforming,
+            is_valid,
+            status,
             sample_id,
             sample:samples!inner(
                 id, 
+                status,
                 production_batch_id, 
                 sample_type_id, 
                 sample_type:sample_types(name, code),
                 batch:production_batches(id, product_id, code)
             )
         `)
+        .eq("organization_id", user.organization_id)
         .eq("qa_parameter_id", parameterId)
         .in("status", ["completed", "reviewed", "validated"])
+        .neq("is_valid", false)
         .gte("analyzed_at", dateFromStr)
-        .not("value_numeric", "is", null)
         .order("analyzed_at", { ascending: true });
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
 
     if (dateToStr) {
         query = query.lte("analyzed_at", dateToStr);
     }
 
-    // Note: Supabase nested filtering can be unreliable.
-    // We fetch all matching data and filter in-memory for reliability.
     const { data: rawResults, error } = await query;
 
     if (error) {
@@ -154,8 +168,17 @@ export async function getSPCData(
         return null;
     }
 
-    // Apply filters in-memory for maximum reliability
-    let results = rawResults || [];
+    // Apply filters in-memory and handle double-typing (numeric data sometimes in value_text)
+    let results = (rawResults || []).map(r => {
+        let numericValue = r.value_numeric !== null ? Number(r.value_numeric) : null;
+
+        // Fallback to parsing value_text if numeric is null but text looks like a number
+        if (numericValue === null && r.value_text && /^-?\d*\.?\d+$/.test(r.value_text)) {
+            numericValue = parseFloat(r.value_text);
+        }
+
+        return { ...r, final_numeric_value: numericValue };
+    }).filter(r => r.final_numeric_value !== null);
 
     if (filters?.sampleTypeId) {
         results = results.filter((r: any) => {
@@ -195,13 +218,18 @@ export async function getSPCData(
     }
 
     // 5. Transform & Group
-    const data: SPCDataPoint[] = results.map(r => ({
-        id: r.id,
-        date: r.analyzed_at,
-        value: Number(r.value_numeric),
-        isConforming: r.is_conforming ?? true,
-        batchCode: (r.sample as any)?.batch?.code
-    }));
+    const data: SPCDataPoint[] = results.map(r => {
+        const sample = Array.isArray(r.sample) ? r.sample[0] : r.sample;
+        const batch = Array.isArray(sample?.batch) ? sample.batch[0] : sample?.batch;
+
+        return {
+            id: r.id,
+            date: r.analyzed_at,
+            value: Number(r.final_numeric_value),
+            isConforming: r.is_conforming ?? true,
+            batchCode: batch?.code
+        };
+    });
 
     const subgroupSize = filters?.subgroupSize || 1;
     const subgroups: SPCSubgroup[] = [];
@@ -473,7 +501,16 @@ export async function getCorrelationData(
 export async function getSPCSummary() {
     const supabase = await createClient();
     const user = await getSafeUser();
-    const { data: params } = await supabase.from("qa_parameters").select("id, name, code, unit").eq("organization_id", user.organization_id).eq("status", "active").limit(20);
+    let query = supabase.from("qa_parameters")
+        .select("id, name, code, unit")
+        .eq("organization_id", user.organization_id)
+        .eq("status", "active");
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: params } = await query.limit(20);
     if (!params) return [];
     return Promise.all(params.map(async (p) => {
         const spcData = await getSPCData(p.id, 30);
@@ -491,4 +528,53 @@ export async function getSPCDataWithRules(parameterId: string, days: number = 30
     return getSPCData(parameterId, days, filters);
 }
 
+/**
+ * Get Pareto data for SPC failures (Parameters with most OOS results)
+ */
+export async function getSPCParetoData() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
 
+    let query = supabase
+        .from("lab_analysis")
+        .select(`
+            id,
+            qa_parameter_id,
+            parameter:qa_parameters(name)
+        `)
+        .eq("organization_id", user.organization_id)
+        .eq("is_conforming", false)
+        .neq("is_valid", false);
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data: failures, error } = await query;
+
+    if (error || !failures) return [];
+
+    const counts: Record<string, number> = {};
+    failures.forEach(f => {
+        const name = (f.parameter as any)?.name || "Desconhecido";
+        counts[name] = (counts[name] || 0) + 1;
+    });
+
+    const sortedData = Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    if (sortedData.length === 0) return [];
+
+    const total = sortedData.reduce((sum, item) => sum + item.count, 0);
+    let cumulativeSum = 0;
+
+    return sortedData.map(item => {
+        cumulativeSum += item.count;
+        return {
+            ...item,
+            percentage: (item.count / total) * 100,
+            cumulativePercentage: (cumulativeSum / total) * 100
+        };
+    });
+}

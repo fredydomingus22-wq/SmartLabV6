@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSafeUser } from "@/lib/auth.server";
-import { SPCClient } from "./spc-client";
+import { SPCDashboardShell } from "./_components/spc-dashboard-shell";
 import { getActiveSPCAlerts } from "@/lib/queries/spc-alerts";
-import { Sparkles, TrendingUp, AlertTriangle, Activity, Workflow } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { PremiumAnalyticsCard } from "@/components/dashboard/premium-analytics-card";
+import { Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +41,19 @@ export default async function SPCPage() {
     }
     const { data: products } = await productsQuery;
 
-    // 3. Fetch Sample Types (Master Table - No org_id filter)
+    // 3. Fetch Sample Types
     const { data: sampleTypes } = await supabase
         .from("sample_types")
         .select("id, name")
         .order("name");
 
-    // 4. Fetch Active SPC Alerts
+    // 4. Fetch Product Specifications to map Param <-> Product correlation
+    const { data: allSpecs } = await supabase
+        .from("product_specifications")
+        .select("id, product_id, qa_parameter_id, sample_type_id")
+        .eq("organization_id", user.organization_id);
+
+    // 5. Fetch Active SPC Alerts
     let activeAlerts: any[] = [];
     try {
         activeAlerts = await getActiveSPCAlerts(10);
@@ -67,71 +72,21 @@ export default async function SPCPage() {
     }
 
     return (
-        <div className="space-y-10 pb-10">
-            {/* Header with Sparkles */}
-            <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-primary">
-                        <Sparkles className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest opacity-70">Industrial Intelligence</span>
-                    </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight">
-                        Statistical Process Control
-                    </h1>
-                    <p className="text-muted-foreground text-lg">
-                        Monitoramento avançado de estabilidade, capacidade (Cp/Cpk) e desvios.
-                    </p>
-                </div>
-                <div className="hidden md:flex gap-3">
-                    <Badge variant="outline" className="h-10 px-4 glass border-emerald-500/20 text-emerald-500 bg-emerald-500/5">
-                        <Activity className="h-4 w-4 mr-2" />
-                        Engine: Python SPC 3.0
-                    </Badge>
-                </div>
-            </div>
+        <div className="space-y-6 px-6 pb-20 h-full">
+            <PageHeader
+                title="Controlo Estatístico de Processo (CEP/SPC)"
+                overline="Analítica de Estabilidade e Capabilidade"
+                size="compact"
+                icon={<Sparkles className="h-4 w-4" />}
+                variant="emerald"
+            />
 
-            {/* Trending Insights - Top Level Stats */}
-            <div className="grid gap-6 md:grid-cols-3">
-                <PremiumAnalyticsCard
-                    title="Capacidade Global (Cpk)"
-                    value="1.33"
-                    description="Média ponderada dos processos críticos"
-                    trend={{ value: 0.05, isPositive: true }}
-                    data={generateSeries(1.30, 0.1)}
-                    dataKey="value"
-                    color="#10b981"
-                />
-                <PremiumAnalyticsCard
-                    title="Estabilidade do Processo"
-                    value="96.5%"
-                    description="Lotes sem violação de regras de Nelson"
-                    trend={{ value: 1.2, isPositive: true }}
-                    data={generateSeries(95, 2)}
-                    dataKey="value"
-                    color="#3b82f6"
-                />
-                <PremiumAnalyticsCard
-                    title="Alertas Críticos"
-                    value={activeAlerts.length.toString()}
-                    description="Ocorrências ativas (Nelson Rules)"
-                    trend={{ value: activeAlerts.length > 0 ? 1 : 0, isPositive: activeAlerts.length === 0 }}
-                    data={generateSeries(5, 2)}
-                    dataKey="value"
-                    color="#f59e0b"
-                />
-            </div>
-
-            {/* Main SPC Client */}
-            <div className="relative">
-                <SPCClient
-                    user={user}
-                    parameters={parameters || []}
-                    products={products || []}
-                    sampleTypes={sampleTypes || []}
-                    initialSPCResult={initialSPCResult}
-                    alerts={activeAlerts}
-                />
-            </div>
+            <SPCDashboardShell
+                initialProducts={products || []}
+                initialParameters={parameters || []}
+                sampleTypes={sampleTypes || []}
+                allSpecifications={allSpecs || []}
+            />
         </div>
     );
 }

@@ -29,18 +29,21 @@ export const menuItems: MenuItem[] = [
         href: "/dashboard",
         icon: LayoutDashboard,
         label: "Painel Principal",
-        module: "dashboard"
+        module: "dashboard",
+        group: "Core Operations"
     },
     {
         href: "/tasks",
         icon: ClipboardList,
         label: "Gestão de Tarefas",
-        module: "tasks"
+        module: "tasks",
+        group: "Core Operations"
     },
     {
         label: "Laboratório (LIMS)",
         icon: FlaskConical,
         module: "lab",
+        group: "LIMS Module",
         children: [
             { href: "/lab", label: "Amostras Lab", module: "lab" },
             { href: "/lab/approvals", label: "Centro de Aprovações", module: "lab" },
@@ -53,6 +56,7 @@ export const menuItems: MenuItem[] = [
         label: "Incubação & Micro",
         icon: Microscope,
         module: "micro",
+        group: "LIMS Module",
         children: [
             { href: "/micro/samples", label: "Amostras Micro", module: "micro" },
             { href: "/micro/incubators", label: "Incubadoras", module: "micro" },
@@ -65,6 +69,7 @@ export const menuItems: MenuItem[] = [
         label: "Produção",
         icon: Factory,
         module: "production",
+        group: "Production (MES)",
         children: [
             { href: "/production", label: "Lotes em Curso" },
             { href: "/production/tanks", label: "Monitorização de Tanques" },
@@ -75,6 +80,7 @@ export const menuItems: MenuItem[] = [
         label: "Gestão de Ativos",
         icon: Wrench,
         module: "assets",
+        group: "Production (MES)",
         children: [
             { href: "/assets", label: "Visão Geral" },
             { href: "/assets/process-equipment", label: "Equipamentos Prod." },
@@ -86,6 +92,7 @@ export const menuItems: MenuItem[] = [
         label: "Qualidade (QMS)",
         icon: ShieldCheck,
         module: "qms",
+        group: "Quality (QMS)",
         children: [
             { href: "/quality/qms?tab=dashboard", label: "Performance de Qualidade" },
             { href: "/quality/qms", label: "Não Conformidades & CAPA" },
@@ -103,6 +110,7 @@ export const menuItems: MenuItem[] = [
         label: "Segurança Alimentar",
         icon: ShieldAlert,
         module: "haccp",
+        group: "Food Safety (FSMS)",
         children: [
             { href: "/haccp/performance", label: "Performance & Compliance" },
             { href: "/haccp/prp", label: "Prerrequisitos (PRP)" },
@@ -116,6 +124,7 @@ export const menuItems: MenuItem[] = [
         label: "CIP & Higienização",
         icon: RefreshCw,
         module: "production",
+        group: "Production (MES)",
         children: [
             { href: "/cip", label: "Visão Geral" },
             { href: "/cip/register", label: "Execução de Limpeza" },
@@ -127,6 +136,7 @@ export const menuItems: MenuItem[] = [
         label: "Inventário & Materiais",
         icon: Warehouse,
         module: "materials",
+        group: "Logistics",
         children: [
             { href: "/materials", label: "Geral" },
             { href: "/materials/raw", label: "Matérias-Primas" },
@@ -139,12 +149,14 @@ export const menuItems: MenuItem[] = [
         href: "/reports",
         icon: FileText,
         label: "Analytics & Relatórios",
-        module: "reports"
+        module: "reports",
+        group: "Core Operations"
     },
     {
         label: "Configurações",
         icon: Settings,
         module: "settings",
+        group: "Settings",
         children: [
             { href: "/settings/profile", label: "Perfil" },
             { href: "/settings/plant", label: "Configuração da Unidade" },

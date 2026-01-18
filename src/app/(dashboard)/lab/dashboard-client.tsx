@@ -29,8 +29,6 @@ interface DashboardClientProps {
 
 import { motion, AnimatePresence } from "framer-motion";
 
-import { PageHeader } from "@/components/layout/page-header";
-
 export function DashboardClient({
     samples,
     stats,
@@ -59,72 +57,65 @@ export function DashboardClient({
         router.refresh();
     };
 
-    const headerTitle = userRole === 'lab_analyst' ? 'Laboratório FQ' : userRole === 'micro_analyst' ? 'Laboratório Micro' : 'Controlo de Amostras';
-    const headerIcon = userRole === 'lab_analyst' ? Beaker : userRole === 'micro_analyst' ? Beaker : Beaker; // Standardized for now
-
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
-            <PageHeader
-                title={headerTitle}
-                icon={<Beaker className="h-4 w-4" />}
-                overline="Laboratory Operations"
-                variant="blue"
-                actions={
-                    <div className="flex items-center gap-2">
-                        <CreateSampleDialog
-                            sampleTypes={sampleTypes}
-                            tanks={tanks}
-                            samplingPoints={samplingPoints}
-                            plantId={plantId}
-                            users={users}
-                        />
-                        <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/5">
-                            {[
-                                { id: "list", icon: List },
-                                { id: "grid", icon: LayoutGrid },
-                                { id: "table", icon: Search }
-                            ].map((mode) => (
-                                <Button
-                                    key={mode.id}
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                        "h-8 w-8 rounded-lg transition-all",
-                                        viewMode === mode.id ? "bg-white/10 text-blue-400" : "text-slate-500 hover:text-slate-300"
-                                    )}
-                                    onClick={() => setViewMode(mode.id as any)}
-                                >
-                                    <mode.icon className="h-4 w-4" />
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                }
-            >
-                {/* Minimal Mode Toggle */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 glass rounded-[2rem] border-white/5 bg-slate-900/40">
                 <div className="flex items-center gap-1">
                     {[
-                        { id: 'all', label: 'Global', color: 'text-slate-200', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'auditor'] },
-                        { id: 'FQ', label: 'Físico-Química', color: 'text-blue-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'lab_analyst', 'auditor'] },
-                        { id: 'MICRO', label: 'Microbiologia', color: 'text-purple-400', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'micro_analyst', 'auditor'] }
+                        { id: 'all', label: 'Global', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'auditor'] },
+                        { id: 'FQ', label: 'Físico-Química', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'lab_analyst', 'auditor'] },
+                        { id: 'MICRO', label: 'Microbiologia', roles: ['admin', 'qa_manager', 'quality', 'qc_supervisor', 'micro_analyst', 'auditor'] }
                     ]
                         .filter(m => !m.roles || m.roles.includes(userRole))
                         .map((mode) => (
-                            <button
+                            <Button
                                 key={mode.id}
+                                variant="ghost"
                                 onClick={() => setLabType(mode.id as any)}
                                 className={cn(
-                                    "px-4 h-8 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all",
+                                    "px-6 h-9 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all",
                                     labType === mode.id
-                                        ? "bg-white/10 text-white shadow-sm"
-                                        : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                                        : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
                                 )}
                             >
                                 {mode.label}
-                            </button>
+                            </Button>
                         ))}
                 </div>
-            </PageHeader>
+                <div className="flex items-center gap-2">
+                    <CreateSampleDialog
+                        sampleTypes={sampleTypes}
+                        tanks={tanks}
+                        samplingPoints={samplingPoints}
+                        plantId={plantId}
+                        users={users}
+                    />
+                    <div className="flex bg-slate-950/40 p-1 rounded-xl border border-white/5 shadow-inner">
+                        {[
+                            { id: "list", icon: List, label: "Lista" },
+                            { id: "grid", icon: LayoutGrid, label: "Grelha" },
+                            { id: "table", icon: Search, label: "Tabela" }
+                        ].map((mode) => (
+                            <Button
+                                key={mode.id}
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "h-9 w-9 rounded-lg transition-all",
+                                    viewMode === mode.id
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                        : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
+                                )}
+                                onClick={() => setViewMode(mode.id as any)}
+                                title={mode.label}
+                            >
+                                <mode.icon className="h-4 w-4" />
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
             <KPICards stats={stats} />
 

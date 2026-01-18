@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/smart/searchable-select";
 import { Search, XCircle, AlertTriangle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface MediaLot {
     id: string;
@@ -87,37 +88,45 @@ export function MediaPageClient({ lots }: MediaPageClientProps) {
     const columns = [
         {
             key: "media_type.name",
-            label: "Media Type",
+            label: "Tipo de Meio",
             render: (row: MediaLot) => {
                 const mediaType = Array.isArray(row.media_type) ? row.media_type[0] : row.media_type;
-                return mediaType?.name || "Unknown";
+                return (
+                    <span className="font-medium">{mediaType?.name || "Desconhecido"}</span>
+                );
             }
         },
-        { key: "lot_code", label: "Lot Code" },
+        {
+            key: "lot_code",
+            label: "Lote",
+            render: (row: MediaLot) => (
+                <span className="font-mono text-xs">{row.lot_code}</span>
+            )
+        },
         {
             key: "quantity_current",
-            label: "Qty Available",
+            label: "Qtd. Atual",
             render: (row: MediaLot) => (
-                <span className={row.quantity_current === 0 ? "text-red-500 font-semibold" : ""}>
+                <span className={row.quantity_current === 0 ? "text-destructive font-bold" : "font-mono"}>
                     {row.quantity_current}
                 </span>
             )
         },
         {
             key: "expiry_date",
-            label: "Expiry",
+            label: "Validade",
             render: (row: MediaLot) => {
                 const status = getExpiryStatus(row.expiry_date);
                 return (
                     <div className="flex items-center gap-2">
-                        <span>{new Date(row.expiry_date).toLocaleDateString()}</span>
+                        <span className="font-mono text-xs">{new Date(row.expiry_date).toLocaleDateString()}</span>
                         {status === "expired" && (
-                            <Badge variant="destructive" className="text-xs">Expired</Badge>
+                            <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">Vencido</Badge>
                         )}
                         {status === "expiring_soon" && (
-                            <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700">
+                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border-yellow-500/20">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
-                                Soon
+                                Vence Logo
                             </Badge>
                         )}
                     </div>
@@ -129,72 +138,78 @@ export function MediaPageClient({ lots }: MediaPageClientProps) {
             label: "Status",
             render: (row: MediaLot) => (
                 <Badge variant={row.status === "active" ? "default" : "secondary"}>
-                    {row.status}
+                    {row.status === "active" ? "Ativo" : row.status}
                 </Badge>
             )
         },
     ];
 
     return (
-        <div className="space-y-4">
-            {/* Filters */}
-            <div className="grid gap-4 md:grid-cols-3 p-4 bg-muted/30 rounded-lg">
-                <div>
-                    <Label className="text-xs text-muted-foreground">Search</Label>
-                    <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Lot code, media type..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8"
-                        />
+        <Card>
+            <CardContent className="p-0">
+                <div className="space-y-4 p-4">
+                    {/* Filters */}
+                    <div className="grid gap-4 md:grid-cols-3 p-4 bg-muted/50 rounded-lg border border-border">
+                        <div>
+                            <Label className="text-xs text-muted-foreground mb-1.5 block">Buscar</Label>
+                            <div className="relative">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Lote, tipo..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-8 bg-background"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label className="text-xs text-muted-foreground mb-1.5 block">Tipo de Meio</Label>
+                            <SearchableSelect
+                                value={mediaTypeFilter}
+                                onValueChange={setMediaTypeFilter}
+                                placeholder="Todos os Tipos"
+                                options={[
+                                    { value: "all", label: "Todos os Tipos" },
+                                    ...uniqueMediaTypes.map(type => ({ value: type, label: type }))
+                                ]}
+                            />
+                        </div>
+
+                        <div>
+                            <Label className="text-xs text-muted-foreground mb-1.5 block">Validade</Label>
+                            <SearchableSelect
+                                value={expiryFilter}
+                                onValueChange={setExpiryFilter}
+                                placeholder="Todas"
+                                options={[
+                                    { value: "all", label: "Todas" },
+                                    { value: "ok", label: "Dentro da Validade" },
+                                    { value: "expiring_soon", label: "Vence em Breve (≤7 dias)" },
+                                    { value: "expired", label: "Vencido" },
+                                ]}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Filter Status */}
+                    <div className="flex items-center justify-between text-sm px-1">
+                        <span className="text-muted-foreground">
+                            A apresentar {filteredLots.length} de {lots.length} lotes
+                        </span>
+                        {hasActiveFilters && (
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8">
+                                <XCircle className="h-4 w-4 mr-1.5" />
+                                Limpar Filtros
+                            </Button>
+                        )}
                     </div>
                 </div>
 
-                <div>
-                    <Label className="text-xs text-muted-foreground">Media Type</Label>
-                    <SearchableSelect
-                        value={mediaTypeFilter}
-                        onValueChange={setMediaTypeFilter}
-                        placeholder="All Types"
-                        options={[
-                            { value: "all", label: "All Types" },
-                            ...uniqueMediaTypes.map(type => ({ value: type, label: type }))
-                        ]}
-                    />
+                <div className="border-t border-border">
+                    <DataGrid data={filteredLots} columns={columns} />
                 </div>
-
-                <div>
-                    <Label className="text-xs text-muted-foreground">Expiry Status</Label>
-                    <SearchableSelect
-                        value={expiryFilter}
-                        onValueChange={setExpiryFilter}
-                        placeholder="All"
-                        options={[
-                            { value: "all", label: "All" },
-                            { value: "ok", label: "Valid" },
-                            { value: "expiring_soon", label: "Expiring Soon (≤7 days)" },
-                            { value: "expired", label: "Expired" },
-                        ]}
-                    />
-                </div>
-            </div>
-
-            {/* Filter Status */}
-            <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                    Showing {filteredLots.length} of {lots.length} lots
-                </span>
-                {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Clear Filters
-                    </Button>
-                )}
-            </div>
-
-            <DataGrid data={filteredLots} columns={columns} />
-        </div>
+            </CardContent>
+        </Card>
     );
 }

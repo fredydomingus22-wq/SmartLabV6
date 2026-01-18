@@ -48,9 +48,10 @@ interface CreateMicroSampleDialogProps {
     tanks: Tank[];
     samplingPoints: SamplingPoint[];
     plantId: string;
+    trigger?: React.ReactNode;
 }
 
-export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, plantId }: CreateMicroSampleDialogProps) {
+export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, plantId, trigger }: CreateMicroSampleDialogProps) {
     const searchParams = useSearchParams();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -120,10 +121,12 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nova Amostra Micro
-                </Button>
+                {trigger ? trigger : (
+                    <Button className="bg-purple-600 hover:bg-purple-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nova Amostra Micro
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
@@ -194,7 +197,7 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
 
                         {/* Sampling Point */}
                         <div className="grid gap-2">
-                            <Label htmlFor="sampling_point">Ponto de Coleta</Label>
+                            <Label htmlFor="sampling_point">Ponto de Recolha</Label>
                             <SearchableSelect
                                 value={selectedSamplingPoint}
                                 onValueChange={setSelectedSamplingPoint}
@@ -208,7 +211,7 @@ export function CreateMicroSampleDialog({ sampleTypes, tanks, samplingPoints, pl
 
                         {/* Collection Time */}
                         <div className="grid gap-2">
-                            <Label htmlFor="collected_at">Data/Hora de Coleta</Label>
+                            <Label htmlFor="collected_at">Data/Hora de Recolha</Label>
                             <Input
                                 id="collected_at"
                                 name="collected_at"

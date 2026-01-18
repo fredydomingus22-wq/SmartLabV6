@@ -45,24 +45,24 @@ export function AIAuditorCard({ onAnalyze, initialData }: AIAuditorCardProps) {
     };
 
     const statusConfig = {
-        stable: { color: "bg-emerald-500/10 text-emerald-500", icon: ShieldCheck, label: "ESTÁVEL" },
-        unstable: { color: "bg-orange-500/10 text-orange-400", icon: TrendingUp, label: "INSTÁVEL" },
-        critical: { color: "bg-red-500/10 text-red-500", icon: AlertTriangle, label: "CRÍTICO" }
+        stable: { color: "bg-success/10 text-success", icon: ShieldCheck, label: "ESTÁVEL" },
+        unstable: { color: "bg-warning/10 text-warning", icon: TrendingUp, label: "INSTÁVEL" },
+        critical: { color: "bg-destructive/10 text-destructive", icon: AlertTriangle, label: "CRÍTICO" }
     };
 
     const StatusIcon = result ? statusConfig[result.status].icon : Sparkles;
 
     return (
-        <Card className="glass border-emerald-500/20 bg-slate-950/40 overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Sparkles className="h-24 w-24 text-emerald-500" />
+        <Card className="border-success/20 bg-card overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Sparkles className="h-24 w-24 text-success" />
             </div>
 
             <CardHeader className="pb-4 relative z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                            <Sparkles className="h-5 w-5 text-emerald-400 " />
+                        <div className="p-2 rounded-lg bg-success/10 border border-success/20">
+                            <Sparkles className="h-5 w-5 text-success " />
                         </div>
                         <div>
                             <CardTitle className="text-lg font-bold text-white">Auditor SPC (IA)</CardTitle>
@@ -89,7 +89,7 @@ export function AIAuditorCard({ onAnalyze, initialData }: AIAuditorCardProps) {
                         </div>
                         <Button
                             onClick={handleAnalyze}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 px-8 rounded-xl shadow-lg shadow-emerald-900/20"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 px-8"
                         >
                             <Sparkles className="h-4 w-4" />
                             Iniciar Auditoria IA
@@ -106,7 +106,7 @@ export function AIAuditorCard({ onAnalyze, initialData }: AIAuditorCardProps) {
                 ) : result ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
                         {/* Summary Section */}
-                        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                        <div className="p-4 rounded-lg bg-slate-900/50 border border-border">
                             <p className="text-sm text-slate-300 leading-relaxed italic">"{result.summary}"</p>
                         </div>
 
@@ -114,7 +114,7 @@ export function AIAuditorCard({ onAnalyze, initialData }: AIAuditorCardProps) {
                             {/* Trends & Risks */}
                             <div className="space-y-4">
                                 <div>
-                                    <h4 className="flex items-center gap-2 text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">
+                                    <h4 className="flex items-center gap-2 text-[10px] font-bold text-primary uppercase tracking-widest mb-2">
                                         <TrendingUp className="h-3 w-3" /> Tendências Detectadas
                                     </h4>
                                     <ul className="space-y-2">
@@ -140,8 +140,8 @@ export function AIAuditorCard({ onAnalyze, initialData }: AIAuditorCardProps) {
                             </div>
 
                             {/* Recommendations */}
-                            <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-                                <h4 className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-3">
+                            <div className="p-4 rounded-lg bg-success/5 border border-success/10">
+                                <h4 className="flex items-center gap-2 text-[10px] font-bold text-success uppercase tracking-widest mb-3">
                                     <Lightbulb className="h-3 w-3" /> Recomendações Táticas
                                 </h4>
                                 <ul className="space-y-3">

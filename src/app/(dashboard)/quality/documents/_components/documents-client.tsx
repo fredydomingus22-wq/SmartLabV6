@@ -27,12 +27,13 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
-    GlassTable,
-    GlassTableHeader,
-    GlassTableRow,
-    GlassTableHead,
-    GlassTableCell
-} from "@/components/ui/glass-table";
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
 interface DocumentsClientProps {
     documents: any[];
@@ -212,94 +213,90 @@ export function DocumentsClient({ documents = [], categories = [], plants = [] }
                         </Card>
                     ) : viewMode === "list" ? (
                         <Card className="bg-card border-slate-800 shadow-2xl rounded-2xl overflow-hidden">
-                            <CardContent className="p-0">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-slate-800 bg-slate-900/50">
-                                                <th className="w-16 py-4 px-6"></th>
-                                                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Ref. Industrial</th>
-                                                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Documento Master</th>
-                                                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Versão</th>
-                                                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Estado</th>
-                                                <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">P. Review</th>
-                                                <th className="py-4 px-6 text-right"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-800/40">
-                                            {filteredDocuments.map((doc) => {
-                                                const status = getStatusInfo(doc.current_version?.status);
-                                                return (
-                                                    <tr key={doc.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/30 last:border-0">
-                                                        <td className="py-3 px-6">
-                                                            <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center border border-slate-800 group-hover:border-blue-500/30 transition-all shadow-inner">
-                                                                <FileText className="h-5 w-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="font-mono text-[10px] bg-slate-950/50 text-blue-400 px-2 py-1 rounded border border-slate-800 font-black">
-                                                                {doc.doc_number}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-sm font-black text-white italic tracking-tight group-hover:text-blue-400 transition-colors line-clamp-1">
-                                                                    {doc.title}
-                                                                </span>
-                                                                <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest flex items-center gap-2 mt-0.5">
-                                                                    <Folder className="h-2.5 w-2.5" />
-                                                                    {doc.category?.name || "Geral"}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4 text-center">
-                                                            <Badge variant="outline" className="text-[9px] font-black bg-slate-950/50 border-slate-800 text-slate-500 px-2 min-w-[32px] justify-center">
-                                                                V{doc.current_version?.version_number || "0.0"}
-                                                            </Badge>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest shadow-inner", status.color)}>
-                                                                {status.icon}
-                                                                {status.label}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                                                                    {doc.periodic_reviews?.[0]?.scheduled_date ? new Date(doc.periodic_reviews[0].scheduled_date).toLocaleDateString() : "---"}
-                                                                </span>
-                                                                {doc.periodic_reviews?.[0]?.scheduled_date && (
-                                                                    <span className="text-[8px] text-slate-600 font-black uppercase tracking-[0.2em] italic">Programada</span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-6 text-right">
-                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0 translate-x-4">
-                                                                <Link href={`/quality/documents/${doc.id}`}>
-                                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg">
-                                                                        <Eye className="h-4 w-4" />
-                                                                    </Button>
-                                                                </Link>
-                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg">
-                                                                    <ShieldCheck className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-600 rounded-lg">
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="p-4 bg-slate-950/20 border-t border-slate-800">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 text-center italic">
-                                        SmartLab Documentation Engine • ISO 9001 Regulatory Hub
-                                    </p>
-                                </div>
-                            </CardContent>
+                            <Table>
+                                <TableHeader className="bg-slate-900/50">
+                                    <TableRow className="border-b border-slate-800 hover:bg-transparent">
+                                        <TableHead className="w-16 py-4 px-6"></TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Código Documental</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Título / Mestre</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Versão</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Estado Industrial</TableHead>
+                                        <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Próxima Revisão</TableHead>
+                                        <TableHead className="py-4 px-6 text-right text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Ações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredDocuments.map((doc) => {
+                                        const status = getStatusInfo(doc.current_version?.status);
+                                        return (
+                                            <TableRow key={doc.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/30 last:border-0 border-x-0">
+                                                <TableCell className="py-3 px-6">
+                                                    <div className="h-10 w-10 bg-slate-950 rounded-xl flex items-center justify-center border border-slate-800 group-hover:border-blue-500/30 transition-all shadow-inner">
+                                                        <FileText className="h-5 w-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <span className="font-mono text-[10px] bg-slate-950/50 text-blue-400 px-2 py-1 rounded border border-slate-800 font-black italic">
+                                                        {doc.doc_number}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-black text-white italic tracking-tight group-hover:text-blue-400 transition-colors line-clamp-1">
+                                                            {doc.title}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest flex items-center gap-2 mt-0.5">
+                                                            <Folder className="h-2.5 w-2.5" />
+                                                            {doc.category?.name || "Geral"}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center">
+                                                    <Badge variant="outline" className="text-[9px] font-black bg-slate-950/50 border-slate-800 text-slate-500 px-2 min-w-[32px] justify-center italic">
+                                                        V{doc.current_version?.version_number || "0.0"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest shadow-inner", status.color)}>
+                                                        {status.icon}
+                                                        {status.label}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter italic">
+                                                            {doc.periodic_reviews?.[0]?.scheduled_date ? new Date(doc.periodic_reviews[0].scheduled_date).toLocaleDateString() : "---"}
+                                                        </span>
+                                                        {doc.periodic_reviews?.[0]?.scheduled_date && (
+                                                            <span className="text-[8px] text-slate-600 font-black uppercase tracking-[0.2em] italic">Agendada</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3 px-6 text-right">
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0 translate-x-4">
+                                                        <Link href={`/quality/documents/${doc.id}`}>
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg">
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg">
+                                                            <ShieldCheck className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-600 rounded-lg">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                            <div className="p-4 bg-slate-950/20 border-t border-slate-800">
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 text-center italic">
+                                    SmartLab Documentation Engine • ISO 9001 Regulatory Center
+                                </p>
+                            </div>
                         </Card>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">

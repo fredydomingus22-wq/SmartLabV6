@@ -19,7 +19,7 @@ import { toast } from "sonner";
 interface IndustrialOOSDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (reason: string) => Promise<void>;
+    onConfirm: (reason: string, password?: string) => Promise<void>;
     measuredValue: string | number;
     specMin?: number | null;
     specMax?: number | null;
@@ -40,6 +40,7 @@ export function IndustrialOOSDialog({
     testName
 }: IndustrialOOSDialogProps) {
     const [reason, setReason] = useState("");
+    const [password, setPassword] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleConfirm = async () => {
@@ -47,10 +48,14 @@ export function IndustrialOOSDialog({
             toast.error("Por favor, forneça uma justificação detalhada (mín. 10 caracteres).");
             return;
         }
+        if (!password) {
+            toast.error("Assinatura obrigatória.");
+            return;
+        }
 
         setIsSubmitting(true);
         try {
-            await onConfirm(reason);
+            await onConfirm(reason, password);
             // Don't close here, let parent handle it or close after success
         } catch (error) {
             console.error("OOS Confirm Error:", error);
@@ -124,6 +129,22 @@ export function IndustrialOOSDialog({
                             className="min-h-[100px] border-red-200 dark:border-red-900 focus-visible:ring-red-500"
                         />
                     </div>
+
+                    {/* Signature Field for Compliance */}
+                    <div className="grid gap-2">
+                        <Label htmlFor="oos-password" className="flex items-center gap-2">
+                            Assinatura Eletrónica
+                            <span className="text-xs font-normal text-muted-foreground">(Password)</span>
+                        </Label>
+                        <input
+                            id="oos-password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="Confirme sua identidade..."
+                        />
+                    </div>
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
@@ -138,7 +159,7 @@ export function IndustrialOOSDialog({
                     <Button
                         variant="destructive"
                         onClick={handleConfirm}
-                        disabled={isSubmitting || !reason.trim()}
+                        disabled={isSubmitting || !reason.trim() || !password}
                         className="bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20"
                     >
                         {isSubmitting ? "Registando..." : "Confirmar OOS"}

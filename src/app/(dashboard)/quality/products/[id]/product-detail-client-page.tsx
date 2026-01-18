@@ -533,7 +533,7 @@ export function ProductDetailClientPage({
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {specifications.filter(s => s.parameter.category === 'process').map(spec => (
+                                            {specifications.filter((s: any) => s.parameter.category === 'process').map(spec => (
                                                 <div key={spec.id} className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800/60">
                                                     <div className="flex justify-between items-start mb-2">
                                                         <span className="text-sm font-bold">{spec.parameter.name}</span>

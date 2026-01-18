@@ -11,7 +11,21 @@ import { styles as commonStyles } from '../styles';
  */
 
 const styles = StyleSheet.create({
-    ...commonStyles,
+    page: {
+        padding: 30,
+        fontFamily: 'Helvetica',
+        fontSize: 10,
+        color: '#333',
+    },
+    header: {
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#111',
+        paddingBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     headerLogo: {
         width: 40,
         height: 40,
@@ -24,14 +38,13 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
-        fontStyle: 'italic',
     },
     headerTitleContainer: {
         marginLeft: 10,
     },
     headerTitleMain: {
         fontSize: 12,
-        fontWeight: 'extrabold',
+        fontWeight: 'bold',
         textTransform: 'uppercase',
     },
     headerTitleSub: {
@@ -55,14 +68,11 @@ const styles = StyleSheet.create({
     },
     sectionTitleText: {
         fontSize: 10,
-        fontWeight: 'black',
+        fontWeight: 'bold',
         textTransform: 'uppercase',
-        letterSpacing: -0.5,
     },
     table: {
         width: '100%',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
         marginBottom: 10,
     },
     tableHeaderRow: {
@@ -95,7 +105,6 @@ const styles = StyleSheet.create({
     },
     footerText: {
         fontSize: 6,
-        fontFamily: 'Courier',
         color: '#cbd5e1',
         textTransform: 'uppercase',
         letterSpacing: 1,
@@ -141,7 +150,7 @@ export const MicroReportTemplate = ({ data }: MicroReportProps) => (
                         {section.samples.map((sample, sIdx) => (
                             <View key={sIdx} style={{ marginBottom: 15, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: '#f1f5f9' }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                                    <Text style={{ fontSize: 9, fontWeight: 'black', textTransform: 'uppercase' }}>Sample ID: {sample.sampleId}</Text>
+                                    <Text style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase' }}>Sample ID: {sample.sampleId}</Text>
                                     <Text style={{ fontSize: 8, color: '#94a3b8', fontWeight: 'bold' }}>
                                         Date: {new Date(sample.analysisDate).toLocaleDateString()}
                                     </Text>
@@ -160,7 +169,7 @@ export const MicroReportTemplate = ({ data }: MicroReportProps) => (
                                     {sample.records.map((r, rIdx) => (
                                         <View key={rIdx} style={[styles.tableRow, { borderBottomColor: '#f1f5f9' }]}>
                                             <Text style={{ width: '30%', fontSize: 8, padding: 4, fontWeight: 'bold' }}>{r.parameter}</Text>
-                                            <Text style={{ width: '15%', fontSize: 8, padding: 4, textAlign: 'center', fontWeight: 'black' }}>{r.result}</Text>
+                                            <Text style={{ width: '15%', fontSize: 8, padding: 4, textAlign: 'center', fontWeight: 'bold' }}>{r.result}</Text>
                                             <Text style={{ width: '15%', fontSize: 8, padding: 4, textAlign: 'center', color: '#64748b' }}>{r.limit}</Text>
                                             <Text style={{ width: '10%', fontSize: 8, padding: 4, textAlign: 'center', fontFamily: 'Courier', color: '#94a3b8' }}>{r.unit}</Text>
                                             <Text style={{ width: '20%', fontSize: 7, padding: 4, textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>{r.method}</Text>

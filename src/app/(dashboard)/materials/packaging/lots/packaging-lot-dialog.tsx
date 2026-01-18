@@ -9,6 +9,7 @@ import { createPackagingLot } from "@/actions/packaging";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/smart/searchable-select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PackagingLotDialogProps {
     materials: any[];
@@ -25,56 +26,60 @@ export function PackagingLotDialog({ materials }: PackagingLotDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl shadow-lg shadow-blue-900/20 font-semibold tracking-wide border border-transparent hover:border-blue-400/30 transition-all duration-300">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Registar Lote
-                    </Button>
-                </DialogTrigger>
+                <Button variant="outline" className="bg-slate-900/50 border-slate-800 hover:bg-blue-600 hover:text-white rounded-xl shadow-lg font-black uppercase text-[10px] tracking-widest transition-all">
+                    <Plus className="mr-2 h-3.5 w-3.5 stroke-[1.5px]" />
+                    Registar Lote
+                </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] glass border-slate-800 bg-slate-900/95 text-slate-100">
-                <DialogHeader>
-                    <DialogTitle>Registar Lote de Embalagem</DialogTitle>
+            <DialogContent className="sm:max-w-[500px] border-slate-800 bg-slate-950 shadow-2xl p-0 overflow-hidden max-h-[95vh] flex flex-col text-slate-100">
+                <DialogHeader className="p-6 pb-2 border-b border-white/5 bg-white/5">
+                    <DialogTitle className="text-sm font-black uppercase tracking-widest italic text-white">Registo de Lote de Embalagem</DialogTitle>
                 </DialogHeader>
 
-                <ActionForm
-                    action={createPackagingLot}
-                    onSuccess={() => setOpen(false)}
-                    submitText="Registar Lote"
-                >
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label>Material de Embalagem *</Label>
-                            <SearchableSelect
-                                name="packaging_material_id"
-                                placeholder="Selecione o material..."
-                                options={materialOptions}
-                            />
-                        </div>
+                <ScrollArea className="flex-1">
+                    <div className="p-6">
+                        <ActionForm
+                            action={createPackagingLot}
+                            onSuccess={() => setOpen(false)}
+                            submitText="Registar Lote"
+                            className="p-0"
+                        >
+                            <div className="grid gap-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Material de Embalagem *</Label>
+                                    <SearchableSelect
+                                        name="packaging_material_id"
+                                        placeholder="Selecione o material..."
+                                        options={materialOptions}
+                                        className="h-11 rounded-xl bg-slate-900/50 border-slate-800 focus:ring-blue-500/20"
+                                    />
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="lot_code">Código de Lote *</Label>
-                                <Input id="lot_code" name="lot_code" required placeholder="Lote do fornecedor" className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all" />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="quantity">Quantidade Recebida *</Label>
-                                <Input id="quantity" name="quantity" type="number" min="0" className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all" required />
-                            </div>
-                        </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lot_code" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Código de Lote *</Label>
+                                        <Input id="lot_code" name="lot_code" required placeholder="Lote do fornecedor" className="bg-slate-900/50 border-slate-800 focus:border-blue-500/50 transition-all rounded-xl h-11" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="quantity" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Quantidade Recebida *</Label>
+                                        <Input id="quantity" name="quantity" type="number" min="0" className="bg-slate-900/50 border-slate-800 focus:border-blue-500/50 transition-all rounded-xl h-11" required />
+                                    </div>
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="received_at">Data Receção</Label>
-                                <Input id="received_at" name="received_at" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all [color-scheme:dark]" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="received_at" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Data de Receção</Label>
+                                        <Input id="received_at" name="received_at" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="bg-slate-900/50 border-slate-800 focus:border-blue-500/50 transition-all rounded-xl h-11 [color-scheme:dark]" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="expiry_date" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Data de Validade</Label>
+                                        <Input id="expiry_date" name="expiry_date" type="date" className="bg-slate-900/50 border-slate-800 focus:border-blue-500/50 transition-all rounded-xl h-11 [color-scheme:dark]" />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="expiry_date">Validade</Label>
-                                <Input id="expiry_date" name="expiry_date" type="date" className="bg-slate-900/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all [color-scheme:dark]" />
-                            </div>
-                        </div>
+                        </ActionForm>
                     </div>
-                </ActionForm>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     );

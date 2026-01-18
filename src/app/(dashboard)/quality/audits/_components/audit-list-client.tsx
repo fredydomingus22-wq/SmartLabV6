@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -22,67 +23,80 @@ interface AuditListClientProps {
 export function AuditListClient({ audits }: AuditListClientProps) {
     if (!audits.length) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                <p>Nenhuma auditoria encontrada para os filtros selecionados.</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Nenhuma auditoria encontrada na base de dados.</p>
             </div>
         );
     }
 
     return (
-        <div className="rounded-md border border-slate-800/50">
-            <Table>
-                <TableHeader className="bg-slate-900/50">
-                    <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[120px]">Nº Auditoria</TableHead>
-                        <TableHead>Título / Âmbito</TableHead>
-                        <TableHead>Checklist</TableHead>
-                        <TableHead>Data Planeada</TableHead>
-                        <TableHead>Auditor</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {audits.map((audit) => (
-                        <TableRow key={audit.id} className="hover:bg-slate-900/30 transition-colors">
-                            <TableCell className="font-mono text-xs">{audit.audit_number}</TableCell>
-                            <TableCell>
-                                <div className="font-medium text-slate-200">{audit.title}</div>
+        <Table>
+            <TableHeader>
+                <TableRow className="border-b border-slate-800 bg-slate-900/50 hover:bg-slate-900/50">
+                    <TableHead className="py-4 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Nº Auditoria</TableHead>
+                    <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Título / Âmbito</TableHead>
+                    <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Checklist</TableHead>
+                    <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Data Planeada</TableHead>
+                    <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Auditor</TableHead>
+                    <TableHead className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic text-center">Estado</TableHead>
+                    <TableHead className="py-4 px-6 text-right text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">Ação</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {audits.map((audit) => (
+                    <TableRow key={audit.id} className="group hover:bg-slate-900/40 transition-all border-b border-slate-800/30 last:border-0 border-x-0">
+                        <TableCell className="py-3 px-6">
+                            <span className="font-mono font-black text-emerald-400 bg-emerald-500/5 px-2 py-1 rounded-md border border-emerald-500/10 text-[11px]">
+                                {audit.audit_number}
+                            </span>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                            <div className="max-w-[240px]">
+                                <p className="font-black text-white italic tracking-tight text-sm line-clamp-1">{audit.title}</p>
                                 {audit.scope && (
-                                    <div className="text-xs text-slate-500 truncate max-w-[200px]">
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-[0.1em] font-black mt-0.5 truncate">
                                         {audit.scope}
-                                    </div>
+                                    </p>
                                 )}
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant="secondary" className="font-normal">
-                                    {audit.checklist?.name}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-slate-300">
-                                {audit.planned_date ? format(new Date(audit.planned_date), "dd MMM yyyy", { locale: pt }) : "N/D"}
-                            </TableCell>
-                            <TableCell className="text-slate-300">
-                                {audit.auditor?.full_name || "Pendente"}
-                            </TableCell>
-                            <TableCell>
-                                <Badge className={getStatusColor(audit.status)}>
-                                    {getStatusLabel(audit.status)}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <Link href={`/quality/audits/${audit.id}`}>
-                                    <Button variant="ghost" size="sm" className="hover:bg-emerald-500/10 hover:text-emerald-400">
-                                        <Eye className="h-4 w-4 mr-2" />
-                                        Ver
-                                    </Button>
-                                </Link>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+                            </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                            <Badge variant="outline" className="px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter text-[9px] border border-slate-800 text-slate-400 bg-slate-900/50">
+                                {audit.checklist?.name}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                            <div className="flex items-center gap-2 text-slate-400">
+                                <span className="text-[10px] font-black uppercase tracking-widest font-mono italic">
+                                    {audit.planned_date ? format(new Date(audit.planned_date), "dd/MM/yyyy") : "-"}
+                                </span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                            <span className="text-[10px] font-black uppercase tracking-tight text-slate-400">
+                                {audit.auditor?.full_name?.split(' ')[0] || "Pendente"}
+                            </span>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                            <Badge className={cn("px-3 py-1 rounded-xl font-black uppercase tracking-tighter text-[10px] border shadow-inner whitespace-nowrap", getStatusColor(audit.status))}>
+                                {getStatusLabel(audit.status)}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="py-3 px-6 text-right">
+                            <Link href={`/quality/audits/${audit.id}`}>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:text-white hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0"
+                                >
+                                    Ver <ChevronRight className="h-3 w-3 ml-1" />
+                                </Button>
+                            </Link>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     );
 }
 

@@ -19,14 +19,14 @@ export default async function ObjectivesPage() {
     const { data: users } = await getUsers();
 
     return (
-        <div className="p-6 space-y-8">
+        <div className="space-y-6 px-6 pb-20">
             {/* Header */}
             <PageHeader
                 variant="emerald"
                 icon={<Target className="h-4 w-4" />}
-                overline="Quality Strategy / Clause 6.2"
+                overline="GQ • Estratégia e Cláusula 6.2"
                 title="Objetivos da Qualidade"
-                description="Defina, monitorize e acompanhe os objetivos estratégicos de qualidade da organização."
+                description="Defina, monitorize e acompanhe os indicadores estratégicos de qualidade da organização."
                 backHref="/quality"
                 actions={<CreateObjectiveDialog users={users} />}
             />
@@ -35,45 +35,45 @@ export default async function ObjectivesPage() {
             <div className="grid gap-6 md:grid-cols-5">
                 <KPISparkCard
                     variant="slate"
-                    title="Total"
+                    title="Volume de Metas"
                     value={kpis.total.toString().padStart(2, '0')}
-                    description="Objetivos ativos"
+                    description="Objetivos estratégicos ativos"
                     icon={<Target className="h-4 w-4" />}
                     data={[kpis.total - 1, kpis.total].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="emerald"
-                    title="Em Progresso"
+                    title="Desempenho Nominal"
                     value={kpis.onTrack.toString().padStart(2, '0')}
-                    description="Desempenho nominal"
+                    description="Progressão conforme planeado"
                     icon={<TrendingUp className="h-4 w-4" />}
                     data={[kpis.onTrack - 1, kpis.onTrack].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="amber"
-                    title="Em Risco"
+                    title="Alerta Preventivo"
                     value={kpis.atRisk.toString().padStart(2, '0')}
-                    description="Ação preventiva necessária"
+                    description="Necessidade de intervenção"
                     icon={<AlertTriangle className="h-4 w-4" />}
                     data={[kpis.atRisk + 1, kpis.atRisk].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="emerald"
-                    title="Atingidos"
+                    title="Conclusão de Metas"
                     value={kpis.achieved.toString().padStart(2, '0')}
-                    description="Metas concluídas"
+                    description="Objetivos atingidos com sucesso"
                     icon={<CheckCircle className="h-4 w-4" />}
                     data={[kpis.achieved - 1, kpis.achieved].map(v => ({ value: v }))}
                     dataKey="value"
                 />
                 <KPISparkCard
                     variant="rose"
-                    title="Não Atingidos"
+                    title="Desvio de Metas"
                     value={kpis.missed.toString().padStart(2, '0')}
-                    description="Fora da meta"
+                    description="Metas não atingidas"
                     icon={<XCircle className="h-4 w-4" />}
                     data={[0, kpis.missed].map(v => ({ value: v }))}
                     dataKey="value"
@@ -83,9 +83,9 @@ export default async function ObjectivesPage() {
             {/* Objectives List */}
             <Card className="glass border-slate-800/50">
                 <CardHeader>
-                    <CardTitle>Painel de Objetivos</CardTitle>
-                    <CardDescription>
-                        Acompanhamento do progresso em tempo real.
+                    <CardTitle className="text-xl font-black uppercase italic tracking-tight text-white">Mapa de Objetivos Estratégicos</CardTitle>
+                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-500 italic">
+                        Monitorização de performance e metas em tempo real.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -158,12 +158,12 @@ function ObjectiveCard({ objective }: { objective: any }) {
 
                 <div className="w-full md:w-64 space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Progresso</span>
-                        <span className="font-mono text-slate-200">{objective.current_value} / {objective.target_value} {objective.unit}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Execução Operacional</span>
+                        <span className="font-mono text-[11px] font-black text-slate-200">{objective.current_value} / {objective.target_value} {objective.unit}</span>
                     </div>
-                    <Progress value={progress} className="h-2" />
+                    <Progress value={progress} className="h-2 bg-slate-900 border border-white/5" />
                     <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500">{progress}% concluído</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 italic">{progress}% concluído</span>
                         <UpdateProgressDialog objectiveId={objective.id} currentValue={objective.current_value} currentStatus={objective.status} />
                     </div>
                 </div>

@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { CreateMediaDialog } from "./create-media-dialog";
 import { MediaPageClient } from "./media-page-client";
+import { PageShell } from "@/components/defaults/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { FlaskConical } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -22,19 +25,19 @@ export default async function MediaPage() {
     const plantId = plants?.[0]?.id || "00000000-0000-0000-0000-000000000000";
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Media Inventory</h1>
-                    <p className="text-muted-foreground">Manage culture media batches and stock.</p>
-                </div>
-                <CreateMediaDialog mediaTypes={mediaTypes || []} plantId={plantId} />
-            </div>
+        <PageShell>
+            <PageHeader
+                variant="purple"
+                icon={<FlaskConical className="h-6 w-6" />}
+                title="Estoque de Meios"
+                description="Gerencie lotes de meios de cultura e controle de estoque."
+                actions={<CreateMediaDialog mediaTypes={mediaTypes || []} plantId={plantId} />}
+            />
 
-            <div className="glass rounded-xl p-6">
+            <div className="p-6 space-y-6">
                 <MediaPageClient lots={lots || []} />
             </div>
-        </div>
+        </PageShell>
     );
 }
 

@@ -2,16 +2,19 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileJson } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+
 
 export default function AdminReportsPage() {
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold tracking-tight">Relatórios de Sistema</h1>
-                <p className="text-muted-foreground">
-                    Auditoria global e relatórios de conformidade.
-                </p>
-            </div>
+        <div className="space-y-6 px-6">
+            <PageHeader
+                title="Relatórios de Sistema"
+                description="Auditoria global e relatórios de conformidade."
+                icon={<FileJson className="h-6 w-6 text-slate-400" />}
+                variant="slate"
+            />
+
 
             <div className="grid gap-4">
                 <Card className="glass opacity-60">

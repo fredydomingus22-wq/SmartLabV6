@@ -1,5 +1,5 @@
 import { getAllTenantsAction } from "@/app/actions/admin/tenants";
-import { PageHeader } from "@/components/smart/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

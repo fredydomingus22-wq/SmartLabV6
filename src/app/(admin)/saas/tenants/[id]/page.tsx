@@ -1,5 +1,5 @@
 import { getOrganizationDetails, createPlantAction } from "@/app/actions/admin/tenants";
-import { PageHeader } from "@/components/smart/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

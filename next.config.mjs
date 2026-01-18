@@ -4,7 +4,11 @@ const nextConfig = {
         config.resolve.alias["supabase/functions"] = false;
         return config;
     },
-    turbopack: {},
+    transpilePackages: [
+        '@supabase/ssr',
+        '@supabase/supabase-js',
+        '@supabase/auth-js'
+    ],
     experimental: {
         serverActions: {
             bodySizeLimit: '2mb',

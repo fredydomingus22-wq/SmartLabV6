@@ -145,7 +145,7 @@ export async function inviteUserAction(formData: FormData) {
     if (!user) return { success: false, message: "Unauthorized" };
 
     const { data: profile } = await supabase
-        .from("users")
+        .from("user_profiles")
         .select("role")
         .eq("id", user.id)
         .single();
@@ -179,11 +179,11 @@ export async function inviteUserAction(formData: FormData) {
 
     // Create user profile
     if (data.user) {
-        await supabase.from("users").insert({
+        await supabase.from("user_profiles").insert({
             id: data.user.id,
             full_name: fullName,
-            email: email,
-            role: role,
+            // email: email, // email is NOT in user_profiles schema
+            role: role as any,
             organization_id: organizationId,
             plant_id: plantId || null,
         });
@@ -200,7 +200,7 @@ export async function getCurrentUser() {
     if (!user) return null;
 
     const { data: profile } = await supabase
-        .from("users")
+        .from("user_profiles")
         .select("*")
         .eq("id", user.id)
         .single();
@@ -221,7 +221,7 @@ export async function getTenantInfo() {
     if (!user) return null;
 
     const { data: profile } = await supabase
-        .from("users")
+        .from("user_profiles")
         .select("organization_id, plant_id, role")
         .eq("id", user.id)
         .single();

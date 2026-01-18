@@ -69,7 +69,7 @@ export default async function FoodSafetyPerformancePage() {
     })) || [];
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-6 px-6 pb-10">
             <PageHeader
                 variant="blue"
                 icon={<BarChart3 className="h-4 w-4" />}

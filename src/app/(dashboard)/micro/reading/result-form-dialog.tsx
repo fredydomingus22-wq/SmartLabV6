@@ -86,28 +86,30 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" className="bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white border border-slate-700 transition-all font-bold tracking-wide">
+                <Button size="sm" variant="default" className="font-bold tracking-wide">
                     <Eye className="mr-2 h-4 w-4" />
                     Registar
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] glass border-slate-800 bg-slate-950/90 shadow-2xl backdrop-blur-xl">
-                <DialogHeader className="border-b border-slate-800 pb-4">
-                    <DialogTitle className="flex items-center gap-3 text-xl font-black tracking-tight text-white">
-                        <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
-                            <FlaskConical className="h-5 w-5 text-blue-400" />
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <div className="flex items-center justify-between border-b pb-4 mb-2">
+                        <div className="space-y-1">
+                            <DialogTitle className="flex items-center gap-2">
+                                <FlaskConical className="h-5 w-5 text-primary" />
+                                {sampleCode}
+                            </DialogTitle>
+                            <div className="text-sm font-medium text-muted-foreground">{parameterName}</div>
                         </div>
-                        {sampleCode}
-                    </DialogTitle>
-                    <p className="text-sm font-medium text-slate-400 pl-1">{parameterName}</p>
+                    </div>
                 </DialogHeader>
 
                 {/* Spec Limit Display */}
                 {maxColonyCount !== null && maxColonyCount !== undefined && (
-                    <div className="flex items-center gap-3 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 mt-2">
-                        <AlertTriangle className="h-4 w-4 text-blue-400" />
-                        <span className="text-sm text-blue-200">
-                            <strong className="text-blue-400 uppercase text-xs tracking-wider mr-2">Limite Máx:</strong>
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-xl border mt-2">
+                        <AlertTriangle className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-foreground">
+                            <strong className="text-primary uppercase text-xs tracking-wider mr-2">Limite Máx:</strong>
                             {maxColonyCount} CFU
                         </span>
                     </div>
@@ -115,26 +117,25 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
 
                 <form onSubmit={handleSubmit} className="space-y-6 pt-2">
                     <div className="space-y-4">
-                        <div className="flex items-center space-x-3 p-3 rounded-xl border border-slate-800 bg-slate-900/50">
+                        <div className="flex items-center space-x-3 p-3 rounded-xl border bg-muted/50">
                             <Checkbox
                                 id="is_tntc"
                                 name="is_tntc"
                                 checked={tntc}
                                 onCheckedChange={(c: boolean | "indeterminate") => setTntc(c === true)}
-                                className="border-slate-600 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                             />
-                            <Label htmlFor="is_tntc" className="font-bold text-slate-300 cursor-pointer">
+                            <Label htmlFor="is_tntc" className="font-medium cursor-pointer">
                                 Incontável (TNTC)
                             </Label>
                         </div>
 
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="colony_count" className="text-right text-slate-400 font-medium text-xs uppercase tracking-wide">Contagem (CFU)</Label>
+                            <Label htmlFor="colony_count" className="text-right text-muted-foreground font-medium text-xs uppercase tracking-wide">Contagem (CFU)</Label>
                             <Input
                                 id="colony_count"
                                 name="colony_count"
                                 type="text"
-                                className="col-span-3 bg-slate-900/80 border-slate-700 text-white font-mono text-lg focus:border-blue-500/50 focus:ring-blue-500/20"
+                                className="col-span-3 font-mono text-lg"
                                 disabled={tntc}
                                 required={!tntc}
                                 value={colonyCount}
@@ -150,13 +151,13 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
                     {/* Real-time Conformity Indicator */}
                     {status !== "unknown" && (
                         <div className="flex justify-center p-2">
-                            <StatusBadge status={status} className="scale-125 px-6 py-1.5" />
+                            <StatusBadge status={status} className="text-xs px-4 py-1.5 h-auto text-center" />
                         </div>
                     )}
 
                     <div className="flex justify-end pt-4">
-                        <Button type="submit" disabled={isPending} className="bg-blue-600 hover:bg-blue-500 font-bold tracking-wide">
-                            {isPending ? "Processando..." : "Assinar e Confirmar"}
+                        <Button type="submit" disabled={isPending}>
+                            {isPending ? "A processar..." : "Assinar e Confirmar"}
                         </Button>
                     </div>
                 </form>
@@ -177,7 +178,7 @@ export function ResultFormDialog({ resultId, sampleCode, parameterName, maxColon
                 <IndustrialOOSDialog
                     isOpen={oosOpen}
                     onClose={() => setOosOpen(false)}
-                    onConfirm={(reason) => handleConfirm(reason, "")} // Confirm without password? Wait. OOS needs signature too usually. 
+                    onConfirm={(reason, pwd) => handleConfirm(reason, pwd)}
                     // IndustrialOOSDialog doesn't ask for password currently? 
                     // Let's check IndustrialOOSDialog spec. 
                     measuredValue={tntc ? "TNTC" : colonyCount}

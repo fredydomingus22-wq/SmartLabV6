@@ -1,6 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+/**
+ * Creates a Supabase client for Server Components.
+ * This client uses the cookies() function from 'next/headers' to read the
+ * session established by the Middleware.
+ * 
+ * IMPORTANT: This client should NOT attempt to refresh tokens (autoRefreshToken: false)
+ * because the Middleware is the single source of truth for session management.
+ */
 export async function createClient() {
     const cookieStore = await cookies()
 
@@ -19,8 +27,10 @@ export async function createClient() {
                         )
                     } catch {
                         // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have proxy refreshing
-                        // user sessions.
+                        // This can happen if you have some middleware that refreshes the token
+                        // and you accidentally use this client to write cookies.
+                        // In Next.js Server Components, we can't write cookies, so we ignore this
+                        // or let the Middleware handle it.
                     }
                 },
             },

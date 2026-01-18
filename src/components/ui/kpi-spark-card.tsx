@@ -29,10 +29,12 @@ interface KPISparkCardProps {
     data?: any[];
     sparklineData?: any[]; // Modern alternative
     dataKey?: string;
-    variant?: "blue" | "emerald" | "amber" | "purple" | "rose" | "indigo" | "cyan" | "slate";
+    variant?: "blue" | "emerald" | "amber" | "purple" | "rose" | "indigo" | "cyan" | "slate" | "destructive";
     color?: string; // Hex or CSS color
     className?: string;
     icon?: React.ReactNode;
+    onClick?: () => void;
+    active?: boolean;
 }
 
 const variantColors = {
@@ -43,7 +45,8 @@ const variantColors = {
     rose: "#f43f5e",
     indigo: "#6366f1",
     cyan: "#06b6d4",
-    slate: "#94a3b8"
+    slate: "#94a3b8",
+    destructive: "#ef4444"
 };
 
 export function KPISparkCard({
@@ -61,6 +64,8 @@ export function KPISparkCard({
     color,
     className,
     icon,
+    onClick,
+    active,
 }: KPISparkCardProps) {
     const finalColor = color || variantColors[variant] || variantColors.blue;
     const chartId = React.useId().replace(/[:.]/g, "");
@@ -91,18 +96,22 @@ export function KPISparkCard({
             transition={{ duration: 0.4 }}
             className="h-full"
         >
-            <Card className={cn(
-                "group relative overflow-hidden transition-all duration-300 hover:shadow-xl h-[180px] flex flex-col justify-between border-slate-800 bg-card",
-                className
-            )}>
+            <Card
+                onClick={onClick}
+                className={cn(
+                    "group relative overflow-hidden transition-all duration-300 hover:shadow-xl h-[120px] flex flex-col justify-between border-slate-800 bg-card",
+                    onClick && "cursor-pointer hover:border-slate-600",
+                    active && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary",
+                    className
+                )}>
                 {/* Visual Accent */}
-                <div 
-                    className="absolute top-0 left-0 w-1 h-full opacity-40 transition-opacity group-hover:opacity-100" 
+                <div
+                    className="absolute top-0 left-0 w-1 h-full opacity-40 transition-opacity group-hover:opacity-100"
                     style={{ backgroundColor: finalColor }}
                 />
 
                 {/* Header Section */}
-                <div className="p-5 pb-0 z-10 flex justify-between items-start">
+                <div className="p-4 pb-0 z-10 flex justify-between items-start">
                     <div className="space-y-1">
                         <div className="flex items-center gap-1.5">
                             {icon && <span className="opacity-50">{icon}</span>}
@@ -110,11 +119,11 @@ export function KPISparkCard({
                                 {title}
                             </h3>
                         </div>
-                        <div className="text-3xl font-black italic tracking-tighter text-white">
+                        <div className="text-2xl font-black italic tracking-tighter text-white leading-none">
                             {value}
                         </div>
                         {finalDescription && (
-                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest line-clamp-1">
+                            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest line-clamp-1">
                                 {finalDescription}
                             </p>
                         )}
@@ -122,18 +131,18 @@ export function KPISparkCard({
 
                     {displayTrendValue !== undefined && (
                         <div className={cn(
-                            "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase border",
+                            "flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-black uppercase border",
                             isTrendUp ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
                                 "bg-rose-500/10 text-rose-500 border-rose-500/20"
                         )}>
-                            {isTrendUp ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                            {isTrendUp ? <ArrowUpRight className="h-2 w-2" /> : <ArrowDownRight className="h-2 w-2" />}
                             {displayTrendValue}%
                         </div>
                     )}
                 </div>
 
                 {/* Chart Section */}
-                <div className="h-[70px] w-full relative -mb-1">
+                <div className="h-[40px] w-full relative -mb-1 opacity-50">
                     {finalData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={finalData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -147,7 +156,7 @@ export function KPISparkCard({
                                     type="monotone"
                                     dataKey={dataKey}
                                     stroke={finalColor}
-                                    strokeWidth={2}
+                                    strokeWidth={1.5}
                                     fill={`url(#gradient-${chartId})`}
                                     fillOpacity={1}
                                     isAnimationActive={true}
@@ -156,7 +165,7 @@ export function KPISparkCard({
                             </AreaChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-full flex items-end px-5 pb-4 opacity-5">
+                        <div className="h-full flex items-end px-4 pb-2 opacity-5">
                             <div className="w-full h-[1px] bg-slate-500 border-dashed border-t" />
                         </div>
                     )}
@@ -165,3 +174,4 @@ export function KPISparkCard({
         </motion.div>
     );
 }
+

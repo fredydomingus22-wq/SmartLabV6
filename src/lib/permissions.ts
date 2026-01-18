@@ -19,6 +19,7 @@ export type UserRole =
     | 'quality'
     | 'haccp'
     | 'warehouse'
+    | 'rmpm_lab'
     | 'lab_tech'; // Legacy, kept for compatibility
 
 // Modules in the application
@@ -161,6 +162,14 @@ const PERMISSIONS: Record<UserRole, Partial<Record<Module, AccessLevel>>> = {
         qms: 'read',
         tasks: 'own',
     },
+    rmpm_lab: {
+        dashboard: 'full',
+        lab: 'own',
+        materials: 'full',
+        reports: 'read',
+        tasks: 'own',
+        assets: 'own',
+    },
 };
 
 /**
@@ -219,7 +228,7 @@ export function isSystemRole(role: string): boolean {
  * Check if role is an analyst type
  */
 export function isAnalyst(role: string): boolean {
-    return ['lab_analyst', 'micro_analyst', 'analyst', 'lab_tech'].includes(role);
+    return ['lab_analyst', 'micro_analyst', 'analyst', 'lab_tech', 'rmpm_lab'].includes(role);
 }
 
 /**
