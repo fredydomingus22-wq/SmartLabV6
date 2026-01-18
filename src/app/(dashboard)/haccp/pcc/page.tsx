@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getMonitoringPoints, getPCCLogs, getEquipments, getActiveBatchesForPCC } from "@/lib/queries/haccp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PCCCheckDialog } from "./pcc-check-dialog";
@@ -8,24 +8,14 @@ import { PageHeader } from "@/components/layout/page-header";
 export const dynamic = "force-dynamic";
 
 export default async function PCCDashboardPage() {
-    const supabase = await createClient();
-
-    // Fetch Monitoring Points (Hazards marked as PCC or OPRP)
-    const { data: monitoringPoints } = await supabase
-        .from("haccp_hazards")
-        .select("*")
-        .or("is_pcc.eq.true,is_oprp.eq.true")
-        .order("process_step");
+    // 1. Fetch Monitoring Points (Hazards marked as PCC or OPRP)
+    const monitoringPoints = await getMonitoringPoints();
 
     const ccps = monitoringPoints?.filter(p => p.is_pcc) || [];
     const oprps = monitoringPoints?.filter(p => p.is_oprp) || [];
 
-    // Fetch recent Logs for status
-    const { data: recentLogs } = await supabase
-        .from("pcc_logs")
-        .select("*, hazard:haccp_hazards(process_step)")
-        .order("checked_at", { ascending: false })
-        .limit(50);
+    // 2. Fetch recent Logs for status (last 50 logs)
+    const recentLogs = await getPCCLogs({ limit: 50 });
 
     // Group logs by hazard_id to get latest status per monitoring point
     const latestStatusMap = new Map<string, any>();
@@ -35,18 +25,9 @@ export default async function PCCDashboardPage() {
         }
     });
 
-    // Fetch Equipments for the log dialog
-    const { data: equipments } = await supabase
-        .from("equipments")
-        .select("id, name, code")
-        .order("name");
-
-    // Fetch Active Production Batches for traceability
-    const { data: activeBatches } = await supabase
-        .from("production_batches")
-        .select("id, batch_number, product:inventory_items(name)")
-        .eq("status", "in_progress")
-        .order("created_at", { ascending: false });
+    // 3. Fetch Equipments and Active Batches for the dialog
+    const equipments = await getEquipments();
+    const activeBatches = await getActiveBatchesForPCC();
 
     return (
         <div className="space-y-10">
@@ -109,11 +90,8 @@ export default async function PCCDashboardPage() {
     );
 }
 
-
 function CCPItemCard({ ccp, latestLog, equipments, activeBatches }: { ccp: any, latestLog: any, equipments: any[], activeBatches: any[] }) {
     let statusColor = "bg-slate-500";
-    // ... rest of lines
-
     let StatusIcon = Clock;
 
     if (latestLog) {
@@ -161,7 +139,6 @@ function CCPItemCard({ ccp, latestLog, equipments, activeBatches }: { ccp: any, 
                         )}
                     </div>
                 )}
-
 
                 <PCCCheckDialog hazard={ccp} equipments={equipments} activeBatches={activeBatches} />
             </CardContent>
