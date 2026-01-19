@@ -1,5 +1,6 @@
 "use client";
 
+// Forced rebuild for Turbopack stabilization
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SkeletonGridProps {

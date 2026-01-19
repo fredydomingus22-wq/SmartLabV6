@@ -1,12 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import React from "react";
+import { EntityCard } from "@/components/defaults/entity-card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Beaker, Calendar, MapPin, Database, Clock, CheckCircle2, MoreHorizontal, ArrowRight, Zap, AlertCircle } from "lucide-react";
+import { Beaker, Calendar, MapPin, Database, Clock, CheckCircle2, MoreHorizontal, ArrowRight, Zap, AlertCircle, ShieldCheck, ShieldAlert, Info } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export interface SampleCardProps {
     sample: {
@@ -34,119 +34,103 @@ export interface SampleCardProps {
     onEnterResults: (sampleId: string) => void;
 }
 
-const statusConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
-    draft: { label: "Rascunho", color: "text-slate-500", bg: "bg-slate-500/10", icon: MoreHorizontal },
-    pending: { label: "Pendente", color: "text-amber-500", bg: "bg-amber-500/10", icon: Clock },
-    collected: { label: "Colhida", color: "text-blue-400", bg: "bg-blue-400/10", icon: Database },
-    in_analysis: { label: "Análise", color: "text-amber-400", bg: "bg-amber-400/10", icon: Beaker },
-    under_review: { label: "Revisão", color: "text-purple-400", bg: "bg-purple-400/10", icon: ShieldCheck },
-    approved: { label: "Aprovada", color: "text-emerald-400", bg: "bg-emerald-400/10", icon: CheckCircle2 },
-    rejected: { label: "Rejeitada", color: "text-rose-400", bg: "bg-rose-400/10", icon: AlertCircle },
-    released: { label: "Libertada", color: "text-indigo-400", bg: "bg-indigo-400/10", icon: ShieldCheck },
+const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {
+    draft: { label: "Rascunho", variant: "pending", icon: MoreHorizontal },
+    pending: { label: "Pendente", variant: "warning", icon: Clock },
+    collected: { label: "Colhida", variant: "active", icon: Database },
+    in_analysis: { label: "Análise", variant: "in_analysis", icon: Beaker },
+    under_review: { label: "Revisão", variant: "under_review", icon: ShieldCheck },
+    approved: { label: "Aprovada", variant: "approved", icon: CheckCircle2 },
+    rejected: { label: "Rejeitada", variant: "rejected", icon: AlertCircle },
+    released: { label: "Libertada", variant: "active", icon: ShieldCheck },
 };
 
-const riskConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
-    blocked: { label: "Crítico", color: "text-rose-500", bg: "bg-rose-500/20", icon: ShieldAlert },
-    warning: { label: "Atenção", color: "text-amber-500", bg: "bg-amber-500/20", icon: ShieldAlert },
-    approved: { label: "Seguro", color: "text-emerald-500", bg: "bg-emerald-500/20", icon: ShieldCheck },
-    info: { label: "Info", color: "text-blue-500", bg: "bg-blue-500/20", icon: Info },
+const riskConfig: Record<string, { label: string; variant: "emerald" | "amber" | "rose" | "blue"; icon: any }> = {
+    blocked: { label: "Risco Crítico", variant: "rose", icon: ShieldAlert },
+    warning: { label: "Atenção IA", variant: "amber", icon: ShieldAlert },
+    approved: { label: "Validado IA", variant: "emerald", icon: ShieldCheck },
+    info: { label: "Análise IA", variant: "blue", icon: Info },
 };
-
-import { ShieldCheck, ShieldAlert, Info } from "lucide-react";
-
 
 export function SampleCard({ sample, onEnterResults }: SampleCardProps) {
-    const status = statusConfig[sample.status] || { label: sample.status, color: "text-slate-500", bg: "bg-slate-500/10", icon: MoreHorizontal };
+    const status = statusConfig[sample.status] || { label: sample.status, variant: "outline", icon: MoreHorizontal };
     const date = sample.collected_at ? new Date(sample.collected_at) : new Date();
     const isActionRequired = sample.status === 'collected' || sample.status === 'in_analysis';
 
+    const risk = sample.ai_risk_status ? riskConfig[sample.ai_risk_status] : null;
+
     return (
-        <motion.div
-            whileHover={{ y: -5 }}
-            className="group relative flex flex-col h-full glass p-6 rounded-[2rem] border-slate-800/40 hover:border-blue-500/30 transition-all duration-500 overflow-hidden shadow-xl hover:shadow-blue-500/5"
-        >
-            {/* Glossy Overlay */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[60px] -mr-16 -mt-16 rounded-full group-hover:bg-blue-500/10 transition-colors" />
+        <EntityCard
+            title={sample.code}
+            code={`LIMS-${sample.code.split('-').pop()}`}
+            category={sample.type?.name}
+            icon={status.icon}
+            status={{
+                label: status.label,
+                variant: status.variant
+            }}
+            metrics={[
+                {
+                    label: "Colheita",
+                    value: format(date, "d MMM, HH:mm", { locale: pt }),
+                    icon: Calendar
+                },
+                {
+                    label: "Localização",
+                    value: sample.sampling_point?.name || "Geral",
+                    icon: MapPin
+                },
+                {
+                    label: "Produto",
+                    value: sample.batch?.product?.name || "N/D",
+                    icon: Database
+                },
+                {
+                    label: "Lote",
+                    value: sample.batch?.code || "N/D",
+                    icon: Beaker
+                }
+            ]}
+            highlight={risk ? {
+                label: "Insights de IA",
+                value: risk.label,
+                progress: sample.status === 'approved' ? 100 : sample.status === 'in_analysis' ? 65 : 15,
+                variant: risk.variant
+            } : undefined}
+            variant={status.variant === 'approved' ? 'emerald' : status.variant === 'rejected' ? 'rose' : 'default'}
+            actions={
+                <div className="flex flex-col w-full gap-2">
+                    <Button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEnterResults(sample.id);
+                        }}
+                        disabled={!isActionRequired}
+                        className={cn(
+                            "w-full h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all",
+                            isActionRequired
+                                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 active:scale-95 border-none"
+                                : "bg-slate-800 text-slate-600 border-none cursor-not-allowed"
+                        )}
+                    >
+                        {isActionRequired && <Zap className="h-3 w-3 mr-2" />}
+                        {sample.status === 'collected' ? 'Registar Amostra' : 'Resultados'}
+                    </Button>
 
-            <div className="flex justify-between items-start mb-6 z-10">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                        <span className="text-lg font-black tracking-tighter text-slate-100 uppercase group-hover:text-blue-400 transition-colors">
-                            {sample.code}
-                        </span>
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        {sample.type?.name}
-                    </p>
+                    <Button
+                        variant="ghost"
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full h-9 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                    >
+                        <a href={`/lab/samples/${sample.id}`} className="flex items-center justify-center gap-2">
+                            Detalhes Analíticos
+                            <ArrowRight className="h-3 w-3" />
+                        </a>
+                    </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                    {sample.ai_risk_status && (
-                        <div className={cn("p-1.5 rounded-lg border border-white/5", riskConfig[sample.ai_risk_status].bg, riskConfig[sample.ai_risk_status].color)}>
-                            {(() => {
-                                const Icon = riskConfig[sample.ai_risk_status].icon;
-                                return <Icon className="h-3.5 w-3.5" />;
-                            })()}
-                        </div>
-                    )}
-                    <div className={cn("p-2 rounded-xl border border-white/5 shadow-inner", status.bg, status.color)}>
-                        <status.icon className="h-4 w-4" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-4 flex-1 z-10">
-                <div className="flex items-center gap-3 text-xs font-bold text-slate-400">
-                    <Calendar className="h-3.5 w-3.5 opacity-50" />
-                    {format(date, "d MMM, HH:mm", { locale: pt })}
-                </div>
-
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-slate-600" />
-                        <span className="text-[11px] font-bold text-slate-300 truncate">
-                            {sample.sampling_point?.name || "Localização Geral"}
-                        </span>
-                    </div>
-                    {sample.batch?.product && (
-                        <div className="flex items-center gap-2">
-                            <Beaker className="h-3 w-3 text-slate-600" />
-                            <span className="text-[11px] font-bold text-blue-400/80 truncate">
-                                {sample.batch.product.name}
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                {sample.batch?.code && (
-                    <div className="inline-flex items-center bg-slate-950/50 px-3 py-1 rounded-lg border border-slate-800 font-mono text-[10px] text-slate-400">
-                        Batch: {sample.batch.code}
-                    </div>
-                )}
-            </div>
-
-            <div className="flex flex-col gap-2 pt-6 mt-auto z-10">
-                <Button
-                    onClick={() => onEnterResults(sample.id)}
-                    disabled={!isActionRequired}
-                    className={cn(
-                        "w-full h-11 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all",
-                        isActionRequired
-                            ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 active:scale-95"
-                            : "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed"
-                    )}
-                >
-                    {isActionRequired && <Zap className="h-3 w-3 mr-2" />}
-                    {sample.status === 'collected' ? 'Registar Amostra' : 'Preencher Resultados'}
-                </Button>
-
-                <Button variant="ghost" asChild className="h-10 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-200">
-                    <a href={`/lab/samples/${sample.id}`} className="flex items-center justify-center gap-2">
-                        Ver Detalhes Analíticos
-                        <ArrowRight className="h-3 w-3" />
-                    </a>
-                </Button>
-            </div>
-        </motion.div>
+            }
+        />
     );
 }
 

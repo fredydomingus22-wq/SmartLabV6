@@ -169,6 +169,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                                                                     <Link
                                                                         key={child.href}
                                                                         href={child.href}
+                                                                        prefetch={true}
                                                                         className={cn(
                                                                             "block rounded-lg px-3 py-2 text-sm transition-all hover:bg-slate-900/50 font-normal truncate",
                                                                             pathname === child.href
@@ -191,6 +192,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                                             <Link
                                                 key={item.label}
                                                 href={item.href || "#"}
+                                                prefetch={true}
                                                 className={cn(
                                                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all group",
                                                     isActive

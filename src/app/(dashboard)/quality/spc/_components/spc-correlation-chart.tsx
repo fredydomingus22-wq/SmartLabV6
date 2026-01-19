@@ -82,7 +82,7 @@ export function SPCCorrelationChart({ data, xLabel, yLabel, correlation, loading
                         cursor={{ strokeDasharray: '3 3' }}
                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
                         itemStyle={{ fontSize: '12px' }}
-                        formatter={(value: number) => value.toFixed(2)}
+                        formatter={(value: any) => parseFloat(value).toFixed(2)}
                     />
                     <Scatter name="Amostras" data={data} fill="#3b82f6" shape="circle" />
                 </ScatterChart>

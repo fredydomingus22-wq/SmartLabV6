@@ -1,3 +1,4 @@
+// Forced rebuild for Turbopack stabilization
 import { SkeletonGrid } from "@/components/smart/skeleton-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 

@@ -14,8 +14,22 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface QuestionOption {
+    id: string;
+    text: string;
+    is_correct: boolean;
+}
+
+interface Question {
+    id: string;
+    question_text: string;
+    question_type: 'single_choice' | 'multiple_choice' | 'true_false';
+    points: number;
+    options: QuestionOption[];
+}
+
 interface QuestionCardProps {
-    question: any;
+    question: Question;
     quizId: string;
     index: number;
     total: number;
@@ -78,7 +92,7 @@ export function QuizQuestionCard({ question, quizId, index, total, onReorder }: 
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {(question.options as any[]).map((opt: any, i) => (
+                            {question.options.map((opt, i) => (
                                 <div
                                     key={i}
                                     className={cn(

@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 
+import { QueryProvider } from "@/providers/query-provider";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -18,11 +20,13 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="pt" className="dark" style={{ colorScheme: 'dark' }}>
+        <html lang="pt" className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning>
             <body className={cn(inter.className, "antialiased")}>
                 <NuqsAdapter>
-                    {children}
-                    <Toaster position="top-right" richColors />
+                    <QueryProvider>
+                        {children}
+                        <Toaster position="top-right" richColors />
+                    </QueryProvider>
                 </NuqsAdapter>
             </body>
         </html>

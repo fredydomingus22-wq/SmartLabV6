@@ -58,6 +58,14 @@ export function SPCHistogram({ data, unit, loading }: SPCHistogramProps) {
         return histogramData;
     }, [data, stats]);
 
+    const tooltipFormatter = (value: any, name: string): [string | number, string] => {
+        const val = typeof value === 'number' ? value : parseFloat(value);
+        return [
+            name === 'curve' ? (isNaN(val) ? value : val.toFixed(2)) : value,
+            name === 'curve' ? 'Curva Normal' : 'Frequência'
+        ];
+    };
+
     if (loading) {
         return (
             <Card className="h-[450px] w-full flex items-center justify-center bg-slate-950/50 border-white/10 backdrop-blur-md">
@@ -90,10 +98,7 @@ export function SPCHistogram({ data, unit, loading }: SPCHistogramProps) {
                             contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
                             itemStyle={{ fontSize: '12px' }}
                             labelStyle={{ color: '#94a3b8', fontSize: '10px', marginBottom: '5px' }}
-                            formatter={(value: number, name: string) => [
-                                name === 'curve' ? value.toFixed(2) : value,
-                                name === 'curve' ? 'Curva Normal' : 'Frequência'
-                            ]}
+                            formatter={tooltipFormatter}
                             labelFormatter={(label) => `Centro: ${label}`}
                         />
                         <Bar dataKey="count" fill="#3b82f6" opacity={0.6} barSize={30} radius={[4, 4, 0, 0]} name="frequency" />

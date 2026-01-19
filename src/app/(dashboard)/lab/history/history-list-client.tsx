@@ -1,14 +1,14 @@
 "use client";
 
-import { format } from "date-fns";
 import { useState, useMemo } from "react";
-import { DataGrid } from "@/components/smart/data-grid";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RetestDialog } from "../retest-dialog";
 import { SearchableSelect } from "@/components/smart/searchable-select";
-import { Search, Filter, XCircle, Fingerprint, ShieldCheck } from "lucide-react";
+import { Search, XCircle, Fingerprint, Database, Calendar, Filter } from "lucide-react";
 import {
     Tooltip,
     TooltipContent,
@@ -16,12 +16,12 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyResult = any;
+import { IndustrialGrid } from "@/components/defaults/industrial-grid";
+import { ColDef, ICellRendererParams } from "ag-grid-community";
+import { cn } from "@/lib/utils";
 
 interface HistoryListClientProps {
-    results: AnyResult[];
+    results: any[];
 }
 
 const unwrap = (val: any): any => {
@@ -36,7 +36,6 @@ export function HistoryListClient({ results }: HistoryListClientProps) {
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
 
-    // Extract unique batches for filter dropdown
     const uniqueBatches = useMemo(() => {
         const batches = new Set<string>();
         results.forEach(r => {
@@ -47,7 +46,6 @@ export function HistoryListClient({ results }: HistoryListClientProps) {
         return Array.from(batches).sort();
     }, [results]);
 
-    // Filter results
     const filteredResults = useMemo(() => {
         return results.filter(row => {
             const sample = unwrap(row.sample);
@@ -55,7 +53,6 @@ export function HistoryListClient({ results }: HistoryListClientProps) {
             const product = unwrap(batch?.product);
             const param = unwrap(row.parameter);
 
-            // Search filter (sample code, batch, product, parameter)
             if (searchQuery) {
                 const search = searchQuery.toLowerCase();
                 const matches =
@@ -66,29 +63,21 @@ export function HistoryListClient({ results }: HistoryListClientProps) {
                 if (!matches) return false;
             }
 
-            // Status filter
             if (statusFilter !== "all") {
                 if (statusFilter === "conforming" && !row.is_conforming) return false;
                 if (statusFilter === "non_conforming" && row.is_conforming) return false;
                 if (statusFilter === "retest" && !row.is_retest) return false;
             }
 
-            // Batch filter
-            if (batchFilter !== "all" && batch?.code !== batchFilter) {
-                return false;
-            }
+            if (batchFilter !== "all" && batch?.code !== batchFilter) return false;
 
-            // Date range filter
             if (dateFrom && row.analyzed_at) {
-                const rowDate = new Date(row.analyzed_at);
-                const fromDate = new Date(dateFrom);
-                if (rowDate < fromDate) return false;
+                if (new Date(row.analyzed_at) < new Date(dateFrom)) return false;
             }
             if (dateTo && row.analyzed_at) {
-                const rowDate = new Date(row.analyzed_at);
                 const toDate = new Date(dateTo);
                 toDate.setHours(23, 59, 59, 999);
-                if (rowDate > toDate) return false;
+                if (new Date(row.analyzed_at) > toDate) return false;
             }
 
             return true;
@@ -105,197 +94,201 @@ export function HistoryListClient({ results }: HistoryListClientProps) {
 
     const hasActiveFilters = searchQuery || statusFilter !== "all" || batchFilter !== "all" || dateFrom || dateTo;
 
-    const columns = [
+    const columnDefs = useMemo<ColDef[]>(() => [
         {
-            key: "analyzed_at",
-            label: "Date",
-            render: (row: AnyResult) => row.analyzed_at ? format(new Date(row.analyzed_at), "dd/MM/yyyy HH:mm:ss") : "-"
-        },
-        {
-            key: "sample.code",
-            label: "Sample",
-            render: (row: AnyResult) => {
-                const sample = unwrap(row.sample);
-                return sample?.code || "-";
+            headerName: "Assinatura Digital",
+            field: "signed_transaction_hash",
+            width: 100,
+            cellRenderer: (params: ICellRendererParams) => {
+                if (!params.value) return null;
+                return (
+                    <div className="flex items-center justify-center h-full">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center cursor-help">
+                                        <Fingerprint className="h-4 w-4 text-emerald-500" />
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-slate-950 border-slate-800 p-3 rounded-xl shadow-2xl">
+                                    <p className="text-[10px] font-black uppercase text-emerald-400 tracking-widest italic">Integridade Certificada (21 CFR Part 11)</p>
+                                    <p className="text-[9px] font-mono text-slate-500 mt-1 break-all max-w-[200px]">{params.value}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                );
             }
         },
         {
-            key: "batch",
-            label: "Batch",
-            render: (row: AnyResult) => {
-                const sample = unwrap(row.sample);
-                const batch = unwrap(sample?.batch);
-                return batch?.code || "-";
-            }
-        },
-        {
-            key: "product",
-            label: "Product",
-            render: (row: AnyResult) => {
-                const sample = unwrap(row.sample);
-                const batch = unwrap(sample?.batch);
-                const product = unwrap(batch?.product);
-                return product?.name || "-";
-            }
-        },
-        {
-            key: "parameter.name",
-            label: "Parameter",
-            render: (row: AnyResult) => {
-                const param = unwrap(row.parameter);
-                return `${param?.name || "-"} (${param?.unit || ""})`;
-            }
-        },
-        {
-            key: "value_numeric",
-            label: "Value",
-            render: (row: AnyResult) => row.value_numeric ?? row.value_text ?? "-"
-        },
-        {
-            key: "is_conforming",
-            label: "Status",
-            render: (row: AnyResult) => (
-                <div className="flex items-center gap-2">
-                    <Badge variant={row.is_conforming ? "default" : "destructive"}>
-                        {row.is_conforming ? "OK" : "NC"}
-                    </Badge>
-                    {row.is_retest && (
-                        <Badge variant="secondary" className="text-xs">Retest</Badge>
-                    )}
-                    {row.is_valid === false && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Superseded</Badge>
-                    )}
+            headerName: "Data de Análise",
+            field: "analyzed_at",
+            flex: 1,
+            cellRenderer: (params: ICellRendererParams) => (
+                <div className="flex items-center gap-2 h-full text-slate-300 font-medium">
+                    <Calendar className="h-3 w-3 text-slate-500" />
+                    {params.value ? format(new Date(params.value), "dd/MM/yyyy HH:mm") : "-"}
                 </div>
             )
         },
         {
-            key: "signature",
-            label: "Sign",
-            render: (row: AnyResult) => {
-                if (!row.signed_transaction_hash) return null;
+            headerName: "Amostra / Lote",
+            field: "sample.code",
+            flex: 1.5,
+            cellRenderer: (params: ICellRendererParams) => {
+                const sample = unwrap(params.data.sample);
+                const batch = unwrap(sample?.batch);
                 return (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                    <Fingerprint className="h-4 w-4 text-emerald-500" />
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-slate-950 border-slate-800">
-                                <p className="text-[10px] font-bold text-emerald-400">Assinatura Digital (21 CFR Part 11)</p>
-                                <p className="text-[9px] text-slate-500 font-mono mt-1 break-all max-w-[200px]">
-                                    Hash: {row.signed_transaction_hash.substring(0, 16)}...
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <div className="flex flex-col justify-center h-full leading-tight">
+                        <span className="text-sm font-bold text-white tracking-tight">{sample?.code || "-"}</span>
+                        <span className="text-[10px] font-mono font-black uppercase text-slate-500">{batch?.code || "S/ Lote"}</span>
+                    </div>
                 );
             }
         },
         {
-            key: "actions",
-            label: "Actions",
-            render: (row: AnyResult) => {
-                const sample = unwrap(row.sample);
-                const param = unwrap(row.parameter);
-
-                const canRetest = row.is_valid !== false &&
-                    row.is_conforming === false &&
-                    sample?.status !== "approved";
+            headerName: "Parâmetro / Resultado",
+            field: "parameter.name",
+            flex: 2,
+            cellRenderer: (params: ICellRendererParams) => {
+                const param = unwrap(params.data.parameter);
+                const isConforming = params.data.is_conforming;
+                return (
+                    <div className="flex items-center gap-3 h-full">
+                        <div className={cn(
+                            "h-2 w-2 rounded-full",
+                            isConforming === true ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
+                                isConforming === false ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : "bg-slate-600"
+                        )} />
+                        <div className="flex flex-col justify-center leading-tight">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">{param?.name || "-"}</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-sm font-black text-white italic">{params.data.value_numeric ?? params.data.value_text ?? "-"}</span>
+                                <span className="text-[9px] font-bold text-slate-600 uppercase">{param?.unit}</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
+            headerName: "Ações",
+            field: "actions",
+            width: 120,
+            cellRenderer: (params: ICellRendererParams) => {
+                const sample = unwrap(params.data.sample);
+                const param = unwrap(params.data.parameter);
+                const canRetest = params.data.is_valid !== false && params.data.is_conforming === false && sample?.status !== "approved";
 
                 if (!canRetest) return null;
 
                 return (
-                    <RetestDialog
-                        resultId={row.id}
-                        parameterName={param?.name || "Unknown"}
-                        sampleCode={sample?.code || "Unknown"}
-                        currentValue={row.value_numeric ?? row.value_text ?? "-"}
-                        isConforming={row.is_conforming ?? true}
-                    />
+                    <div className="flex items-center h-full">
+                        <RetestDialog
+                            resultId={params.data.id}
+                            parameterName={param?.name || "Desconhecido"}
+                            sampleCode={sample?.code || "Desconhecido"}
+                            currentValue={params.data.value_numeric ?? params.data.value_text ?? "-"}
+                            isConforming={params.data.is_conforming ?? true}
+                        />
+                    </div>
                 );
             }
-        },
-    ];
+        }
+    ], []);
 
     return (
-        <div className="space-y-4">
-            {/* Filters */}
-            <div className="grid gap-4 md:grid-cols-5 p-4 bg-muted/30 rounded-lg">
-                <div>
-                    <Label className="text-xs text-muted-foreground">Search</Label>
-                    <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Sample, batch, product..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8"
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 p-6 bg-slate-950/40 rounded-2xl border border-white/5 shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Pesquisa Inteligente</Label>
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600 group-focus-within:text-purple-400 transition-colors" />
+                            <Input
+                                placeholder="Amostra, Lote, Produto..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 bg-slate-900/50 border-white/5 rounded-xl h-10 text-xs font-bold italic"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Estado de Conformidade</Label>
+                        <SearchableSelect
+                            value={statusFilter}
+                            onValueChange={setStatusFilter}
+                            placeholder="Todos os Estados"
+                            options={[
+                                { value: "all", label: "Todos" },
+                                { value: "conforming", label: "Conforme (OK)" },
+                                { value: "non_conforming", label: "Não Conforme (NC)" },
+                                { value: "retest", label: "Apenas Retestes" },
+                            ]}
                         />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Lote de Produção</Label>
+                        <SearchableSelect
+                            value={batchFilter}
+                            onValueChange={setBatchFilter}
+                            placeholder="Todos os Lotes"
+                            options={[
+                                { value: "all", label: "Todos os Lotes" },
+                                ...uniqueBatches.map(batch => ({ value: batch, label: batch }))
+                            ]}
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Data Inicial</Label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
+                            <Input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="pl-10 bg-slate-900/50 border-white/5 rounded-xl h-10 text-xs font-bold uppercase"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Data Final</Label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
+                            <Input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="pl-10 bg-slate-900/50 border-white/5 rounded-xl h-10 text-xs font-bold uppercase"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div>
-                    <Label className="text-xs text-muted-foreground">Status</Label>
-                    <SearchableSelect
-                        value={statusFilter}
-                        onValueChange={setStatusFilter}
-                        placeholder="All Status"
-                        options={[
-                            { value: "all", label: "All" },
-                            { value: "conforming", label: "Conforming (OK)" },
-                            { value: "non_conforming", label: "Non-conforming (NC)" },
-                            { value: "retest", label: "Retests Only" },
-                        ]}
-                    />
-                </div>
-
-                <div>
-                    <Label className="text-xs text-muted-foreground">Batch</Label>
-                    <SearchableSelect
-                        value={batchFilter}
-                        onValueChange={setBatchFilter}
-                        placeholder="All Batches"
-                        options={[
-                            { value: "all", label: "All Batches" },
-                            ...uniqueBatches.map(batch => ({ value: batch, label: batch }))
-                        ]}
-                    />
-                </div>
-
-                <div>
-                    <Label className="text-xs text-muted-foreground">Date From</Label>
-                    <Input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                    />
-                </div>
-
-                <div>
-                    <Label className="text-xs text-muted-foreground">Date To</Label>
-                    <Input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            {/* Filter Status */}
-            <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                    Showing {filteredResults.length} of {results.length} results
-                </span>
                 {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Clear Filters
-                    </Button>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic">
+                            Resultados Filtrados: {filteredResults.length} / {results.length}
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={clearFilters} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-7 text-[9px] font-black uppercase tracking-widest">
+                            <XCircle className="h-3 w-3 mr-2" />
+                            Limpar Filtros
+                        </Button>
+                    </div>
                 )}
             </div>
 
-            <DataGrid data={filteredResults} columns={columns} />
+            <div className="h-[600px] w-full rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-slate-950/20">
+                <IndustrialGrid
+                    rowData={filteredResults}
+                    columnDefs={columnDefs}
+                    rowHeight={64}
+                />
+            </div>
         </div>
     );
 }

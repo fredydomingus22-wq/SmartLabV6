@@ -1,14 +1,18 @@
 import { Suspense } from "react";
 export const dynamic = "force-dynamic";
-import { getDashboardSamples, getLabStats, getSampleTypes, getActiveTanks } from "@/lib/queries/lab";
+
+import {
+    getDashboardSamples,
+    getLabStats,
+    getSampleTypes,
+    getActiveTanks
+} from "@/lib/queries/lab";
 import { DashboardClient } from "./dashboard-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Metadata } from 'next';
 import { getSafeUser } from "@/lib/auth.server";
 import { createClient } from "@/lib/supabase/server";
-import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/defaults/page-shell";
-import { Beaker, FlaskConical, Microscope } from "lucide-react";
 
 export const metadata: Metadata = {
     title: 'Gestão de Amostras | SmartLab',
@@ -47,7 +51,7 @@ export default async function LabPage(props: {
         to = dateParam;
     }
 
-    // Fetch data in parallel
+    // Fetch data in parallel (Back to SSR)
     const [samples, stats, sampleTypes, tanks, samplingPoints, users] = await Promise.all([
         getDashboardSamples({
             search,
@@ -77,25 +81,9 @@ export default async function LabPage(props: {
         })()
     ]);
 
-    const headerTitle = user.role === 'lab_analyst' ? 'Laboratório FQ' : user.role === 'micro_analyst' ? 'Laboratório Micro' : 'Controlo de Amostras';
-    const headerIcon = user.role === 'lab_analyst' ? FlaskConical : user.role === 'micro_analyst' ? Microscope : Beaker;
-    const headerDesc = user.role === 'lab_analyst'
-        ? 'Gestão de Análises Físico-Químicas e Controlo de Processo'
-        : user.role === 'micro_analyst'
-            ? 'Gestão de Análises Microbiológicas e Incubação'
-            : 'Gestão Integrada de Análises Físico-Químicas e Microbiológicas';
-
     return (
-        <PageShell className="space-y-6 pb-10">
-            <PageHeader
-                variant="blue"
-                icon={<headerIcon className="h-4 w-4" />}
-                overline="Laboratory Operations"
-                title={headerTitle}
-                description={headerDesc}
-            />
-
-            <div className="px-4 md:px-6 pb-6 mt-[-1rem]">
+        <PageShell className="pb-10">
+            <div className="pb-6">
                 <main className="relative">
                     <Suspense fallback={<div className="p-8"><Skeleton className="h-96 w-full rounded-xl bg-slate-900/50" /></div>}>
                         <DashboardClient
@@ -124,4 +112,3 @@ export default async function LabPage(props: {
         </PageShell>
     );
 }
-

@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { History, ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { History as HistoryIcon, Gavel } from "lucide-react";
 import { HistoryListClient } from "./history-list-client";
+import { PageShell } from "@/components/defaults/page-shell";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -33,39 +32,23 @@ export default async function LabHistoryPage() {
     }
 
     return (
-        <div className="container py-8 space-y-8">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/lab">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                            <History className="h-8 w-8 text-purple-500" />
-                            Analysis History
-                        </h1>
-                        <p className="text-muted-foreground">
-                            View all analysis results ordered by date
-                        </p>
-                    </div>
-                </div>
-            </div>
+        <PageShell className="pb-20">
+            <PageHeader
+                variant="indigo"
+                icon={<HistoryIcon className="h-4 w-4" />}
+                overline="Controlo de Qualidade"
+                title="Histórico de Análises"
+                description="Arquivo completo de resultados analíticos com integridade de dados e validade técnica."
+                backHref="/lab"
+                collapsible
+            />
 
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Recent Results</CardTitle>
-                    <CardDescription>
-                        Last 100 analysis results, most recent first.
-                        Non-conforming results can be retested.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+            <main className="px-6 space-y-8 mt-6">
+                <div className="glass rounded-[2rem] border-white/5 bg-slate-900/40 p-8">
                     <HistoryListClient results={results || []} />
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+            </main>
+        </PageShell>
     );
 }
 

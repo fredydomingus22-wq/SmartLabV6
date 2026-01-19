@@ -87,7 +87,7 @@ export async function getCorrelationDataAction(
     param1Id: string,
     param2Id: string,
     filters: {
-        productId: string;
+        productId?: string;
         batchId?: string;
         sampleTypeId?: string;
         startDate?: string;

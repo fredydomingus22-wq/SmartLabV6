@@ -773,3 +773,138 @@ export async function getLabAdvancedMetrics() {
     };
 }
 
+
+/**
+ * Get sampling points for an organization
+ */
+export async function getSamplingPoints(orgId: string) {
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from("sampling_points")
+        .select("id, name, code, location")
+        .eq("organization_id", orgId)
+        .order("name");
+    return data || [];
+}
+
+/**
+ * Get users for an organization
+ */
+export async function getUsers(orgId: string) {
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, role")
+            .eq("organization_id", orgId)
+            .order("full_name");
+        if (error) console.error("getUsers error:", error);
+        return data || [];
+    } catch (err) {
+        console.error("getUsers async error:", err);
+        return [];
+    }
+}
+
+/**
+ * Get all lab assets for an organization/plant
+ */
+export async function getLabAssets() {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    let query = supabase
+        .from("lab_assets")
+        .select(`
+            *,
+            plants (
+                id,
+                name
+            )
+        `)
+        .eq("organization_id", user.organization_id)
+        .order("code");
+
+    if (user.plant_id) {
+        query = query.eq("plant_id", user.plant_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+}
+
+/**
+ * Get lab asset details by ID
+ */
+export async function getLabAssetById(id: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const { data, error } = await supabase
+        .from("lab_assets")
+        .select(`
+            *,
+            plants (
+                id,
+                name
+            )
+        `)
+        .eq("id", id)
+        .eq("organization_id", user.organization_id)
+        .single();
+
+    if (error) {
+        console.error("Error fetching asset details:", error);
+        return null;
+    }
+
+    return data;
+}
+
+/**
+ * Get asset history (calibrations, maintenance, documents)
+ */
+export async function getAssetHistory(id: string) {
+    const supabase = await createClient();
+    const user = await getSafeUser();
+
+    const [calibrationsResult, maintenanceResult, documentsResult] = await Promise.all([
+        supabase
+            .from("calibration_certificates")
+            .select("*")
+            .eq("equipment_id", id)
+            .eq("organization_id", user.organization_id)
+            .order("issued_at", { ascending: false }),
+        supabase
+            .from("maintenance_logs")
+            .select("*")
+            .eq("equipment_id", id)
+            .eq("organization_id", user.organization_id)
+            .order("performed_at", { ascending: false }),
+        supabase
+            .from("lab_asset_documents")
+            .select("*")
+            .eq("asset_id", id)
+            .order("created_at", { ascending: false })
+    ]);
+
+    return {
+        calibrations: calibrationsResult.data || [],
+        maintenance: maintenanceResult.data || [],
+        documents: documentsResult.data || []
+    };
+}
+
+/**
+ * Get plants for dropdowns
+ */
+export async function getPlants() {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("plants")
+        .select("id, name")
+        .order("name");
+    if (error) throw error;
+    return data || [];
+}

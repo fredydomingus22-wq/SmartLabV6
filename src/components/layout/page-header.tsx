@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
@@ -16,6 +18,8 @@ interface PageHeaderProps {
     sticky?: boolean;
     size?: "default" | "compact";
     childrenPosition?: "bottom" | "inline";
+    collapsible?: boolean;
+    defaultCollapsed?: boolean;
 }
 
 const variantColors = {
@@ -59,8 +63,11 @@ export function PageHeader({
     sticky = true,
     size = "default",
     childrenPosition = "bottom",
+    collapsible = false,
+    defaultCollapsed = false,
 }: PageHeaderProps) {
-    const isCompact = size === "compact";
+    const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
+    const isCompact = size === "compact" || isCollapsed;
     const isInline = childrenPosition === "inline";
 
     return (
@@ -73,7 +80,7 @@ export function PageHeader({
             <div className={cn("h-[1px] w-full opacity-60", variantColors[variant])} />
 
             <header className={cn(
-                "relative w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-3xl px-6 flex flex-col overflow-hidden",
+                "relative w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-3xl px-6 flex flex-col overflow-hidden transition-all duration-300",
                 isCompact ? "py-2 min-h-[48px] gap-1" : "py-4 min-h-[64px] gap-2"
             )}>
                 {/* Minimal Subtle Glow */}
@@ -85,8 +92,8 @@ export function PageHeader({
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {/* 🧭 NAVIGATION & BREADCRUMB AREA */}
                     <div className="flex flex-col gap-0.5 max-w-[60%]">
-                        {(backHref || overline) && !isInline && (
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500/80 mb-1">
+                        {(backHref || overline) && !isInline && !isCollapsed && (
+                            <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500/80 mb-1 animate-in fade-in slide-in-from-top-1">
                                 {backHref && (
                                     <>
                                         <Link href={backHref} className="hover:text-white transition-colors flex items-center">
@@ -116,7 +123,7 @@ export function PageHeader({
                             {icon}
                             <div className="flex flex-col">
                                 <h1 className={cn(
-                                    "font-semibold tracking-tight text-white/90 flex items-center gap-1.5 whitespace-nowrap",
+                                    "font-semibold tracking-tight text-white/90 flex items-center gap-1.5 whitespace-nowrap transition-all duration-300",
                                     isCompact ? "text-lg" : "text-2xl"
                                 )}>
                                     {title}
@@ -124,8 +131,8 @@ export function PageHeader({
                                         <div className={cn("h-1 w-1 rounded-full opacity-40", variantColors[variant])} />
                                     )}
                                 </h1>
-                                {description && !isInline && (
-                                    <p className="text-sm font-medium text-muted-foreground mt-0.5">
+                                {description && !isInline && !isCollapsed && (
+                                    <p className="text-sm font-medium text-muted-foreground mt-0.5 animate-in fade-in slide-in-from-top-1">
                                         {description}
                                     </p>
                                 )}
@@ -142,13 +149,22 @@ export function PageHeader({
                         )}
                         <div className="flex items-center gap-2">
                             {actions}
+                            {collapsible && (
+                                <button
+                                    onClick={() => setIsCollapsed(!isCollapsed)}
+                                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-500 hover:text-white transition-all ml-2"
+                                    title={isCollapsed ? "Expandir" : "Recolher"}
+                                >
+                                    <ChevronRight className={cn("h-4 w-4 transition-transform duration-300", isCollapsed ? "rotate-90" : "-rotate-90")} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* 🔍 OPTIONAL FILTER/SEARCH AREA */}
-                {children && !isInline && (
-                    <div className="relative z-10 flex flex-wrap items-center gap-2 pt-1.5 border-t border-white/5 mt-0.5">
+                {children && !isInline && !isCollapsed && (
+                    <div className="relative z-10 animate-in slide-in-from-top-2 duration-300 flex flex-wrap items-center gap-2 pt-1.5 border-t border-white/5 mt-0.5">
                         {children}
                     </div>
                 )}
