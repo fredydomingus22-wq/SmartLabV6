@@ -83,7 +83,7 @@ export function ModuleDetailClient({
         });
     };
 
-    const form = useForm<z.infer<typeof QuestionFormSchema>>({
+    const form = useForm({
         resolver: zodResolver(QuestionFormSchema),
         defaultValues: {
             question_text: "",
