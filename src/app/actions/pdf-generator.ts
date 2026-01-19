@@ -132,13 +132,13 @@ export async function generateCoAPdf(sampleId: string): Promise<{
     }
 
     // Map to CoA template props
-    const templateProps = {
+    const coaProps = {
         sample: {
             id: sample.id,
             sample_code: sample.code,
             product_name: sample.batch?.product?.name || "N/A",
             batch_code: sample.batch?.code || "N/A",
-            collection_date: new Date(sample.collected_at).toLocaleDateString(),
+            collected_at: new Date(sample.collected_at).toLocaleDateString(),
         },
         analyses: analysis.map((a: any) => ({
             parameter_name: a.parameter?.name || "Parameter",
@@ -162,7 +162,7 @@ export async function generateCoAPdf(sampleId: string): Promise<{
     };
 
     // Render PDF to buffer
-    const document = React.createElement(CertificateOfAnalysis, templateProps);
+    const document = React.createElement(CertificateOfAnalysis, coaProps);
     const buffer = await renderToBuffer(document as any);
 
     // Convert to base64

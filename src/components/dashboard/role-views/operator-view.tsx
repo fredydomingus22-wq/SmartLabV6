@@ -23,7 +23,8 @@ import {
     Zap,
     LayoutGrid,
     TestTube2,
-    TrendingUp
+    TrendingUp,
+    Beaker
 } from "lucide-react";
 import Link from "next/link";
 import { KPISparkCard } from "@/components/ui/kpi-spark-card";

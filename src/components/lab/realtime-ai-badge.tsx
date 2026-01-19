@@ -48,7 +48,7 @@ export function RealtimeAIBadge({ analysisId, initialInsight }: RealtimeAIBadgeP
                     table: 'ai_insights',
                     filter: `entity_id=eq.${analysisId}`,
                 },
-                (payload) => {
+                (payload: any) => {
                     if (payload.eventType === 'DELETE') {
                         setInsight(null);
                     } else if (payload.new) {

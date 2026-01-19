@@ -41,7 +41,7 @@ export function ModulesClient({ modules }: { modules: Module[] }) {
     const [isPending, startTransition] = useTransition();
 
     const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: {
             title: "",
             description: "",
@@ -132,7 +132,13 @@ export function ModulesClient({ modules }: { modules: Module[] }) {
                                                 <FormItem>
                                                     <FormLabel className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Duração (min)</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" {...field} className="bg-white/5 border-white/10 h-11" />
+                                                        <Input
+                                                            type="number"
+                                                            {...field}
+                                                            value={field.value ?? ""}
+                                                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                                            className="bg-white/5 border-white/10 h-11"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>

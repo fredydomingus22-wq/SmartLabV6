@@ -30,6 +30,8 @@ const QuestionFormSchema = z.object({
     })).min(2, "At least 2 options required")
 });
 
+type QuestionFormValues = z.infer<typeof QuestionFormSchema>;
+
 interface QuestionOption {
     id: string;
     text: string;
@@ -83,8 +85,8 @@ export function ModuleDetailClient({
         });
     };
 
-    const form = useForm({
-        resolver: zodResolver(QuestionFormSchema),
+    const form = useForm<QuestionFormValues>({
+        resolver: zodResolver(QuestionFormSchema) as any,
         defaultValues: {
             question_text: "",
             question_type: "single_choice",
@@ -96,7 +98,7 @@ export function ModuleDetailClient({
         }
     });
 
-    const onSubmit = (values: z.infer<typeof QuestionFormSchema>) => {
+    const onSubmit = (values: QuestionFormValues) => {
         if (!quizId) return;
 
         startTransition(async () => {
@@ -240,7 +242,15 @@ export function ModuleDetailClient({
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel className="text-foreground/80">Points</FormLabel>
-                                                        <FormControl><Input type="number" {...field} className="bg-white/5 border-white/10 h-10" /></FormControl>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                {...field}
+                                                                value={field.value ?? ""}
+                                                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                                                className="bg-white/5 border-white/10 h-10"
+                                                            />
+                                                        </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}

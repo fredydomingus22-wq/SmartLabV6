@@ -104,7 +104,7 @@ export function MicroView({ user, stats, assignments, activity }: MicroViewProps
                                         <PremiumListItem
                                             title={task.title}
                                             subtitle={task.subtitle}
-                                            status="pending"
+                                            status="info"
                                             icon={<FlaskConical className="h-4 w-4 text-purple-400" />}
                                         />
                                     </Link>
