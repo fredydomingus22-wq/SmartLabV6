@@ -30,7 +30,7 @@ export default async function LabAssetsPage() {
                 icon={<FlaskConical className="h-4 w-4" />}
                 overline="Gestão de Ativos & Conformidade ISO 17025"
                 title="Instrumentos de Laboratório"
-                description="Monitorização de calibrações e manutenção dos equipamenos "
+                description="Monitorização de calibrações e manutenção dos equipamentos "
                 backHref="/lab"
                 collapsible
                 actions={
