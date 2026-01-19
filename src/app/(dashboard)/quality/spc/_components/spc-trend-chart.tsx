@@ -77,7 +77,7 @@ export function SPCTrendChart({ data, ucl, lcl, mean, usl, lsl, target, loading,
                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
                         itemStyle={{ fontSize: '12px' }}
                         labelStyle={{ color: '#94a3b8', fontSize: '10px', marginBottom: '5px' }}
-                        formatter={(value: number) => [`${value.toFixed(3)} ${unit || ''}`, "Valor"]}
+                        formatter={(value: any) => [`${Number(value).toFixed(3)} ${unit || ''}`, "Valor"]}
                         labelFormatter={(label) => format(new Date(label), "dd MMM yyyy, HH:mm")}
                     />
 
