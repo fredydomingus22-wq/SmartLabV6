@@ -58,7 +58,7 @@ export function SPCHistogram({ data, unit, loading }: SPCHistogramProps) {
         return histogramData;
     }, [data, stats]);
 
-    const tooltipFormatter = (value: any, name: string): [string | number, string] => {
+    const tooltipFormatter = (value: any, name: string | number | undefined): [string | number, string] => {
         const val = typeof value === 'number' ? value : parseFloat(value);
         return [
             name === 'curve' ? (isNaN(val) ? value : val.toFixed(2)) : value,
